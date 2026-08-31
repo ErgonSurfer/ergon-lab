@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: MIT
+name: Bug report
+description: Report a reproducible problem using public-safe information.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not disclose vulnerabilities, secrets, private operator data, private
+        endpoints, wallets, local paths, or private-derived artifacts here. Use
+        the private process in SECURITY.md for suspected vulnerabilities.
+
+  - type: input
+    id: public_revision
+    attributes:
+      label: Public revision
+      description: Public commit, tag, or release that exhibits the problem.
+      placeholder: Commit SHA or release tag
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Concisely describe the observed problem and its impact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide exact public-input steps, commands, and safe configuration.
+      placeholder: |
+        1. Build public revision ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Include normalized output only when it contains no sensitive or host-bound data.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Public-safe environment
+      description: List OS, architecture, compiler, dependencies, feature flags, and whether Chronik is compiled or enabled.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_surface
+    attributes:
+      label: Primary affected surface
+      options:
+        - Consensus
+        - Validation or mempool
+        - P2P
+        - Storage or datadir
+        - RPC or API
+        - Wallet
+        - Indexing or Chronik
+        - Build or release
+        - Tests only
+        - Documentation or cockpit
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: chronik_boundary
+    attributes:
+      label: Standalone and Chronik behavior
+      description: State behavior with Chronik disabled or unavailable and distinguish node-owned from index-derived results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Limitations and counter-evidence
+      description: State untested cases, contradictory observations, or why the current evidence is narrower than the suspected bug.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: public_safety
+    attributes:
+      label: Public-safety confirmation
+      options:
+        - label: I used only public inputs or independently authored material that I may publish.
+          required: true
+        - label: This report contains no secret, private identity, private endpoint, private path, wallet data, or private-derived artifact.
+          required: true
+        - label: This is not an undisclosed security vulnerability.
+          required: true

@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: MIT",
+  "title": "Public cockpit entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "kind",
+    "workstream",
+    "title",
+    "summary",
+    "delivery_state",
+    "knowledge_status"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "kind": {"enum": ["gate", "research-topic"]},
+    "workstream": {
+      "enum": ["build-operate", "learn", "research", "observatory"]
+    },
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "delivery_state": {
+      "enum": ["verified", "active", "blocked", "planned", "research"]
+    },
+    "knowledge_status": {
+      "enum": [
+        "Explainer",
+        "Hypothesis",
+        "Simulation",
+        "Observed",
+        "Reproduced",
+        "Open Question"
+      ]
+    },
+    "blockers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "verification_evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "roadmap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "order", "label"],
+      "properties": {
+        "lane": {
+          "enum": ["Build / Operate", "Learn", "Research", "Observatory"]
+        },
+        "order": {"type": "integer", "minimum": 0},
+        "label": {"type": "string", "minLength": 1}
+      }
+    },
+    "research_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question",
+        "sources",
+        "methods",
+        "data",
+        "units",
+        "uncertainty",
+        "limitations",
+        "counter_evidence",
+        "reproduction_pack"
+      ],
+      "properties": {
+        "question": {"type": "string", "minLength": 1},
+        "sources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "records"],
+          "properties": {
+            "status": {"enum": ["missing", "preliminary", "reviewed"]},
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title", "url"],
+                "properties": {
+                  "title": {"type": "string", "minLength": 1},
+                  "url": {"type": "string", "pattern": "^https://"}
+                }
+              }
+            }
+          }
+        },
+        "methods": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "description"],
+          "properties": {
+            "status": {"enum": ["not-started", "draft", "reviewed"]},
+            "description": {"type": "string", "minLength": 1}
+          }
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policy", "status", "references"],
+          "properties": {
+            "policy": {"const": "public-only"},
+            "status": {"enum": ["not-collected", "partial", "reviewed"]},
+            "references": {
+              "type": "array",
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "units": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "definitions"],
+          "properties": {
+            "status": {"enum": ["not-defined", "draft", "reviewed"]},
+            "definitions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["quantity", "unit"],
+                "properties": {
+                  "quantity": {"type": "string", "minLength": 1},
+                  "unit": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          }
+        },
+        "uncertainty": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "counter_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "records"],
+          "properties": {
+            "status": {"enum": ["not-collected", "partial", "reviewed"]},
+            "records": {
+              "type": "array",
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "reproduction_pack": {"$ref": "reproduction.schema.json"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"kind": {"const": "gate"}},
+        "required": ["kind"]
+      },
+      "then": {"required": ["roadmap"]}
+    },
+    {
+      "if": {
+        "properties": {"delivery_state": {"const": "blocked"}},
+        "required": ["delivery_state"]
+      },
+      "then": {"required": ["blockers"]}
+    },
+    {
+      "if": {
+        "properties": {"delivery_state": {"const": "verified"}},
+        "required": ["delivery_state"]
+      },
+      "then": {"required": ["verification_evidence"]}
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "properties": {"workstream": {"const": "research"}},
+            "required": ["workstream"]
+          },
+          {
+            "properties": {"delivery_state": {"const": "research"}},
+            "required": ["delivery_state"]
+          },
+          {
+            "properties": {"kind": {"const": "research-topic"}},
+            "required": ["kind"]
+          }
+        ]
+      },
+      "then": {"required": ["research_evidence"]}
+    },
+    {
+      "if": {
+        "properties": {"knowledge_status": {"const": "Reproduced"}},
+        "required": ["knowledge_status"]
+      },
+      "then": {
+        "properties": {
+          "research_evidence": {
+            "properties": {
+              "methods": {
+                "properties": {"status": {"const": "reviewed"}},
+                "required": ["status"]
+              },
+              "data": {
+                "properties": {"status": {"const": "reviewed"}},
+                "required": ["status"]
+              },
+              "reproduction_pack": {
+                "properties": {"availability": {"const": "published"}},
+                "required": ["availability"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

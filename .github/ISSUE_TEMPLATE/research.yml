@@ -1,0 +1,174 @@
+# SPDX-License-Identifier: MIT
+name: Research or observatory proposal
+description: Propose sourced, reproducible public research or observation.
+title: "[Research]: "
+labels:
+  - research
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Research must remain within the public clean-room boundary. Simulation
+        is not observation, observation is not reproduction, and price context
+        must not contain forecasts, investment recommendations, or financial advice.
+
+  - type: input
+    id: title
+    attributes:
+      label: Working title
+    validations:
+      required: true
+
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Workstream
+      options:
+        - Learn
+        - Research
+        - Observatory
+        - Build / Operate
+    validations:
+      required: true
+
+  - type: dropdown
+    id: delivery_state
+    attributes:
+      label: Proposed delivery state
+      description: Delivery progress is independent from knowledge status.
+      options:
+        - research
+        - planned
+        - active
+        - blocked
+        - verified
+    validations:
+      required: true
+
+  - type: dropdown
+    id: knowledge_status
+    attributes:
+      label: Proposed knowledge status
+      options:
+        - Open Question
+        - Hypothesis
+        - Explainer
+        - Simulation
+        - Observed
+        - Reproduced
+    validations:
+      required: true
+
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Primary topic
+      options:
+        - Proportional rewards
+        - Cyphercash
+        - Supply and emission
+        - Descriptive price context
+        - Hashrate responsiveness and elasticity
+        - Difficulty adjustment
+        - Block size and propagation
+        - Security
+        - Fee markets
+        - Other public node research
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question, purpose, and acceptance criteria
+      description: State a falsifiable question where applicable and what result would change the proposed status.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources and licenses
+      description: Provide public URLs or immutable identifiers, versions, access dates, and licenses.
+    validations:
+      required: true
+
+  - type: textarea
+    id: methods
+    attributes:
+      label: Methods
+      description: Describe algorithms, comparisons, controls, transformations, and checks.
+    validations:
+      required: true
+
+  - type: textarea
+    id: public_data
+    attributes:
+      label: Public data
+      description: Identify retrieval methods, versions or time ranges, retention, and SHA-256 checksums.
+    validations:
+      required: true
+
+  - type: textarea
+    id: units
+    attributes:
+      label: Units and definitions
+      description: Define every quantity, unit, time basis, normalization, and conversion.
+    validations:
+      required: true
+
+  - type: textarea
+    id: assumptions
+    attributes:
+      label: Assumptions and environment
+      description: List parameters, software and tool versions, dependency locks, and environment assumptions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: uncertainty
+    attributes:
+      label: Uncertainty and sensitivity
+      description: Explain error treatment, sensitivity checks, and confidence limits where meaningful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Limitations and inference boundary
+      description: State what the proposed work cannot establish.
+    validations:
+      required: true
+
+  - type: textarea
+    id: counter_evidence
+    attributes:
+      label: Counter-evidence and alternative explanations
+      description: Include contradictory evidence, failed checks, and conditions that would falsify the claim.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_pack
+    attributes:
+      label: Portable reproduction pack
+      description: List the manifest, exact commands, expected outputs, per-file checksums, and independent reproduction plan.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundary confirmations
+      options:
+        - label: All proposed inputs are public and license-compatible, or independently authored with a right-to-license attestation.
+          required: true
+        - label: No proposed artifact is copied, sanitized, summarized, translated, or paraphrased from private material.
+          required: true
+        - label: Any Chronik use is observe/index only and does not grant node authority.
+          required: true
+        - label: Any price material is descriptive only and contains no forecast, financial advice, or investment recommendation.
+          required: true
+        - label: I will not label the result Reproduced without an independent public-input reproduction meeting declared criteria.
+          required: true

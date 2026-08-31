@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: MIT
+
+name: Public publication gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publication-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cockpit:
+    name: Cockpit policy and generated roadmap
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # actions/checkout v4.2.2, pinned to an immutable commit.
+      - name: Check out the reviewed tree
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Compile the dependency-free gate
+        run: python3 -m py_compile tools/cockpit/cockpit.py
+
+      - name: Exercise fail-closed policy cases
+        run: python3 tools/cockpit/cockpit.py self-test
+
+      - name: Validate sources and generated outputs
+        run: python3 tools/cockpit/cockpit.py check

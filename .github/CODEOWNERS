@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Public governance owner. Add domain owners as independently reviewed areas land.
+
+* @ErgonSurfer
+
+# Publication and provenance policy
+/PUBLICATION_POLICY.md @ErgonSurfer
+/CONTRIBUTING.md @ErgonSurfer
+/.github/ @ErgonSurfer
+/cockpit/ @ErgonSurfer
+/docs/roadmap.md @ErgonSurfer
+
+# Consensus-boundary documentation and consensus-sensitive implementation
+/docs/architecture/consensus-boundary.md @ErgonSurfer
+/src/consensus/ @ErgonSurfer
+/src/validation* @ErgonSurfer

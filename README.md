@@ -1,53 +1,93 @@
-Bitcoin Static
-=================
+<!-- SPDX-License-Identifier: MIT -->
 
-The goal of Bitcoin Static is to create sound money that is usable by everyone
-in the world. We believe this is a civilization-changing technology which will
-dramatically increase human flourishing, freedom, and prosperity. The project
-aims to achieve this goal by implementing [proportional reward system](https://ergon.moe/prop-reward.pdf) to stabilize
-the currency value over time.
+# Ergon Lab
 
-What is Ergon?
----------------------
+Community research and engineering hub for Ergon.
 
-Ergon is a digital currency that enables instant payments to anyone,
-anywhere in the world. It uses peer-to-peer technology to operate with no
-central authority: managing transactions and issuing money are carried out
-collectively by the network. Ergon is a descendant of Bitcoin Cash. It starts
-from a new genesis block but shares most of the features, except the reward
-structure and difficulty adjustment algorithm.
+Ergon Lab develops a standalone open-source node and maintains a public cockpit
+for building, operating, learning about, researching, and observing the Ergon
+network.
 
-What is Bitcoin Static?
---------------------
+This repository is clean-room public work. Its root baseline is the public
+Bitcoin Static v24.0.5 snapshot identified by:
 
-[Bitcoin Static](https://ergon.moe) is the name of open-source
-software which enables the use of Ergon. It is a descendant of the
-[Bitcoin Cash Node](https://bitcoincashnode.org), [Bitcoin ABC](https://www.bitcoinabc.org)
-and [Bitcoin Core](https://bitcoincore.org) software projects.
+- source commit: `2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b`
+- source Git tree: `8a74bb952c2137156214b9fe5888c494bd77aeca`
 
-License
--------
+The source commit and tree are both required identifiers. A version label alone
+is not sufficient provenance. Changes after that snapshot are admitted only
+through the allowlisted publication process in
+[`PUBLICATION_POLICY.md`](PUBLICATION_POLICY.md).
 
-Bitcoin Static is released under the terms of the MIT license. See
-[COPYING](COPYING) for more information or see
-[https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT).
+## Standalone consensus boundary
 
-Development Process
--------------------
+The node is the authority for its own consensus validation, chain selection,
+mempool policy, and persistent chain state. It must remain correct and usable
+without an indexer.
 
-Bitcoin Static development takes place at [https://github.com/Ergon-moe/Bitcoin-Static](https://github.com/Ergon-moe/Bitcoin-Static)
+Chronik, when present, is optional observe-and-index infrastructure. It may
+derive and serve indexed views of node-accepted data. It must not decide or
+override consensus validity, chain selection, activation, or mempool admission,
+and it must not become a prerequisite for node correctness. See
+[`docs/architecture/consensus-boundary.md`](docs/architecture/consensus-boundary.md).
 
-If you would like to contribute, please contact us directly at
- [t.me/ErgonCommunity](https://t.me/ErgonCommunity)
+## Public cockpit
 
-Disclosure Policy
------------------
+The cockpit separates four workstreams:
 
-We have a [Disclosure Policy](DISCLOSURE_POLICY.md) for responsible disclosure
-of security issues.
+- **Build / Operate** — source, builds, releases, configuration, and operation;
+- **Learn** — public explainers and concepts;
+- **Research** — hypotheses, simulations, analyses, and reproduction packs;
+- **Observatory** — sourced network and ecosystem observations.
 
-Further info
-------------
+Every cockpit item carries two independent labels:
 
-See [doc/README.md](doc/README.md) for further info on installation, building,
-development and more.
+| Axis | Allowed values |
+| --- | --- |
+| Delivery state | `verified`, `active`, `blocked`, `planned`, `research` |
+| Knowledge status | `Explainer`, `Hypothesis`, `Simulation`, `Observed`, `Reproduced`, `Open Question` |
+
+A delivery state describes progress through a publication or implementation
+gate. A knowledge status describes what kind of knowledge is being presented.
+Neither axis upgrades the other. In particular, `Observed` is not
+`Reproduced`, `Simulation` is not observation, and `verified` delivery does not
+turn a hypothesis into a fact.
+
+Research will progressively cover protocol-native assets, proportional rewards,
+cyphercash, supply/emission, descriptive price context, hashrate responsiveness
+and elasticity, difficulty adjustment, block size and propagation, security,
+and fee markets. Price material is descriptive context only: no forecasts,
+investment recommendations, or financial advice.
+
+Research and observatory entries must disclose sources, methods, public data,
+units, assumptions, uncertainty, limitations, counter-evidence, and a portable
+reproduction pack. A result cannot use `Reproduced` until a public-input
+reproduction has been independently completed and recorded.
+
+## Project status
+
+The machine-readable cockpit is the canonical source for public gate states.
+The English visual roadmap is generated from the publication-boundary and gate
+projection; it is not hand-edited and is regenerated only when a gate or
+boundary in that projection changes.
+
+No roadmap item, issue, or research entry is a release promise. Statuses are
+evidence-scoped claims and may move backward when counter-evidence appears.
+
+## Contributing and security
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing a change. Contributors
+must use only public inputs or independently authored material they have the
+right to license. Do not copy, summarize, translate, or paraphrase private
+material for publication.
+
+For suspected vulnerabilities, follow [`SECURITY.md`](SECURITY.md) and do not
+open a public issue with exploit details, credentials, operator data, or other
+sensitive information.
+
+## License
+
+The public baseline is distributed under the MIT terms in [`COPYING`](COPYING).
+New repository material must declare an SPDX-compatible license and preserve
+all applicable upstream notices. Data and reproduction inputs may have separate
+licenses recorded alongside their provenance.

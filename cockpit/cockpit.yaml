@@ -1,0 +1,395 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "cockpit/schemas/cockpit.schema.json",
+  "schema_version": "1.0",
+  "project": {
+    "id": "ergon-lab",
+    "language": "en",
+    "baseline": {
+      "project": "Bitcoin Static",
+      "version": "24.0.5",
+      "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"
+    }
+  },
+  "enums": {
+    "delivery_state": ["verified", "active", "blocked", "planned", "research"],
+    "knowledge_status": [
+      "Explainer",
+      "Hypothesis",
+      "Simulation",
+      "Observed",
+      "Reproduced",
+      "Open Question"
+    ]
+  },
+  "workstreams": [
+    {"id": "build-operate", "title": "Build / Operate"},
+    {"id": "learn", "title": "Learn"},
+    {"id": "research", "title": "Research"},
+    {"id": "observatory", "title": "Observatory"}
+  ],
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik": {
+      "role": "observe-and-index-only",
+      "consensus_authority": false,
+      "mempool_authority": false,
+      "chain_selection_authority": false,
+      "required_for_correctness": false
+    },
+    "price_scope": "historical-context-no-financial-forecasting",
+    "publication_policy": "clean-room-allowlist-only"
+  },
+  "gates": [
+    {
+      "id": "approve-remote-identity",
+      "kind": "gate",
+      "workstream": "build-operate",
+      "title": "Approve the exact public repository identity",
+      "summary": "The maintainer approved ErgonSurfer/ergon-lab as the exact public repository identity; remote creation and the first push remain separately authorized operations.",
+      "delivery_state": "verified",
+      "knowledge_status": "Explainer",
+      "verification_evidence": ["Maintainer approval recorded for the exact owner/name pair ErgonSurfer/ergon-lab on 2026-08-31.", "A public GitHub API availability observation returned not found before launch; remote creation remains separately gated."],
+      "roadmap": {
+        "lane": "Build / Operate",
+        "order": 10,
+        "label": "Approve the exact public repository identity"
+      }
+    },
+    {
+      "id": "verify-public-baseline",
+      "kind": "gate",
+      "workstream": "build-operate",
+      "title": "Verify the public baseline snapshot",
+      "summary": "Bind the clean-room root to Bitcoin Static v24.0.5 commit 2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b using public inputs.",
+      "delivery_state": "active",
+      "knowledge_status": "Observed",
+      "roadmap": {
+        "lane": "Build / Operate",
+        "order": 20,
+        "label": "Verify the public baseline snapshot"
+      }
+    },
+    {
+      "id": "import-clean-root",
+      "kind": "gate",
+      "workstream": "build-operate",
+      "title": "Import the exact baseline tree as a clean root",
+      "summary": "Create a parentless root commit from the verified public tree without private Git objects, metadata, or history.",
+      "delivery_state": "planned",
+      "knowledge_status": "Explainer",
+      "roadmap": {
+        "lane": "Build / Operate",
+        "order": 30,
+        "label": "Import the exact baseline tree as a clean root"
+      }
+    },
+    {
+      "id": "launch-public-cockpit",
+      "kind": "gate",
+      "workstream": "build-operate",
+      "title": "Launch the public cockpit and publication gates",
+      "summary": "Land the English machine-readable cockpit, fail-closed validation, and projection-derived roadmap.",
+      "delivery_state": "active",
+      "knowledge_status": "Explainer",
+      "roadmap": {
+        "lane": "Build / Operate",
+        "order": 40,
+        "label": "Launch the public cockpit and publication gates"
+      }
+    },
+    {
+      "id": "publish-core-explainers",
+      "kind": "gate",
+      "workstream": "learn",
+      "title": "Publish source-grounded core explainers",
+      "summary": "Explain operation, consensus boundaries, and evidence labels without presenting research questions as established facts.",
+      "delivery_state": "planned",
+      "knowledge_status": "Explainer",
+      "roadmap": {
+        "lane": "Learn",
+        "order": 10,
+        "label": "Publish source-grounded core explainers"
+      }
+    },
+    {
+      "id": "review-zero-subsidy-export",
+      "kind": "gate",
+      "workstream": "research",
+      "title": "Review a portable zero-subsidy fixture export",
+      "summary": "The exact r3 transport passed quarantine review and was narrowed to one applied source repair plus five retained public files; public integration and reproduction remain separate gates.",
+      "delivery_state": "active",
+      "knowledge_status": "Open Question",
+      "roadmap": {
+        "lane": "Research",
+        "order": 10,
+        "label": "Review a portable zero-subsidy fixture export"
+      },
+      "research_evidence": {
+        "question": "Can the inherited fixture repair be reproduced from reviewed public inputs without changing production behavior?",
+        "sources": {
+          "status": "preliminary",
+          "records": [
+            {
+              "title": "Bitcoin Static v24.0.5 public baseline commit",
+              "url": "https://github.com/Ergon-moe/Bitcoin-Static/commit/2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"
+            }
+          ]
+        },
+        "methods": {
+          "status": "reviewed",
+          "description": "Verify the exact quarantine inventory, apply the hash-bound transport diff to the exact public baseline index, check the governed postimage and reversible tree delta, run the fail-closed harness self-test, and retain only the narrowed integration set."
+        },
+        "data": {
+          "policy": "public-only",
+          "status": "not-collected",
+          "references": []
+        },
+        "units": {
+          "status": "draft",
+          "definitions": [
+            {"quantity": "test process result", "unit": "exit status"},
+            {"quantity": "repeat count", "unit": "processes"}
+          ]
+        },
+        "uncertainty": ["The transport bytes passed local quarantine verification, but no independently generated public native-node report exists."],
+        "limitations": ["The current ceiling is a component observation, not operator-binary or historical-chain parity."],
+        "counter_evidence": {
+          "status": "partial",
+          "records": ["The r2 harness failed to enforce assertion totals and could retain raw paths.", "Tracking the verified unified-diff transport would create whitespace-check noise, so the future integration excludes that redundant artifact without adding a policy exception."]
+        },
+        "reproduction_pack": {
+          "availability": "not-yet-published",
+          "blockers": ["The narrowed six-path integration is not authorized or committed, and a public native-node report must be regenerated from public inputs."]
+        }
+      }
+    },
+    {
+      "id": "define-observatory-contract",
+      "kind": "gate",
+      "workstream": "observatory",
+      "title": "Define the public observatory contract",
+      "summary": "Specify public metrics, units, collection limits, and privacy rules while keeping observation outside consensus authority.",
+      "delivery_state": "planned",
+      "knowledge_status": "Open Question",
+      "roadmap": {
+        "lane": "Observatory",
+        "order": 10,
+        "label": "Define the public observatory contract"
+      }
+    }
+  ],
+  "research_topics": [
+    {
+      "id": "protocol-native-assets",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Protocol-native assets",
+      "summary": "Define and evaluate an Ergon-native asset model from reviewed public prior art without presenting inspiration as implementation or consensus authority.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "Which public, independently specified native-asset model should Ergon adopt, and which consensus, wallet, indexing, migration, and security properties must it satisfy?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Begin with public-source prior-art review, an independently authored specification, explicit threat and compatibility models, and falsifiable activation and validation tests."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "not-defined", "definitions": []},
+        "uncertainty": ["No native-asset design, activation rule, compatibility claim, or implementation has been accepted by this entry."],
+        "limitations": ["Prior art may inform research but cannot become consensus authority or bypass clean-room authorship, licensing, provenance, and test gates."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Reviewed public sources, an independent specification, test vectors, threat analysis, and portable implementation evidence are missing."]}
+      }
+    },
+    {
+      "id": "proportional-rewards",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Proportional rewards",
+      "summary": "Define the mechanism and testable claims before evaluating distributional or security effects.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "What precisely is the proportional-rewards mechanism, and which measurable outcomes distinguish its effects?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "No method is accepted; begin with a public-source protocol definition and falsifiable claims."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "not-defined", "definitions": []},
+        "uncertainty": ["The mechanism and comparison baseline have not been source-verified."],
+        "limitations": ["No distributional, incentive, or security conclusion is currently supported."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Sources, method, public data, units, and expected results are not yet reviewed."]}
+      }
+    },
+    {
+      "id": "cyphercash",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Cyphercash",
+      "summary": "Establish a public, source-grounded definition and research boundary before making technical claims.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "Which public definition and properties of cyphercash are in scope for the standalone node?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "No method is accepted; first establish terminology, primary sources, and testable properties."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "not-defined", "definitions": []},
+        "uncertainty": ["Terminology and relevant technical claims remain undefined."],
+        "limitations": ["No implementation or protocol implication is established."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["A reviewed public definition and reproducible method are missing."]}
+      }
+    },
+    {
+      "id": "supply-emission",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Supply and emission",
+      "summary": "Document consensus rules and derive auditable supply and emission calculations from public inputs.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "What supply and emission values follow from the verified consensus rules at each height?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Derive equations from reviewed public consensus code and cross-check them against a standalone-node dataset."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "draft", "definitions": [{"quantity": "supply", "unit": "base units"}, {"quantity": "emission rate", "unit": "base units per block"}, {"quantity": "chain position", "unit": "block height"}]},
+        "uncertainty": ["The derivation and historical cross-check have not been published."],
+        "limitations": ["No current supply figure is asserted by this entry."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Reviewed equations, public data, commands, and expected results are pending."]}
+      }
+    },
+    {
+      "id": "descriptive-price-context",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Descriptive price context",
+      "summary": "Provide historical context with provenance and uncertainty, never financial forecasting or advice.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "Which public historical price series can be described consistently with explicit market, currency, interval, and coverage?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Select a public series, preserve raw observations, document transformations, and report descriptive statistics only."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "draft", "definitions": [{"quantity": "price", "unit": "declared quote currency per declared base-asset unit"}, {"quantity": "time", "unit": "UTC timestamp"}]},
+        "uncertainty": ["Venue coverage, liquidity, gaps, and methodology are not yet assessed."],
+        "limitations": ["Forecasting, investment advice, and implied future returns are outside scope."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["A licensed public dataset and reviewed descriptive method are pending."]}
+      }
+    },
+    {
+      "id": "hashrate-responsiveness-elasticity",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Hashrate responsiveness and elasticity",
+      "summary": "Separate observed difficulty and timing proxies from inferred hashrate and causal elasticity claims.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "How quickly does inferred hashrate respond to specified shocks, and under which model can elasticity be estimated?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Pre-register proxy construction, response windows, confounders, and sensitivity checks before estimation."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "draft", "definitions": [{"quantity": "hashrate", "unit": "hashes per second"}, {"quantity": "response time", "unit": "seconds or blocks"}, {"quantity": "elasticity", "unit": "dimensionless"}]},
+        "uncertainty": ["Hashrate is inferred rather than directly observed, and short windows may be dominated by block-time variance."],
+        "limitations": ["No causal or elasticity estimate is currently supported."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Public data, estimator, sensitivity analysis, and expected results are pending."]}
+      }
+    },
+    {
+      "id": "difficulty-adjustment",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Difficulty adjustment algorithm",
+      "summary": "Explain the consensus algorithm and reproduce edge cases and dynamic behavior from public code.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "What behavior and edge cases follow from the verified difficulty-adjustment consensus implementation?",
+        "sources": {"status": "preliminary", "records": [{"title": "Bitcoin Static v24.0.5 public baseline commit", "url": "https://github.com/Ergon-moe/Bitcoin-Static/commit/2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"}]},
+        "methods": {"status": "not-started", "description": "Extract a reviewed specification from public consensus code, then test vectors and simulations against the standalone node."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "draft", "definitions": [{"quantity": "target", "unit": "unsigned integer"}, {"quantity": "difficulty", "unit": "dimensionless ratio"}, {"quantity": "block interval", "unit": "seconds"}]},
+        "uncertainty": ["The public specification and parity test vectors have not been reviewed."],
+        "limitations": ["No stability, responsiveness, or security claim is currently established."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Reviewed specification, test vectors, simulations, and parity checks are pending."]}
+      }
+    },
+    {
+      "id": "block-size-propagation",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Block size and propagation",
+      "summary": "Measure propagation with declared observation points and separate network observations from consensus validity.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "How does serialized block size relate to observed propagation delay under declared network conditions?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Define observation points, clocks, sampling, topology limits, and a model before collecting public measurements."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "draft", "definitions": [{"quantity": "serialized block size", "unit": "bytes"}, {"quantity": "propagation delay", "unit": "milliseconds"}]},
+        "uncertainty": ["Topology, peer selection, clock error, relay path, and sampling bias are not yet quantified."],
+        "limitations": ["Observation cannot confer consensus, mempool, or chain-selection authority on an indexer."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Measurement protocol, public dataset, privacy review, and analysis commands are pending."]}
+      }
+    },
+    {
+      "id": "security",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Security",
+      "summary": "Maintain explicit threat models, assumptions, counterexamples, and reproducible tests without overstating assurance.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "Which threat models and measurable security properties are appropriate for the standalone node and network?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Define assets, adversaries, assumptions, claims, and falsification tests before evaluation."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "not-defined", "definitions": []},
+        "uncertainty": ["Threat models, property definitions, and empirical scope are not yet reviewed."],
+        "limitations": ["No security certification, audit conclusion, or absence-of-vulnerability claim is made."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Threat models, test methods, public fixtures, and expected results are pending."]}
+      }
+    },
+    {
+      "id": "fee-markets",
+      "kind": "research-topic",
+      "workstream": "research",
+      "title": "Fee markets",
+      "summary": "Describe fee selection and observed market behavior with explicit policy, consensus, and demand boundaries.",
+      "delivery_state": "research",
+      "knowledge_status": "Open Question",
+      "research_evidence": {
+        "question": "Which policy, consensus, demand, and capacity factors explain observed fee distributions?",
+        "sources": {"status": "missing", "records": []},
+        "methods": {"status": "not-started", "description": "Define fee metrics and selection rules, then analyze public transaction and block observations with sensitivity checks."},
+        "data": {"policy": "public-only", "status": "not-collected", "references": []},
+        "units": {"status": "draft", "definitions": [{"quantity": "transaction fee", "unit": "base units"}, {"quantity": "fee rate", "unit": "base units per byte"}, {"quantity": "block occupancy", "unit": "bytes"}]},
+        "uncertainty": ["Private transaction demand, node policy variation, and observation coverage are not yet quantified."],
+        "limitations": ["No forecast of fees, price, demand, or miner revenue is made."],
+        "counter_evidence": {"status": "not-collected", "records": []},
+        "reproduction_pack": {"availability": "not-yet-published", "blockers": ["Public data, policy inventory, analysis code, and expected results are pending."]}
+      }
+    }
+  ],
+  "roadmap_generation": {
+    "projection": [
+      "boundaries",
+      "gates.*.id",
+      "gates.*.delivery_state",
+      "gates.*.roadmap"
+    ],
+    "event_log": "cockpit/events/roadmap-events.yaml",
+    "document": "docs/roadmap.md",
+    "manifest": "cockpit/generated/roadmap-manifest.json"
+  }
+}

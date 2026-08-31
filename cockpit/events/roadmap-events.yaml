@@ -1,0 +1,33 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema_version": "1.0",
+  "events": [
+    {
+      "id": "ROADMAP-0001",
+      "sequence": 1,
+      "effective_date": "2026-08-31",
+      "previous_projection_sha256": null,
+      "projection_sha256": "ab3974a6346f6f51e536b00a58530bc53086ea991320b516d261eb90954dc312",
+      "reason": "Establish the initial public roadmap projection before remote creation or publication.",
+      "changes": ["initial-projection"]
+    },
+    {
+      "id": "ROADMAP-0002",
+      "sequence": 2,
+      "effective_date": "2026-08-31",
+      "previous_projection_sha256": "ab3974a6346f6f51e536b00a58530bc53086ea991320b516d261eb90954dc312",
+      "projection_sha256": "f4c9466072f6883ac4a6fcafd06c7c1614f17df8332dd4136497458710f6e774",
+      "reason": "Record successful r3 quarantine verification and continue with the separately gated narrowed integration and public reproduction.",
+      "changes": ["gates.review-zero-subsidy-export.delivery_state"]
+    },
+    {
+      "id": "ROADMAP-0003",
+      "sequence": 3,
+      "effective_date": "2026-08-31",
+      "previous_projection_sha256": "f4c9466072f6883ac4a6fcafd06c7c1614f17df8332dd4136497458710f6e774",
+      "projection_sha256": "9f2271fd54cf37305e27bca47d5d900cf25089fe50491cb36e7ef3610e66edf9",
+      "reason": "Record maintainer approval of ErgonSurfer/ergon-lab as the exact public repository identity.",
+      "changes": ["gates.approve-remote-identity.delivery_state"]
+    }
+  ]
+}
