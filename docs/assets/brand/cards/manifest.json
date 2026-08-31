@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "system": "ergon-lab-editorial-cards",
+  "date": "2026-08-31",
+  "license": "MIT",
+  "maintainer": "ErgonSurfer",
+  "approval": "Included by explicit maintainer commit authorization on 2026-08-31",
+  "provenance": {
+    "art": "OpenAI built-in image generation using independently authored prompts",
+    "text": "Deterministic browser-rendered typography",
+    "private_inputs": false,
+    "source_sheets_included": false,
+    "source_sheet_sha256": {
+      "network": "a77c75e8ffd7864b793a232539d4977d76dd105a234b60bd87caa5765e71b9f4",
+      "research": "ab784ffd75225f56135aec018b6f90b46c81ea3201f9f90f2d1cf64bcc3bed48"
+    },
+    "prompt_summary": {
+      "network": "Four crop-safe scientific miniatures with varied porcelain, nocturnal data-art, brushed metal, and cobalt glass treatments; no text or invented data.",
+      "research": "Four crop-safe research still lifes alternating dark engineering, bright laboratory, nocturnal privacy, and daylight paper treatments; no text.",
+      "commitments": "Three crops from the independently generated Ergon Lab architectural landscape for understand, question, and build."
+    }
+  },
+  "data_boundary": "Network cards contain publication-gate placeholders, not observed network values.",
+  "cards": [
+    {"path": "commitments/build.jpg", "bytes": 45922, "sha256": "5b4336dcc561c03536da87300ef23de6d2739c39202a53b9708069c17c9c3887"},
+    {"path": "commitments/question.jpg", "bytes": 41569, "sha256": "68aa37596e7c45047a3982cda3c01624cc0c0c91ce4399f5440169dba1a6333c"},
+    {"path": "commitments/understand.jpg", "bytes": 46712, "sha256": "e5632bff1336bd5b8c64f9e3c7afd43bfdd21082d4694996fed96d706a260d31"},
+    {"path": "network/activity-proxy.jpg", "bytes": 29499, "sha256": "7261d25e0c9beb61ecf74a1867168c4bf1edb914e7abd82008a59c40191ca7a3"},
+    {"path": "network/block-cadence.jpg", "bytes": 35076, "sha256": "a32d03c50d3f7aad04b3e432ec7102fdeceb2f85c3ec37b1d242d30c2274a67e"},
+    {"path": "network/existing-supply.jpg", "bytes": 36146, "sha256": "38bcb47a3f3dbbda45e514233d8a4c36ae1513eec48963f995a2533c79806816"},
+    {"path": "network/inferred-hashrate.jpg", "bytes": 42598, "sha256": "01688db76443f94db383358e71c3d068887dd7674b639953e10ec2fca9ed730c"},
+    {"path": "research/core-explainers.jpg", "bytes": 37056, "sha256": "547ba6c5f806d2b7ed57756231f553dcb0be9d1420b3d9c6825a2b7703096f7b"},
+    {"path": "research/metric-privacy-contract.jpg", "bytes": 35834, "sha256": "cc2127c56f60e321453a602e76ff7e6896cb0c61d311a197a8f2aa12ccbe76ab"},
+    {"path": "research/protocol-native-assets.jpg", "bytes": 40360, "sha256": "03fae0d5c6052dfd6a8ef4f24a1e9751d55e8987c14875fbe67aec1b37117b46"},
+    {"path": "research/zero-subsidy-fixture.jpg", "bytes": 34417, "sha256": "a7cd5002f201e3b66076f017e662ea086094ee7a44918d241b50fda37931ef18"}
+  ]
+}
