@@ -1,0 +1,670 @@
+# Top-level general rules determine when this pipeline is run:
+# - only on merge requests, new tags and changes to master
+# - NOT on any branch except master
+# - will run detached merge request pipelines for any merge request,
+#   targeting any branch
+
+workflow:
+    rules:
+        - if: $CI_MERGE_REQUEST_ID
+        - if: $CI_COMMIT_TAG
+        - if: $CI_COMMIT_BRANCH == "master"
+
+include:
+    - template: Code-Quality.gitlab-ci.yml
+
+code_quality:
+    rules:
+        - when: on_success
+    artifacts:
+        paths: [gl-code-quality-report.json]
+
+image: bitcoincashnode/buildenv:debian
+
+stages:
+    - static_checks
+    - build_depends
+    - build
+    - build_tests
+    - test
+    - deployment
+
+variables:
+    # Don't allow tests to hang
+    TRAVIS: 1
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache: &global_cache_settings
+    paths:
+        - ccache/
+        - .cache/pip
+
+## Static checking stages:
+
+# - Two jobs:
+#   - One only for master (lint everything)
+#   - One for non-master branches incl. merge requests
+# - These jobs are set not to fail, but to produce artifacts & reports
+
+static-checks-master:
+    stage: static_checks
+    rules:
+        - if: $CI_COMMIT_BRANCH == "master"
+    allow_failure: true
+    script:
+        - pip3 install -r .static-checks-python-requirements.txt
+        - git clone https://github.com/ekho/checkstyle2junit.git --branch master --single-branch --depth=1 build-aux/checkstyle2junit
+        - echo "running static checks for CI_COMMIT_REF_NAME $CI_COMMIT_REF_NAME"
+        - arc lint --outfile $CI_PROJECT_DIR/arc_lint-checkstyle.xml --output xml --everything && true; arc_lint_exit_code=$?
+        - if [ $arc_lint_exit_code -ne 0 ]; then echo "arc lint command returned non-zero - please inspect the linting report / artifacts"; fi;
+        - php build-aux/checkstyle2junit/checkstyle2junit.php $CI_PROJECT_DIR/arc_lint-checkstyle.xml | xmlstarlet fo > $CI_PROJECT_DIR/arc_lint-junit.xml && true; convert_exit_code=$?
+        - if [ $convert_exit_code -ne 0 ]; then echo "Error while attempting to convert Checkstyle XML to JUnit XML. Please inspect the linting report / artifacts"; fi;
+    artifacts:
+        paths:
+            - $CI_PROJECT_DIR/arc_lint-checkstyle.xml
+            - $CI_PROJECT_DIR/arc_lint-junit.xml
+        expire_in: 30 days
+        reports:
+            junit: $CI_PROJECT_DIR/arc_lint-junit.xml
+    cache:
+        <<: *global_cache_settings
+        key: static_checks_cache
+        paths:
+            - .cache/pip
+
+static-checks-branch:
+    stage: static_checks
+    rules:
+        - if: $CI_COMMIT_BRANCH != "master"
+    allow_failure: true
+    script:
+        - export GIT_DIR=$CI_PROJECT_DIR/.git
+          # Last merge commit is used as reference for branch starts.
+          # MR's should not have merges within them.
+        - export MR_START=`git show :/^Merge --format=format:%H`
+        - pip3 install -r .static-checks-python-requirements.txt
+        - git clone https://github.com/ekho/checkstyle2junit.git --branch master --single-branch --depth=1 build-aux/checkstyle2junit
+        - echo "running static checks for CI_COMMIT_REF_NAME $CI_COMMIT_REF_NAME from $MR_START"
+        - arc lint --outfile $CI_PROJECT_DIR/arc_lint-checkstyle.xml --output xml --rev $MR_START^ && true; arc_lint_exit_code=$?
+        - if [ $arc_lint_exit_code -ne 0 ]; then echo "arc lint command returned non-zero - please inspect the linting report / artifacts"; fi;
+        - php build-aux/checkstyle2junit/checkstyle2junit.php $CI_PROJECT_DIR/arc_lint-checkstyle.xml | xmlstarlet fo > $CI_PROJECT_DIR/arc_lint-junit.xml && true; convert_exit_code=$?
+        - if [ $convert_exit_code -ne 0 ]; then echo "Error while attempting to convert Checkstyle XML to JUnit XML. Please inspect the linting report / artifacts"; fi;
+    artifacts:
+        paths:
+            - $CI_PROJECT_DIR/arc_lint-checkstyle.xml
+            - $CI_PROJECT_DIR/arc_lint-junit.xml
+        expire_in: 30 days
+        reports:
+            junit: $CI_PROJECT_DIR/arc_lint-junit.xml
+    cache:
+        <<: *global_cache_settings
+        key: static_checks_cache
+        paths:
+            - .cache/pip
+
+static-run-linters:
+    stage: static_checks
+    needs: []
+    cache: {}
+    script:
+        - mkdir build
+        - cd build
+        - cmake -GNinja ..
+        - ninja check-lint
+    artifacts:
+        paths:
+            - build/test/lint
+
+.ccache_scripts:
+    before_script:
+        - mkdir -p ccache
+        - export CCACHE_BASEDIR=${PWD}
+        - export CCACHE_DIR=${PWD}/ccache
+        - export CCACHE_COMPILERCHECK=content
+        - ccache --zero-stats || true
+
+.cache-debian:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: debian_cache
+
+.cache-debian-clang:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: debian_cache_clang
+
+.cache-debian-makefiles:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: debian_cache_makefiles
+
+.cache-win:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: win_cache
+        paths:
+            - ccache/
+            - depends/sources
+            - depends/built
+            - depends/x86_64-w64-mingw32
+
+.cache-arm:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: arm_cache
+        paths:
+            - ccache/
+            - depends/sources
+            - depends/built
+            - depends/arm-linux-gnueabihf
+
+.cache-aarch64:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: aarch64_cache
+        paths:
+            - ccache/
+            - depends/sources
+            - depends/built
+            - depends/aarch64-linux-gnu
+
+.cache-osx:
+    extends: .ccache_scripts
+    cache:
+        <<: *global_cache_settings
+        key: osx_cache
+        paths:
+            - ccache/
+            - depends/sources
+            - depends/built
+            - depends/x86_64-apple-darwin14
+
+
+.debian-clang-env:
+    extends: .cache-debian-clang
+    variables:
+        CC: clang-8
+        CXX: clang++-8
+
+## Debian native build
+
+build-debian:
+    stage: build
+    extends: .cache-debian
+    needs: []
+    script:
+        - mkdir build
+        - cd build
+        - cmake -GNinja ..
+        - ninja
+        - ccache --show-stats
+
+    artifacts:
+        paths:
+            - build
+
+build-debian-tests:
+    stage: build_tests
+    extends: .cache-debian
+    needs: ["build-debian"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja test_bitcoin)
+
+    artifacts:
+        paths:
+            - ./build/src/test/test_bitcoin
+            - ./build/src/lib*
+    dependencies:
+        - build-debian
+
+test-debian-unittests:
+    stage: test
+    cache: {}
+    needs: ["build-debian-tests"]
+    script:
+        - ./build/src/test/test_bitcoin --logger=HRF:JUNIT,message,junit_unit_tests.xml
+    dependencies:
+        - build-debian-tests
+    artifacts:
+        reports:
+            junit: junit_unit_tests.xml
+
+test-debian-benchmarks:
+    stage: test
+    extends: .cache-debian
+    needs: ["build-debian"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja bitcoin-bench; src/bench/bench_bitcoin -evals=1)
+    dependencies:
+        - build-debian
+
+test-debian-utils:
+    stage: test
+    extends: .cache-debian
+    needs: ["build-debian"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-bitcoin-qt
+              check-bitcoin-seeder
+              check-bitcoin-util
+              check-devtools
+              check-leveldb
+              check-rpcauth
+              check-secp256k1
+              check-univalue)
+        - ccache --show-stats
+    dependencies:
+        - build-debian
+
+test-debian-functional:
+    stage: test
+    extends: .cache-debian
+    needs: ["build-debian"]
+    rules:
+        # These tests are included in the extended run
+        - if: $CI_COMMIT_BRANCH != "master"
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-functional)
+        - ccache --show-stats
+    dependencies:
+        - build-debian
+    artifacts:
+        when: on_failure
+        paths:
+            - build/test/tmp
+        expire_in: 30 days
+        reports:
+            junit: build/test/tmp/*/junit_results.xml
+
+test-debian-functional-extended:
+    stage: test
+    extends: .cache-debian
+    needs: ["build-debian"]
+    variables:
+        TEST_RUNNER_EXTRA: --coverage
+    rules:
+        - if: $CI_COMMIT_BRANCH == "master"
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-functional-extended)
+        - ccache --show-stats
+    dependencies:
+        - build-debian
+    artifacts:
+        when: on_failure
+        paths:
+            - build/test/tmp
+        expire_in: 30 days
+        reports:
+            junit: build/test/tmp/*/junit_results.xml
+
+deploy-debian:
+    stage: deployment
+    extends: .cache-debian
+    needs: ["build-debian"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja package)
+        - ccache --show-stats
+    dependencies:
+        - build-debian
+
+## Debian native build without wallet
+
+build-debian-nowallet:
+    stage: build
+    extends: .cache-debian
+    needs: []
+    script:
+        - mkdir build
+        - cd build
+        - cmake -GNinja .. -DBUILD_BITCOIN_WALLET=OFF
+        - ninja
+        - ccache --show-stats
+
+    artifacts:
+        paths:
+            - build
+
+build-debian-nowallet-tests:
+    stage: build_tests
+    extends: .cache-debian
+    needs: ["build-debian-nowallet"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja test_bitcoin)
+
+    artifacts:
+        paths:
+            - ./build/src/test/test_bitcoin
+            - ./build/src/lib*
+    dependencies:
+        - build-debian-nowallet
+
+test-debian-nowallet-unittests:
+    stage: test
+    cache: {}
+    needs: ["build-debian-nowallet-tests"]
+    script:
+        - ./build/src/test/test_bitcoin --logger=HRF:JUNIT,message,junit_unit_tests.xml
+    dependencies:
+        - build-debian-nowallet-tests
+    artifacts:
+        reports:
+            junit: junit_unit_tests.xml
+
+test-debian-nowallet-functional:
+    stage: test
+    extends: .cache-debian
+    needs: ["build-debian-nowallet"]
+    rules:
+        # These tests are included in the extended run
+        - if: $CI_COMMIT_BRANCH != "master"
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-functional)
+        - ccache --show-stats
+    dependencies:
+        - build-debian-nowallet
+    artifacts:
+        when: on_failure
+        paths:
+            - build/test/tmp
+        expire_in: 30 days
+        reports:
+            junit: build/test/tmp/*/junit_results.xml
+
+test-debian-nowallet-functional-extended:
+    stage: test
+    extends: .cache-debian
+    needs: ["build-debian-nowallet"]
+    variables:
+        TEST_RUNNER_EXTRA: --coverage
+    rules:
+        - if: $CI_COMMIT_BRANCH == "master"
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-functional-longeronly)
+        - ccache --show-stats
+    dependencies:
+        - build-debian-nowallet
+    artifacts:
+        when: on_failure
+        paths:
+            - build/test/tmp
+        expire_in: 30 days
+        reports:
+            junit: build/test/tmp/*/junit_results.xml
+
+## Debian native with clang compiler
+build-debian-clang:
+    stage: build
+    extends: .debian-clang-env
+    needs: []
+    script:
+        - mkdir build
+        - cd build
+        - cmake -GNinja ..
+        - ninja -v
+        - ccache --show-stats
+
+    artifacts:
+        paths:
+            - build
+
+## Debian native with unix makefiles.
+build-debian-makefiles:
+    stage: build
+    extends: .cache-debian-makefiles
+    needs: []
+    script:
+        - mkdir build
+        - cd build
+        - cmake -G"Unix Makefiles" ..
+        - make -j`nproc`
+        - ccache --show-stats
+
+build-debian-tests-clang:
+    stage: build_tests
+    extends: .debian-clang-env
+    needs: ["build-debian-clang"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja test_bitcoin)
+
+    artifacts:
+        paths:
+            - ./build/src/test/test_bitcoin
+            - ./build/src/lib*
+    dependencies:
+        - build-debian-clang
+
+test-debian-unittests-clang:
+    stage: test
+    cache: {}
+    needs: ["build-debian-tests-clang"]
+    script:
+        - ./build/src/test/test_bitcoin --logger=HRF:JUNIT,message,junit_unit_tests.xml
+    dependencies:
+        - build-debian-tests-clang
+    artifacts:
+        reports:
+            junit: junit_unit_tests.xml
+
+test-debian-utils-clang:
+    stage: test
+    extends: .debian-clang-env
+    needs: ["build-debian-clang"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-bitcoin-qt
+              check-bitcoin-seeder
+              check-bitcoin-util
+              check-devtools
+              check-leveldb
+              check-rpcauth
+              check-secp256k1
+              check-univalue)
+        - ccache --show-stats
+    dependencies:
+        - build-debian-clang
+
+
+test-debian-benchmarks-clang:
+    stage: test
+    extends: .debian-clang-env
+    needs: ["build-debian-clang"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja bitcoin-bench; src/bench/bench_bitcoin -evals=1)
+    dependencies:
+        - build-debian-clang
+
+## Windows build
+
+build-win-64-depends:
+    stage: build_depends
+    extends: .cache-win
+    needs: []
+    script:
+        - (cd depends; make build-win64 HOST=x86_64-w64-mingw32 NO_QT=1 JOBS=`nproc`)
+    artifacts:
+        paths:
+            - depends/x86_64-w64-mingw32
+
+build-win-64:
+    stage: build
+    extends: .cache-win
+    needs: ["build-win-64-depends"]
+    script:
+        - mkdir build_win
+        - cd build_win
+        - cmake -GNinja .. -DBUILD_BITCOIN_QT=OFF
+                           -DBUILD_BITCOIN_SEEDER=OFF
+                           -DCMAKE_TOOLCHAIN_FILE=../cmake/platforms/Win64.cmake
+        - ninja
+        - ccache --show-stats
+    dependencies:
+        - build-win-64-depends
+
+## ARM build
+
+build-arm-depends:
+    stage: build_depends
+    extends: .cache-arm
+    needs: []
+    script:
+        - (cd depends; make build-linux-arm
+            HOST=aarch64-linux-gnu NO_QT=1 JOBS=`nproc`)
+    artifacts:
+        paths:
+            - depends/arm-linux-gnueabihf
+
+build-arm:
+    stage: build
+    extends: .cache-arm
+    needs: ["build-arm-depends"]
+    script:
+        - mkdir build_arm
+        - cd build_arm
+        - cmake -GNinja .. -DBUILD_BITCOIN_QT=OFF
+                           -DBUILD_BITCOIN_SEEDER=OFF
+                           -DENABLE_GLIBC_BACK_COMPAT=ON
+                           -DENABLE_STATIC_LIBSTDCXX=ON
+                           -DCMAKE_TOOLCHAIN_FILE=../cmake/platforms/LinuxARM.cmake
+        - ninja
+        - ccache --show-stats
+    dependencies:
+        - build-arm-depends
+
+## AArch64 build
+
+build-aarch64-depends:
+    stage: build_depends
+    extends: .cache-aarch64
+    needs: []
+    script:
+        - (cd depends; make build-linux-aarch64 -j `nproc`)
+    artifacts:
+        paths:
+            - depends/aarch64-linux-gnu
+
+build-aarch64:
+    stage: build
+    extends: .cache-aarch64
+    needs: ["build-aarch64-depends"]
+    script:
+        - mkdir build
+        - cd build
+        - cmake -GNinja .. -DBUILD_BITCOIN_ZMQ=OFF
+                           -DCMAKE_TOOLCHAIN_FILE=../cmake/platforms/LinuxAArch64.cmake
+                           -DCMAKE_CROSSCOMPILING_EMULATOR=$(command -v qemu-aarch64-static)
+        - ninja
+        - ccache --show-stats
+    dependencies:
+        - build-aarch64-depends
+    artifacts:
+        paths:
+            - build
+
+build-aarch64-tests:
+    stage: build_tests
+    extends: .cache-aarch64
+    needs: ["build-aarch64"]
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja test_bitcoin)
+
+    artifacts:
+        paths:
+            - ./build/src/test/test_bitcoin
+            - ./build/src/lib*
+    dependencies:
+        - build-aarch64
+
+test-aarch64-unittests:
+    stage: test
+    cache: {}
+    needs: ["build-aarch64-tests"]
+    variables:
+        QEMU_LD_PREFIX: /usr/aarch64-linux-gnu
+    script:
+        - $(command -v qemu-aarch64-static) ./build/src/test/test_bitcoin --logger=HRF:JUNIT,message,junit_unit_tests.xml
+    dependencies:
+        - build-aarch64-tests
+    artifacts:
+        reports:
+            junit: junit_unit_tests.xml
+
+test-aarch64-functional:
+    stage: test
+    extends: .cache-aarch64
+    needs: ["build-aarch64"]
+    variables:
+        QEMU_LD_PREFIX: /usr/aarch64-linux-gnu
+    script:
+        - (cd build; ninja -t restat)
+        - (cd build; ninja check-functional)
+        - ccache --show-stats
+    dependencies:
+        - build-aarch64
+    artifacts:
+        when: on_failure
+        paths:
+            - build/test/tmp
+        expire_in: 30 days
+        reports:
+            junit: build/test/tmp/*/junit_results.xml
+
+## Fuzzers
+fuzz-libfuzzer:
+    stage: test
+    extends: .debian-clang-env
+    needs: []
+    rules:
+        - if: $CI_COMMIT_BRANCH == "master"
+    script:
+        - git clone --branch master --single-branch --depth=1 https://gitlab.com/bitcoin-cash-node/bchn-sw/qa-assets
+        - mkdir buildFuzzer
+        - cd buildFuzzer
+        - cmake -GNinja .. -DCCACHE=OFF -DENABLE_SANITIZERS="fuzzer;address"
+        - ninja bitcoin-fuzzers link-fuzz-test_runner.py
+        - ./test/fuzz/test_runner.py -l DEBUG ../qa-assets/fuzz_seed_corpus/
+
+## Deploy documentation
+pages:
+    stage: deployment
+    needs: []
+    image: python:buster
+    cache:
+        key: docs
+        paths:
+            - .cache/pip
+    before_script:
+        - pip install mkdocs
+        - pip install mkdocs-material
+    script:
+        - mkdir files-for-mkdocs
+        - (cd files-for-mkdocs ; ln -s ../* . ; rm -rf files-for-mkdocs)
+        - rm -f files-for-mkdocs/{depends,src}
+        # Add parts from depends and src that were excluded above
+        - tar cf - $(find src depends -name \*.md) | ( cd files-for-mkdocs ; tar xf - )
+        # Add specific files referenced from the docs
+        - tar cf - src/chainparams.cpp src/crypto/sha256_sse4.cpp src/interfaces/*.h src/qt/intro.cpp src/univalue/COPYING | ( cd files-for-mkdocs ; tar xf - )
+        - rm -f files-for-mkdocs/doc/release-notes.md
+        - mkdocs build
+        - mv site public
+    artifacts:
+        paths:
+            - public
+    rules:
+        - if: $CI_COMMIT_BRANCH == "master"
