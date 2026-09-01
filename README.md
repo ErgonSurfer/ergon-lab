@@ -69,7 +69,7 @@ result, or open question.
       <a href="node/README.md"><img src="docs/assets/brand/node-engineering.jpg" width="100%" alt="An isometric precision model of the standalone Ergon node"></a>
       <p><sub>04 · ENGINEERING</sub></p>
       <h3>Node Engineering</h3>
-      <p>Follow the clean-room standalone node from build instructions to tests and portable evidence.</p>
+      <p>Follow the standalone node from build instructions to compatibility tests and portable evidence.</p>
       <p><a href="node/README.md"><strong>Enter the engineering log&nbsp;↗</strong></a></p>
     </td>
   </tr>
@@ -101,12 +101,29 @@ unknown. Delivery state and knowledge status always appear together.
     <td width="25%"><img src="docs/assets/brand/cards/research/protocol-native-assets.jpg" width="100%" alt="Protocol-native assets: research; Open Question"></td>
     <td width="25%"><img src="docs/assets/brand/cards/research/zero-subsidy-fixture.jpg" width="100%" alt="Portable zero-subsidy fixture: active; Open Question"></td>
     <td width="25%"><img src="docs/assets/brand/cards/research/metric-privacy-contract.jpg" width="100%" alt="Metric and privacy contract: planned; Open Question"></td>
-    <td width="25%"><img src="docs/assets/brand/cards/research/core-explainers.jpg" width="100%" alt="Source-grounded core explainers: planned; Explainer"></td>
+    <td width="25%"><img src="docs/assets/brand/cards/research/core-explainers.jpg" width="100%" alt="Source-grounded core explainers: active; Explainer"></td>
   </tr>
 </table>
 
 [Open the visual roadmap&nbsp;↗](docs/roadmap.md) ·
 [Inspect the canonical cockpit&nbsp;↗](cockpit/cockpit.yaml)
+
+## Follow the node from its public root
+
+The engineering story is deliberately sequential. The new implementation must
+first prove that it can live honestly beside the legacy node on today's Ergon
+mainnet. Only then does a separate testnet become the place to explore a future
+fork.
+
+**Verified public baseline** → **Legacy compatibility** → **Mainnet
+coexistence** → **Optional observation** → **Experimental fork testnet** →
+**Possible future mainnet decision**
+
+The first step is verified. Every later step remains visibly blocked until its
+own tests, evidence, limitations, and signed engineering record are public.
+
+[See the complete node journey&nbsp;↗](node/README.md) ·
+[Open the engineering ledger&nbsp;↗](docs/engineering/changes/README.md)
 
 ## A place to understand, question, and build
 
@@ -140,10 +157,10 @@ forecasts, investment recommendations, or implied future returns.
 | **[Public roadmap&nbsp;↗](docs/roadmap.md)** | Follow delivery gates, knowledge status, and research boundaries. |
 | **[Contributing guide&nbsp;↗](CONTRIBUTING.md)** | Propose reviewable, public-safe changes. |
 | **[Security policy&nbsp;↗](SECURITY.md)** | Report vulnerabilities without exposing sensitive detail. |
-| **[Publication policy&nbsp;↗](PUBLICATION_POLICY.md)** | Inspect provenance, licenses, allowlists, and proof ceilings. |
+| **[Publication policy&nbsp;↗](PUBLICATION_POLICY.md)** | Inspect provenance, licenses, reviewed changes, and proof ceilings. |
 
 <details>
-<summary><strong>Public baseline and clean-room boundary</strong></summary>
+<summary><strong>Public baseline and source-provenance boundary</strong></summary>
 
 This repository starts from the public Bitcoin Static v24.0.5 snapshot:
 
@@ -151,7 +168,7 @@ This repository starts from the public Bitcoin Static v24.0.5 snapshot:
 - source Git tree: `8a74bb952c2137156214b9fe5888c494bd77aeca`
 
 Both identifiers are required. Changes after the snapshot are admitted only
-through the allowlisted process in
+through the reviewed public-source process in
 [`PUBLICATION_POLICY.md`](PUBLICATION_POLICY.md). Private material, internal
 history, operator data, secrets, endpoints, and unreviewed donor artifacts are
 outside the publication boundary.

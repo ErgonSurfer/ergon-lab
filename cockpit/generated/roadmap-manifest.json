@@ -1,7 +1,7 @@
 {
   "$comment": "SPDX-License-Identifier: MIT",
   "event": {
-    "id": "ROADMAP-0003"
+    "id": "ROADMAP-0006"
   },
   "generator": {
     "path": "tools/cockpit/cockpit.py",
@@ -13,11 +13,11 @@
   ],
   "output": {
     "path": "docs/roadmap.md",
-    "sha256": "4e4adebc0c3a04842cf75174c8917a2addae40f9fa074fff7cf72b7b6d13de60"
+    "sha256": "f9bab4216395f3a35658c9b4e2737ac2809631b3f2a47ba468e16e5e991572ca"
   },
   "projection": {
     "algorithm": "sha256",
-    "digest": "9f2271fd54cf37305e27bca47d5d900cf25089fe50491cb36e7ef3610e66edf9"
+    "digest": "3616ebe930635182c9b642352f2423dafd06410b6d2f5801e629590cf3814e9b"
   },
   "schema_version": "1.0"
 }

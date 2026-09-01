@@ -28,6 +28,69 @@
       "projection_sha256": "9f2271fd54cf37305e27bca47d5d900cf25089fe50491cb36e7ef3610e66edf9",
       "reason": "Record maintainer approval of ErgonSurfer/ergon-lab as the exact public repository identity.",
       "changes": ["gates.approve-remote-identity.delivery_state"]
+    },
+    {
+      "id": "ROADMAP-0004",
+      "sequence": 4,
+      "effective_date": "2026-09-01",
+      "previous_projection_sha256": "9f2271fd54cf37305e27bca47d5d900cf25089fe50491cb36e7ef3610e66edf9",
+      "projection_sha256": "67a79911a3bfc5f8b260b58a9b95e245634fe57c3d67f9de881285548a17df00",
+      "reason": "Record the verified public-source launch state and establish the ordered compatibility, optional-indexing, testnet, and mainnet-readiness delivery gates.",
+      "changes": [
+        "boundaries.publication_policy",
+        "gates.verify-public-baseline.delivery_state",
+        "gates.import-clean-root.delivery_state",
+        "gates.launch-public-cockpit.delivery_state",
+        "gates.establish-engineering-evidence.id",
+        "gates.establish-engineering-evidence.delivery_state",
+        "gates.establish-engineering-evidence.roadmap",
+        "gates.validate-legacy-compatibility.id",
+        "gates.validate-legacy-compatibility.delivery_state",
+        "gates.validate-legacy-compatibility.roadmap",
+        "gates.verify-optional-indexing.id",
+        "gates.verify-optional-indexing.delivery_state",
+        "gates.verify-optional-indexing.roadmap",
+        "gates.validate-testnet-activation.id",
+        "gates.validate-testnet-activation.delivery_state",
+        "gates.validate-testnet-activation.roadmap",
+        "gates.assess-mainnet-readiness.id",
+        "gates.assess-mainnet-readiness.delivery_state",
+        "gates.assess-mainnet-readiness.roadmap",
+        "gates.reproduce-zero-subsidy-fixture.id",
+        "gates.reproduce-zero-subsidy-fixture.roadmap"
+      ]
+    },
+    {
+      "id": "ROADMAP-0005",
+      "sequence": 5,
+      "effective_date": "2026-09-01",
+      "previous_projection_sha256": "67a79911a3bfc5f8b260b58a9b95e245634fe57c3d67f9de881285548a17df00",
+      "projection_sha256": "9e748765650946b79394c4da297904cb26b478928e66c61a2337a2f2ae741c4b",
+      "reason": "Record the complete source-grounded Discover Ergon chapter and visual system entering editorial review before publication.",
+      "changes": [
+        "gates.publish-core-explainers.delivery_state"
+      ]
+    },
+    {
+      "id": "ROADMAP-0006",
+      "sequence": 6,
+      "effective_date": "2026-09-01",
+      "previous_projection_sha256": "9e748765650946b79394c4da297904cb26b478928e66c61a2337a2f2ae741c4b",
+      "projection_sha256": "3616ebe930635182c9b642352f2423dafd06410b6d2f5801e629590cf3814e9b",
+      "reason": "Publish the reader-facing node journey from the verified baseline through legacy-compatible mainnet coexistence, an experimental fork testnet, and a separately governed future mainnet decision.",
+      "changes": [
+        "gates.establish-engineering-evidence.delivery_state",
+        "gates.prove-mainnet-legacy-coexistence.id",
+        "gates.prove-mainnet-legacy-coexistence.delivery_state",
+        "gates.prove-mainnet-legacy-coexistence.roadmap",
+        "gates.verify-optional-indexing.roadmap.order",
+        "gates.validate-experimental-fork-testnet.id",
+        "gates.validate-experimental-fork-testnet.roadmap.order",
+        "gates.validate-experimental-fork-testnet.roadmap.label",
+        "gates.assess-future-mainnet-fork.id",
+        "gates.assess-future-mainnet-fork.roadmap.order",
+        "gates.assess-future-mainnet-fork.roadmap.label"
+      ]
     }
   ]
 }

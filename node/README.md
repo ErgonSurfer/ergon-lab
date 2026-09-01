@@ -25,6 +25,29 @@ usable with Chronik compiled out, disabled, unavailable, or removed.
 Chronik may observe and index node-accepted data. It never becomes consensus,
 mempool, activation, or chain-selection authority.
 
+## From the public baseline to a possible fork
+
+The node does not jump from an imported codebase to new consensus rules. It
+advances through an ordered sequence in which every step must produce evidence
+before the next one can begin.
+
+| Step | Public objective | Current state |
+| ---: | --- | --- |
+| **0 · Foundation** | Preserve the exact Bitcoin Static v24.0.5 tree as the signed public root. | `verified` |
+| **1 · Compatibility** | Build the standalone candidate and falsify differences from the legacy node in mining, relay, validation, and chain following. | `blocked` pending the first public change record |
+| **2 · Mainnet coexistence** | Run the candidate on the existing Ergon mainnet beside legacy nodes, with no consensus change. | `blocked` by compatibility and real-chain evidence |
+| **3 · Optional observation** | Prove indexing can be absent, disabled, or explicitly enabled without becoming authoritative. | `blocked` by the preceding node evidence |
+| **4 · Experimental fork testnet** | Test separately reviewed consensus changes—including a possible native-assets model—on a governed testnet. | `blocked` by coexistence and an accepted specification |
+| **5 · Future mainnet decision** | Consider a mainnet fork only after prolonged testnet operation, independent reproduction, release evidence, and separate community governance. | `blocked`; no activation is proposed |
+
+Native-assets, reward, scaling, and difficulty research may proceed in parallel,
+but research does not silently become node behavior. A change enters this path
+only through a signed commit and a public engineering record describing its
+scope, tests, evidence, limits, and counterevidence.
+
+[Follow the generated roadmap →](../docs/roadmap.md) ·
+[Inspect the engineering ledger →](../docs/engineering/changes/README.md)
+
 ## Start building
 
 | Task | Entry point |
@@ -34,6 +57,7 @@ mempool, activation, or chain-selection authority.
 | Windows build | [`doc/build-windows.md`](../doc/build-windows.md) |
 | Developer notes | [`doc/developer-notes.md`](../doc/developer-notes.md) |
 | Unit and functional tests | [`doc/unit-tests.md`](../doc/unit-tests.md) and [`doc/functional-tests.md`](../doc/functional-tests.md) |
+| Engineering change evidence | [`docs/engineering/changes/README.md`](../docs/engineering/changes/README.md) |
 | Contribution boundary | [`CONTRIBUTING.md`](../CONTRIBUTING.md) |
 | Security reports | [`SECURITY.md`](../SECURITY.md) |
 
@@ -57,23 +81,30 @@ legible.
 
 | Gate | Delivery | Knowledge |
 | --- | --- | --- |
-| Verify the public baseline snapshot | `active` | `Observed` |
-| Launch publication gates and cockpit | `active` | `Explainer` |
-| Review the zero-subsidy fixture export | `active` | `Open Question` |
+| Verify the public baseline snapshot | `verified` | `Observed` |
+| Launch publication gates and cockpit | `verified` | `Explainer` |
+| Establish engineering change evidence | `verified` | `Explainer` |
+| Validate legacy compatibility | `blocked` | `Open Question` |
+| Prove mainnet coexistence with the legacy node | `blocked` | `Open Question` |
+| Verify optional indexing | `blocked` | `Open Question` |
+| Validate the experimental fork on testnet | `blocked` | `Open Question` |
+| Assess a future mainnet fork | `blocked` | `Open Question` |
+| Reproduce the zero-subsidy fixture repair | `active` | `Open Question` |
 
 These are evidence-scoped labels, not release promises. Consult the
 [`canonical cockpit`](../cockpit/cockpit.yaml) and
 [`generated roadmap`](../docs/roadmap.md) for the governed state.
 
-## Clean-room rule
+## Public-source rule
 
 Only public inputs and independently authored, properly licensed material may
 enter this repository. Never copy, summarize, translate, or paraphrase private
 material to bypass the publication boundary. Every admitted change needs
-allowlisted scope, provenance, license, tests, and portable evidence appropriate
+reviewed scope, provenance, license, tests, and portable evidence appropriate
 to its claim.
 
 [Read the publication policy →](../PUBLICATION_POLICY.md) ·
+[Open engineering change evidence →](../docs/engineering/changes/README.md) ·
 [Read the consensus boundary →](../docs/architecture/consensus-boundary.md)
 
 ---

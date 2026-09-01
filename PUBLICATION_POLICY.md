@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 
-# Public Clean-Room Publication Policy
+# Public Source Provenance Policy
 
 This policy is a publication boundary, not merely a contribution preference.
 Every tracked byte, history object, generated artifact, release asset, issue,
@@ -17,7 +17,7 @@ The repository begins from the public Bitcoin Static v24.0.5 snapshot:
 | Baseline license | MIT |
 
 The public root import must contain exactly that Git tree and no prior history.
-All later content must be independently reviewed, allowlisted, and traceable to
+All later content must be independently reviewed and traceable to
 public sources or independently authored work.
 
 ## 2. Absolute deny boundary
@@ -43,7 +43,7 @@ Publication is denied if content contains, reveals, or depends on:
 Sanitizing a private-derived artifact in place does not make it public. Rebuild
 the artifact from reviewed public inputs. Uncertainty means `blocked`.
 
-## 3. Allowlisted change record
+## 3. Engineering change evidence
 
 Before technical bytes are accepted, a machine-readable record must bind the
 exact proposed change and include:
@@ -51,7 +51,8 @@ exact proposed change and include:
 - public purpose and exact scope;
 - baseline-relative paths, file modes, sizes, diffstat, and raw-byte preimage
   and postimage SHA-256 values;
-- public sources or an independent-authorship and right-to-license attestation;
+- public sources or an independently authored postimage inventory governed by
+  the repository's standing MIT contribution terms;
 - SPDX license declarations and compatibility review;
 - affected surfaces: consensus, validation, P2P, storage, RPC, wallet, indexing,
   UI, build/release, tests, documentation, and data;
@@ -71,8 +72,23 @@ exact proposed change and include:
 - the publication decision and resulting public commit, once known.
 
 The review decision is `ACCEPT`, `NARROW`, or `REJECT`. It applies only to the
-exact bytes and evidence reviewed. `NARROW` creates a new, smaller allowlist; it
-does not authorize nearby material.
+exact files and evidence reviewed. `NARROW` creates a smaller proposed change;
+it does not authorize nearby material.
+
+### Standing contribution and provenance terms
+
+Independently authored material accepted into this repository is contributed
+under the repository's MIT license unless a compatible, explicitly recorded
+license applies. A change record computes a canonical inventory digest from its
+governed postimages and provenance codes. That digest protects integrity and
+traceability; it is not a per-change legal attestation and does not require the
+maintainer to restate the same license terms.
+
+A signed commit records approval of the exact committed bytes. It does not
+authorize a different file set, later integration, publication of private
+material, evidence promotion, or consensus activation. Those remain separate
+operational decisions. Material with ambiguous third-party rights is blocked
+until its license and authority are resolved.
 
 ## 4. Evidence and claims
 
@@ -98,6 +114,28 @@ serve derived views; it may not become an authority for any node decision.
 Publication gates must test the supported standalone configuration without
 Chronik. Where Chronik integration is present, its disabled and unavailable
 states must not alter node correctness.
+
+### Node delivery order
+
+Node work advances through separately reviewed gates:
+
+1. falsify honest coexistence with the legacy node using isolated, hash-bound
+   roles and fail-closed harnesses;
+2. prove the standalone candidate can operate on the existing Ergon mainnet
+   beside legacy nodes without changing consensus, including historical-chain,
+   restart, datadir, and operator-binary evidence;
+3. verify indexing compiled out, compiled in but disabled, and explicitly
+   enabled only for local regtest, including bounded restart, reindex,
+   chainstate-reindex, pruning, and deep-reorganization behavior;
+4. only after those gates are publicly verified, review a deterministic,
+   governed, dormant-by-default experimental fork on testnet; and
+5. keep every mainnet activation path blocked until separate governance and
+   evidence are accepted.
+
+Engineering records use the ordered stages `legacy-compatibility`,
+`optional-indexing`, `testnet-activation`, and `mainnet-readiness`. Research,
+corpus work, and simulations use separate `research` records and cannot modify
+consensus behavior.
 
 ## 6. Cockpit semantics
 
