@@ -51,3 +51,20 @@ the Ergon symbol does not by itself establish or transfer trademark rights.
 The same identity explicitly instructed inclusion of the current eleven-card
 system on 2026-08-31. Its exact license and provenance record is the card
 manifest above.
+
+## Discover chapter system
+
+Nine wide editorial covers extend the visual language across the complete
+Discover Ergon field guide. The set deliberately changes medium by chapter:
+landscape, conceptual installation, technical model, kinetic light sculpture,
+human editorial photography, archive, speculative material design, and source
+atlas.
+
+Exact files, bytes, SHA-256 digests, reference-image bindings, prompt summaries,
+and the no-private-input boundary are recorded in
+[`discover/manifest.json`](discover/manifest.json).
+
+GitHub identity `ErgonSurfer` explicitly approved the Discover covers and
+accompanying editorial pages for publication under the MIT License on
+2026-09-01. This approval is recorded separately from the earlier five portal
+compositions.

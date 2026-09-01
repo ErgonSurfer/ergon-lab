@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "system": "ergon-lab-discover-covers",
+  "date": "2026-09-01",
+  "status": "approved-for-publication",
+  "license": "MIT",
+  "approval": "Explicit maintainer publication approval by GitHub identity ErgonSurfer on 2026-09-01",
+  "generation": "OpenAI built-in image generation using independently authored prompts",
+  "private_inputs": false,
+  "reference_inputs": [
+    {
+      "path": "../discover-ergon.jpg",
+      "role": "style and Ergon visual-language reference",
+      "sha256": "d53d570eb697982de08624f0e079518ac63954bae0ca578b0cb28bf9e3d4874d"
+    },
+    {
+      "path": "../ergon-lab-hero.jpg",
+      "role": "style and Ergon glyph architecture reference",
+      "sha256": "29b0b1f57e01565d65babb40de6c2e7118b2088d93e110b37db47a6eb70b2db1"
+    },
+    {
+      "path": "../insights-and-vision.jpg",
+      "role": "material and editorial still-life reference",
+      "sha256": "908444db6fc4e233f2efd01aace33192272c0db98e859d6e155eff9ffb297b8e"
+    }
+  ],
+  "shared_art_direction": {
+    "format": "1774x887 wide editorial chapter covers",
+    "palette": "warm ivory, midnight navy, mineral blue, restrained cyan and occasional muted warm accents",
+    "language": "calm scientific editorial imagery using architecture, landscape, glass, paper, metal, light and human-scale work",
+    "constraints": "No invented data, market charts, coins, financial promises, third-party logos, readable text, watermark, border or UI. The Ergon glyph may appear only as an integrated motif."
+  },
+  "assets": [
+    {
+      "path": "cyphercash.jpg",
+      "bytes": 425678,
+      "sha256": "08a6eedcce909343e393e74a7a1ebe5048d7e4e50b7a475048ee1e065d9d06e4",
+      "prompt": "A quiet everyday exchange between an independent maker and a distant customer, connected directly by a subtle peer-to-peer light path; cinematic human editorial photography, no financial imagery."
+    },
+    {
+      "path": "glossary-and-sources.jpg",
+      "bytes": 594771,
+      "sha256": "2fd4e357fadd746ae5a988ef67c296bb382468ea104f4a1c6ed7b1d1c3078aed",
+      "prompt": "An unlabeled contemporary cartographer's desk indexing blocks, outputs, work traces, network structure, source sheets and the Ergon glyph through material samples."
+    },
+    {
+      "path": "how-ergon-works.jpg",
+      "bytes": 384457,
+      "sha256": "68632bacd7f9d572586cf4d7af74c0555b43efef55a9e690de23b26a2078a9b7",
+      "prompt": "A precise physical model of unspent outputs flowing through a signed transaction assembly into a block independently verified by distributed nodes."
+    },
+    {
+      "path": "native-assets.jpg",
+      "bytes": 402613,
+      "sha256": "a66bbecb19c6c8105bcf94c56ecafe84d2a45ae48b8e7193c227121314fc84f8",
+      "prompt": "Diverse ceramic, paper, colored-glass and metal objects embedded as first-class parts of one transparent transaction structure, with an unfinished research gateway ahead."
+    },
+    {
+      "path": "origins-and-lineage.jpg",
+      "bytes": 337357,
+      "sha256": "61a7a0e1cc7dbe795328ba89cc65e1335393d1370d2d5bccceb697f77f355754",
+      "prompt": "An archival software lineage of cryptographic paper, refined open-source machinery and a distinct illuminated genesis object beginning its own path, without third-party logos."
+    },
+    {
+      "path": "proportional-reward.jpg",
+      "bytes": 489018,
+      "sha256": "9a633681b59b703e7fa02aa94ac9d09d98b04eb2fd4cfaed0198e77f9f9583b0",
+      "prompt": "A kinetic gallery light sculpture in which a broad field of computational traces passes through a calibrated aperture and emerges as proportional translucent output."
+    },
+    {
+      "path": "supply-and-emission.jpg",
+      "bytes": 442747,
+      "sha256": "1ae0f66d45c107f89b3735a30aa77e033a98992147bd07fe625bfb8e5435923f",
+      "prompt": "An open topographic paper landscape constrained by illuminated work paths rather than a fixed wall, with gradually fading layers suggesting long-term efficiency correction."
+    },
+    {
+      "path": "what-is-ergon.jpg",
+      "bytes": 370309,
+      "sha256": "76938ebd956c3f7b0da67111a122310a7c5b54ad45fb16226ecea4ccdac0a0e5",
+      "prompt": "Two distant people connected across an open architectural landscape by a luminous peer-to-peer path and a modernized Ergon glyph gateway."
+    },
+    {
+      "path": "why-ergon.jpg",
+      "bytes": 391491,
+      "sha256": "047346a78733435deb0d19ee662abdd848289fd73423c3bf1fa6158aea1b1a90",
+      "prompt": "A museum installation contrasting a rigid sequence of identical intervals with an adaptive mineral field that expands only where effort passes through it."
+    }
+  ]
+}
