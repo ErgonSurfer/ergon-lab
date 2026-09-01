@@ -1,0 +1,475 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: MIT",
+  "title": "Ergon Lab engineering change evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$comment",
+    "$schema",
+    "schema_version",
+    "change_id",
+    "stage",
+    "status",
+    "record_path",
+    "purpose",
+    "baseline",
+    "public_lineage",
+    "signature_policy",
+    "authorship",
+    "prerequisites",
+    "files",
+    "surfaces",
+    "boundaries",
+    "verification",
+    "evidence",
+    "limitations",
+    "counterevidence",
+    "decision"
+  ],
+  "properties": {
+    "$comment": {"const": "SPDX-License-Identifier: MIT"},
+    "$schema": {"const": "../schemas/change-evidence.schema.json"},
+    "schema_version": {"const": "1.0"},
+    "change_id": {"type": "string", "pattern": "^ERGON-(CHANGE|RESEARCH)-[0-9]{4}$"},
+    "stage": {
+      "enum": [
+        "legacy-compatibility",
+        "optional-indexing",
+        "testnet-activation",
+        "mainnet-readiness",
+        "research"
+      ]
+    },
+    "status": {"enum": ["draft", "under-review", "accepted", "landed"]},
+    "record_path": {
+      "type": "string",
+      "pattern": "^docs/engineering/changes/ergon-(change|research)-[0-9]{4}\\.json$"
+    },
+    "purpose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "scope", "exclusions"],
+      "properties": {
+        "summary": {"$ref": "#/$defs/nonemptyString"},
+        "scope": {"$ref": "#/$defs/nonemptyStrings"},
+        "exclusions": {"$ref": "#/$defs/nonemptyStrings"}
+      }
+    },
+    "baseline": {
+      "const": {
+        "project": "Bitcoin Static",
+        "version": "24.0.5",
+        "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+        "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+        "license": "MIT"
+      }
+    },
+    "public_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_root", "integration_parent", "candidate_parent_law", "remote_ref"],
+      "properties": {
+        "public_root": {
+          "const": {
+            "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+            "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+            "parentless": true
+          }
+        },
+        "integration_parent": {"$ref": "#/$defs/gitObject"},
+        "candidate_parent_law": {"const": "direct-child"},
+        "remote_ref": {"const": "refs/remotes/origin/main"}
+      }
+    },
+    "signature_policy": {
+      "const": {
+        "format": "ssh",
+        "key_algorithm": "ED25519",
+        "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+        "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+        "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+        "public_key_bytes": 124,
+        "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+        "allowed_signers_bytes": 128,
+        "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+        "candidate_same_key": true
+      }
+    },
+    "authorship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventory_schema",
+        "inventory_sha256",
+        "identity",
+        "date",
+        "license",
+        "scope",
+        "right_to_license",
+        "exclusions",
+        "implicit_operational_authorization"
+      ],
+      "properties": {
+        "inventory_schema": {"const": "ergon-authorship-inventory/v1"},
+        "inventory_sha256": {"$ref": "#/$defs/sha256"},
+        "identity": {"$ref": "#/$defs/nonemptyString"},
+        "date": {"$ref": "#/$defs/date"},
+        "license": {"const": "MIT"},
+        "scope": {"$ref": "#/$defs/nonemptyString"},
+        "right_to_license": {"const": true},
+        "exclusions": {"$ref": "#/$defs/nonemptyStrings"},
+        "implicit_operational_authorization": {"const": false}
+      }
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/prerequisite"}
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/file"}
+    },
+    "surfaces": {"$ref": "#/$defs/surfaces"},
+    "boundaries": {
+      "const": {
+        "consensus_authority": "standalone-node",
+        "chronik_role": "observe-and-index-only",
+        "chronik_consensus_authority": false,
+        "chronik_mempool_authority": false,
+        "chronik_activation_authority": false,
+        "chronik_chain_selection_authority": false,
+        "chronik_required_for_correctness": false,
+        "chronik_compile_time_default": "off",
+        "chronik_runtime_default": "off",
+        "chronik_enabled_scope": "local-regtest-opt-in-only",
+        "mainnet_parameters_modified": false
+      }
+    },
+    "verification": {"$ref": "#/$defs/verification"},
+    "evidence": {"$ref": "#/$defs/evidence"},
+    "limitations": {"$ref": "#/$defs/nonemptyStrings"},
+    "counterevidence": {"$ref": "#/$defs/nonemptyStrings"},
+    "decision": {"$ref": "#/$defs/decision"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["change_id"],
+        "properties": {"change_id": {"const": "ERGON-CHANGE-0001"}}
+      },
+      "then": {
+        "properties": {
+          "authorship": {
+            "properties": {
+              "inventory_sha256": {
+                "const": "090a0a36db8a141fd43e93b0790be578a94bf09f07043d853119b627f5c0dfa0"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonemptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "nonemptyStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/nonemptyString"}
+    },
+    "gitCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*//)(?!.*/$)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*(?:^|/)\\.[gG][iI][tT](?:/|$))[^\\\\:\\u0000-\\u001F]+$"
+    },
+    "gitObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree"],
+      "properties": {
+        "commit": {"$ref": "#/$defs/gitCommit"},
+        "tree": {"$ref": "#/$defs/gitCommit"}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "bytes", "git_blob", "sha256"],
+      "properties": {
+        "mode": {"enum": ["100644", "100755"]},
+        "bytes": {"type": "integer", "minimum": 0},
+        "git_blob": {"$ref": "#/$defs/gitCommit"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "commit", "path", "license"],
+      "properties": {
+        "url": {"type": "string", "pattern": "^https://"},
+        "commit": {"$ref": "#/$defs/gitCommit"},
+        "path": {"$ref": "#/$defs/relativePath"},
+        "license": {"const": "MIT"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "code", "license"],
+      "properties": {
+        "kind": {"enum": ["public-source", "independent-authorship"]},
+        "code": {"$ref": "#/$defs/nonemptyString"},
+        "license": {"const": "MIT"},
+        "source": {"$ref": "#/$defs/source"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "public-source"}}},
+          "then": {"required": ["source"]},
+          "else": {"not": {"required": ["source"]}}
+        }
+      ]
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "action",
+        "role",
+        "before",
+        "after",
+        "provenance",
+        "spdx",
+        "production_reachability",
+        "test_reachability"
+      ],
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "action": {"enum": ["add", "modify", "delete"]},
+        "role": {
+          "enum": [
+            "production",
+            "build",
+            "test",
+            "harness",
+            "fixture",
+            "documentation",
+            "provenance",
+            "data",
+            "research"
+          ]
+        },
+        "before": {"anyOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]},
+        "after": {"anyOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "spdx": {"const": "MIT"},
+        "production_reachability": {"$ref": "#/$defs/nonemptyString"},
+        "test_reachability": {"$ref": "#/$defs/nonemptyString"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"action": {"const": "add"}}},
+          "then": {
+            "properties": {
+              "before": {"type": "null"},
+              "after": {"$ref": "#/$defs/identity"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"action": {"const": "modify"}}},
+          "then": {
+            "properties": {
+              "before": {"$ref": "#/$defs/identity"},
+              "after": {"$ref": "#/$defs/identity"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"action": {"const": "delete"}}},
+          "then": {
+            "properties": {
+              "before": {"$ref": "#/$defs/identity"},
+              "after": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "prerequisite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_id", "stage", "public_commit", "evidence_sha256", "delivery_state", "knowledge_status"],
+      "properties": {
+        "change_id": {"type": "string", "pattern": "^ERGON-(CHANGE|RESEARCH)-[0-9]{4}$"},
+        "stage": {
+          "enum": [
+            "legacy-compatibility",
+            "optional-indexing",
+            "testnet-activation",
+            "mainnet-readiness",
+            "research"
+          ]
+        },
+        "public_commit": {"$ref": "#/$defs/gitCommit"},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "delivery_state": {"const": "verified"},
+        "knowledge_status": {"const": "Reproduced"}
+      }
+    },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consensus",
+        "validation_mempool",
+        "p2p",
+        "storage_datadir",
+        "rpc_api",
+        "wallet",
+        "indexing_chronik",
+        "ui",
+        "build_release",
+        "tests",
+        "documentation_cockpit",
+        "data_research"
+      ],
+      "properties": {
+        "consensus": {"type": "boolean"},
+        "validation_mempool": {"type": "boolean"},
+        "p2p": {"type": "boolean"},
+        "storage_datadir": {"type": "boolean"},
+        "rpc_api": {"type": "boolean"},
+        "wallet": {"type": "boolean"},
+        "indexing_chronik": {"type": "boolean"},
+        "ui": {"type": "boolean"},
+        "build_release": {"type": "boolean"},
+        "tests": {"type": "boolean"},
+        "documentation_cockpit": {"type": "boolean"},
+        "data_research": {"type": "boolean"}
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "commands", "expected_results"],
+      "properties": {
+        "role": {"$ref": "#/$defs/nonemptyString"},
+        "commands": {"$ref": "#/$defs/nonemptyStrings"},
+        "expected_results": {"$ref": "#/$defs/nonemptyStrings"}
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "expected_results", "failure_conditions", "fresh_process", "isolated_datadir"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "command": {"$ref": "#/$defs/nonemptyString"},
+        "expected_results": {"$ref": "#/$defs/nonemptyStrings"},
+        "failure_conditions": {"$ref": "#/$defs/nonemptyStrings"},
+        "fresh_process": {"const": true},
+        "isolated_datadir": {"const": true}
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locked", "platforms"],
+      "properties": {
+        "locked": {"type": "boolean"},
+        "platforms": {"$ref": "#/$defs/nonemptyStrings"},
+        "lock_reference": {"$ref": "#/$defs/nonemptyString"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"locked": {"const": true}}},
+          "then": {"required": ["lock_reference"]},
+          "else": {"not": {"required": ["lock_reference"]}}
+        }
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["builds", "scenarios", "child_environment", "dependencies", "git_policy", "report_policy"],
+      "properties": {
+        "builds": {"type": "array", "items": {"$ref": "#/$defs/build"}},
+        "scenarios": {"type": "array", "items": {"$ref": "#/$defs/scenario"}},
+        "child_environment": {
+          "const": {
+            "LANG": "C",
+            "LC_ALL": "C",
+            "NO_COLOR": "1",
+            "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+            "TERM": "dumb",
+            "TZ": "UTC",
+            "TMPDIR": "<runner-created-unique-directory>"
+          }
+        },
+        "dependencies": {"$ref": "#/$defs/dependencies"},
+        "git_policy": {
+          "const": {
+            "system_config": false,
+            "global_config": false,
+            "replace_objects": false,
+            "complete_history_required": true,
+            "verified_commits": ["public-root", "integration-parent", "candidate"],
+            "required_signature_status": "G",
+            "candidate_direct_child": true,
+            "fresh_origin_main_fetch": true,
+            "candidate_reachable_from_remote_ref": true
+          }
+        },
+        "report_policy": {
+          "const": {
+            "source": "public-tree-only",
+            "paths": "repository-relative-only",
+            "raw_process_output": false,
+            "parent_environment": false
+          }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delivery_state", "knowledge_status", "ceiling", "artifacts"],
+      "properties": {
+        "delivery_state": {"enum": ["verified", "active", "blocked", "planned", "research"]},
+        "knowledge_status": {
+          "enum": ["Explainer", "Hypothesis", "Simulation", "Observed", "Reproduced", "Open Question"]
+        },
+        "ceiling": {"$ref": "#/$defs/nonemptyString"},
+        "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["pending", "accepted", "narrowed", "rejected"]},
+        "reviewer": {"$ref": "#/$defs/nonemptyString"},
+        "date": {"$ref": "#/$defs/date"},
+        "public_commit": {"$ref": "#/$defs/gitCommit"}
+      }
+    }
+  }
+}
