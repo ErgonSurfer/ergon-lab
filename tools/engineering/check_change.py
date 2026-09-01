@@ -15,7 +15,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 RECORDS_DIR = Path("docs/engineering/changes")
 SCHEMA_PATH = Path("docs/engineering/schemas/change-evidence.schema.json")
 BASELINE = {
@@ -172,7 +172,7 @@ TOP_LEVEL_KEYS = {
     "baseline",
     "public_lineage",
     "signature_policy",
-    "authorship",
+    "provenance_inventory",
     "prerequisites",
     "files",
     "surfaces",
@@ -184,87 +184,18 @@ TOP_LEVEL_KEYS = {
     "decision",
 }
 
-KNOWN_AUTHORSHIP_VECTOR_SHA256 = "090a0a36db8a141fd43e93b0790be578a94bf09f07043d853119b627f5c0dfa0"
-KNOWN_AUTHORSHIP_VECTOR_BYTES = 1703
 RELATIVE_PATH_SCHEMA_PATTERN = (
     r"^(?!/)(?!.*//)(?!.*/$)(?!.*(?:^|/)\.\.?(?:/|$))"
     r"(?!.*(?:^|/)\.[gG][iI][tT](?:/|$))[^\\:\u0000-\u001F]+$"
 )
-KNOWN_AUTHORSHIP_SCHEMA_BINDING = [
-    {
-        "if": {
-            "required": ["change_id"],
-            "properties": {"change_id": {"const": "ERGON-CHANGE-0001"}},
-        },
-        "then": {
-            "properties": {
-                "authorship": {
-                    "properties": {
-                        "inventory_sha256": {"const": KNOWN_AUTHORSHIP_VECTOR_SHA256}
-                    }
-                }
-            }
-        },
-    }
-]
-KNOWN_AUTHORSHIP_VECTOR_ENTRIES = [
-    {
-        "blob": "75a91cd0375eece8874db0ad880400a4629aaa50",
-        "bytes": 13127,
-        "mode": "100755",
-        "path": "test/functional/mining_basic.py",
-        "provenance": "BASE+A1",
-        "sha256": "6b95e854a4456805d9206e163f57b6d6a1d2a2a6969b2051ea4485295e649b0f",
-    },
-    {
-        "blob": "ee486a8d30cf3cf659313c824f231fbb1546ef09",
-        "bytes": 25592,
-        "mode": "100755",
-        "path": "test/functional/test_framework/test_framework.py",
-        "provenance": "BASE+A1",
-        "sha256": "b5744185287483d18c2e122ddfbfc2e2a032e470c9f9f6c91a333f76f02c710b",
-    },
-    {
-        "blob": "8e7788da6bc9ea039d2616ae2cadc4d5c7ce9641",
-        "bytes": 23982,
-        "mode": "100755",
-        "path": "test/functional/test_framework/test_node.py",
-        "provenance": "BASE+A1",
-        "sha256": "699be2fd8572f448eda78eb50e9af8f7a98b10b65d7223c26d730393a3c79e5d",
-    },
-    {
-        "blob": "563e0dde0926db1f6c8bb04d6c6ea9bf1cd6a4b6",
-        "bytes": 3605,
-        "mode": "100644",
-        "path": "tests/compatibility/legacy/README.md",
-        "provenance": "A1",
-        "sha256": "43a580180e8cb968ff70137f8d79b4a3eca1bb9aeb427a91385413739d0eaa75",
-    },
-    {
-        "blob": "618a628d0dc0477cbf30f3e15547e900608ca401",
-        "bytes": 3313,
-        "mode": "100755",
-        "path": "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py",
-        "provenance": "A1",
-        "sha256": "5107f5d68a0c42bd447ad1ae9de0ad919e56d0fb21a4227922989533b743d0bf",
-    },
-    {
-        "blob": "efff9a6a757f1d7e00ca9cadf4b5496745e29cfb",
-        "bytes": 43282,
-        "mode": "100755",
-        "path": "tests/compatibility/legacy/run_matrix.py",
-        "provenance": "A1",
-        "sha256": "faf9dde4caf4538dbcb31146a898f1d261ca8fc4692e5c8bbc46745da00dbc0b",
-    },
-    {
-        "blob": "d5f97771c48681e858d95ef01cb4329df7d7730a",
-        "bytes": 25294,
-        "mode": "100755",
-        "path": "tests/compatibility/legacy/self_test.py",
-        "provenance": "A1",
-        "sha256": "a22021acbe675753615fe7e4b595aef4a76afd2311a90c33a2ae87b053567585",
-    },
-]
+INTEGRATION_PARENT_BINDING = {
+    "input_method": "explicit-reviewed-cli",
+    "commit_argument": "--expected-integration-parent-commit",
+    "tree_argument": "--expected-integration-parent-tree",
+    "defaults_allowed": False,
+    "environment_fallback_allowed": False,
+    "record_match_required": True,
+}
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 GIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -395,7 +326,7 @@ def validate_signature_policy(value: Any, path: str) -> None:
     require(hashlib.sha256(allowed_signers).hexdigest() == SIGNATURE_POLICY["allowed_signers_sha256"], path, "allowed-signers digest mismatch")
 
 
-def authorship_inventory(change_id: str, files: list[dict[str, Any]]) -> bytes:
+def provenance_inventory_bytes(change_id: str, files: list[dict[str, Any]]) -> bytes:
     entries: list[dict[str, Any]] = []
     for record in files:
         provenance_record = record["provenance"]
@@ -422,7 +353,7 @@ def authorship_inventory(change_id: str, files: list[dict[str, Any]]) -> bytes:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8") + b"\n"
 
 
-def validate_authorship(value: Any, path: str, change_id: str, files: list[dict[str, Any]]) -> None:
+def validate_provenance_inventory(value: Any, path: str, change_id: str, files: list[dict[str, Any]]) -> None:
     record = obj(value, path)
     keys(
         record,
@@ -430,27 +361,19 @@ def validate_authorship(value: Any, path: str, change_id: str, files: list[dict[
         {
             "inventory_schema",
             "inventory_sha256",
-            "identity",
-            "date",
             "license",
-            "scope",
-            "right_to_license",
+            "standing_policy",
             "exclusions",
             "implicit_operational_authorization",
         },
     )
     require(record["inventory_schema"] == "ergon-authorship-inventory/v1", path + ".inventory_schema", "unexpected schema")
     require(any(item["provenance"]["kind"] == "independent-authorship" for item in files), path, "requires at least one independently authored postimage")
-    canonical = authorship_inventory(change_id, files)
+    canonical = provenance_inventory_bytes(change_id, files)
     inventory_digest = digest(record["inventory_sha256"], path + ".inventory_sha256")
     require(inventory_digest == hashlib.sha256(canonical).hexdigest(), path + ".inventory_sha256", "does not bind the canonical independent-authorship postimages")
-    if change_id == "ERGON-CHANGE-0001":
-        require(inventory_digest == KNOWN_AUTHORSHIP_VECTOR_SHA256, path + ".inventory_sha256", "must match the maintainer-attested ERGON-CHANGE-0001 inventory")
-    text(record["identity"], path + ".identity")
-    require(bool(DATE_RE.fullmatch(text(record["date"], path + ".date"))), path + ".date", "must be YYYY-MM-DD")
     require(record["license"] == "MIT", path + ".license", "must be MIT")
-    text(record["scope"], path + ".scope")
-    require(record["right_to_license"] is True, path + ".right_to_license", "must be true")
+    require(record["standing_policy"] == "PUBLICATION_POLICY.md", path + ".standing_policy", "must use the repository standing policy")
     strings(record["exclusions"], path + ".exclusions", nonempty=True)
     require(record["implicit_operational_authorization"] is False, path + ".implicit_operational_authorization", "must be false")
 
@@ -515,7 +438,7 @@ def validate_prerequisites(value: Any, path: str, stage: str) -> None:
 
 def validate_verification(value: Any, path: str, stage: str) -> None:
     record = obj(value, path)
-    keys(record, path, {"builds", "scenarios", "child_environment", "dependencies", "git_policy", "report_policy"})
+    keys(record, path, {"builds", "scenarios", "child_environment", "dependencies", "integration_parent_binding", "git_policy", "report_policy"})
     build_roles: list[str] = []
     for index, item in enumerate(arr(record["builds"], path + ".builds")):
         item_path = f"{path}.builds[{index}]"
@@ -554,6 +477,7 @@ def validate_verification(value: Any, path: str, stage: str) -> None:
         text(dependencies["lock_reference"], path + ".dependencies.lock_reference")
     else:
         require("lock_reference" not in dependencies, path + ".dependencies", "unlocked dependencies cannot claim a lock")
+    require(record["integration_parent_binding"] == INTEGRATION_PARENT_BINDING, path + ".integration_parent_binding", "must require explicit reviewed parent inputs")
     require(record["git_policy"] == GIT_POLICY, path + ".git_policy", "must match the fail-closed Git identity policy")
     reports = obj(record["report_policy"], path + ".report_policy")
     require(
@@ -616,7 +540,7 @@ def validate(value: Any, source: str = "change") -> dict[str, Any]:
     keys(record, source, TOP_LEVEL_KEYS)
     require(record["$comment"] == "SPDX-License-Identifier: MIT", source + ".$comment", "must declare MIT")
     require(record["$schema"] == "../schemas/change-evidence.schema.json", source + ".$schema", "unexpected schema")
-    require(record["schema_version"] == "1.0", source + ".schema_version", "must be 1.0")
+    require(record["schema_version"] == "1.1", source + ".schema_version", "must be 1.1")
     change_id = text(record["change_id"], source + ".change_id")
     require(bool(ID_RE.fullmatch(change_id)), source + ".change_id", "invalid change id")
     expected_record_path = f"docs/engineering/changes/{change_id.lower()}.json"
@@ -638,7 +562,7 @@ def validate(value: Any, source: str = "change") -> dict[str, Any]:
     validate_prerequisites(record["prerequisites"], source + ".prerequisites", stage)
     files = validate_files(record["files"], source + ".files", stage)
     require(expected_record_path not in {item["path"] for item in files}, source + ".files", "must not self-bind the governance record")
-    validate_authorship(record["authorship"], source + ".authorship", change_id, files)
+    validate_provenance_inventory(record["provenance_inventory"], source + ".provenance_inventory", change_id, files)
 
     surfaces = obj(record["surfaces"], source + ".surfaces")
     keys(surfaces, source + ".surfaces", SURFACES)
@@ -691,8 +615,9 @@ def check(root: Path) -> None:
     require(set(obj(schema.get("properties"), str(SCHEMA_PATH) + ".properties")) == TOP_LEVEL_KEYS, str(SCHEMA_PATH) + ".properties", "must match the validator top-level contract")
     require(schema.get("additionalProperties") is False, str(SCHEMA_PATH) + ".additionalProperties", "must fail closed on unknown keys")
     properties = schema["properties"]
+    require(properties["schema_version"].get("const") == "1.1", str(SCHEMA_PATH) + ".properties.schema_version", "must match validator version 1.1")
     require(properties["change_id"].get("type") == "string", str(SCHEMA_PATH) + ".properties.change_id", "must type change IDs as strings")
-    require(schema.get("allOf") == KNOWN_AUTHORSHIP_SCHEMA_BINDING, str(SCHEMA_PATH) + ".allOf", "must bind the attested ERGON-CHANGE-0001 inventory")
+    require("allOf" not in schema, str(SCHEMA_PATH) + ".allOf", "must not pin a per-change inventory digest")
     definitions = obj(schema.get("$defs"), str(SCHEMA_PATH) + ".$defs")
     require(
         obj(definitions.get("relativePath"), str(SCHEMA_PATH) + ".$defs.relativePath").get("pattern") == RELATIVE_PATH_SCHEMA_PATTERN,
@@ -704,6 +629,15 @@ def check(root: Path) -> None:
         str(SCHEMA_PATH) + ".$defs.prerequisite.properties",
     )
     require(prerequisite_properties["change_id"].get("type") == "string", str(SCHEMA_PATH) + ".$defs.prerequisite.properties.change_id", "must type prerequisite IDs as strings")
+    verification_properties = obj(
+        obj(definitions.get("verification"), str(SCHEMA_PATH) + ".$defs.verification").get("properties"),
+        str(SCHEMA_PATH) + ".$defs.verification.properties",
+    )
+    require(
+        verification_properties.get("integration_parent_binding") == {"const": INTEGRATION_PARENT_BINDING},
+        str(SCHEMA_PATH) + ".$defs.verification.properties.integration_parent_binding",
+        "must match the explicit reviewed parent-input law",
+    )
     records_dir = root / RECORDS_DIR
     records: list[Path] = []
     if records_dir.exists():
@@ -766,7 +700,7 @@ def sample(stage: str = "legacy-compatibility", status: str = "draft") -> dict[s
     result = {
         "$comment": "SPDX-License-Identifier: MIT",
         "$schema": "../schemas/change-evidence.schema.json",
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "change_id": change_id,
         "stage": stage,
         "status": status,
@@ -780,14 +714,11 @@ def sample(stage: str = "legacy-compatibility", status: str = "draft") -> dict[s
             "remote_ref": "refs/remotes/origin/main",
         },
         "signature_policy": copy.deepcopy(SIGNATURE_POLICY),
-        "authorship": {
+        "provenance_inventory": {
             "inventory_schema": "ergon-authorship-inventory/v1",
             "inventory_sha256": "0" * 64,
-            "identity": "Example Maintainer",
-            "date": "2099-01-01",
             "license": "MIT",
-            "scope": "Synthetic self-test only.",
-            "right_to_license": True,
+            "standing_policy": "PUBLICATION_POLICY.md",
             "exclusions": ["No private material."],
             "implicit_operational_authorization": False,
         },
@@ -819,6 +750,7 @@ def sample(stage: str = "legacy-compatibility", status: str = "draft") -> dict[s
             "scenarios": scenarios,
             "child_environment": copy.deepcopy(SAFE_ENVIRONMENT),
             "dependencies": {"locked": False, "platforms": ["ubuntu-24.04"]},
+            "integration_parent_binding": copy.deepcopy(INTEGRATION_PARENT_BINDING),
             "git_policy": copy.deepcopy(GIT_POLICY),
             "report_policy": {
                 "source": "public-tree-only",
@@ -837,56 +769,25 @@ def sample(stage: str = "legacy-compatibility", status: str = "draft") -> dict[s
         "counterevidence": ["Missing scenarios must fail validation."],
         "decision": decision,
     }
-    result["authorship"]["inventory_sha256"] = hashlib.sha256(
-        authorship_inventory(result["change_id"], result["files"])
+    result["provenance_inventory"]["inventory_sha256"] = hashlib.sha256(
+        provenance_inventory_bytes(result["change_id"], result["files"])
     ).hexdigest()
     return result
 
 
 def self_test() -> None:
-    known_payload = {
-        "change_id": "ERGON-CHANGE-0001",
-        "entries": KNOWN_AUTHORSHIP_VECTOR_ENTRIES,
-        "schema": "ergon-authorship-inventory/v1",
-    }
-    known_bytes = json.dumps(
-        known_payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=True,
-    ).encode("utf-8") + b"\n"
-    require(len(known_bytes) == KNOWN_AUTHORSHIP_VECTOR_BYTES, "self-test.authorship-vector", "byte count drift")
-    require(
-        hashlib.sha256(known_bytes).hexdigest() == KNOWN_AUTHORSHIP_VECTOR_SHA256,
-        "self-test.authorship-vector",
-        "canonical digest drift",
-    )
-    known_files = [
-        {
-            "path": entry["path"],
-            "after": {
-                "mode": entry["mode"],
-                "bytes": entry["bytes"],
-                "git_blob": entry["blob"],
-                "sha256": entry["sha256"],
-            },
-            "provenance": {
-                "kind": "independent-authorship",
-                "code": entry["provenance"],
-            },
-        }
-        for entry in reversed(KNOWN_AUTHORSHIP_VECTOR_ENTRIES)
-    ]
-    require(
-        authorship_inventory("ERGON-CHANGE-0001", known_files) == known_bytes,
-        "self-test.authorship-vector",
-        "inventory algorithm no longer matches the attested vector",
-    )
-
     for stage in sorted(STAGES):
         validate(sample(stage), "self-test.stage." + stage)
     for status in ("under-review", "accepted", "landed"):
         validate(sample(status=status), "self-test.status." + status)
+
+    generic_change = sample(status="under-review")
+    generic_change["change_id"] = "ERGON-CHANGE-0001"
+    generic_change["record_path"] = "docs/engineering/changes/ergon-change-0001.json"
+    generic_change["provenance_inventory"]["inventory_sha256"] = hashlib.sha256(
+        provenance_inventory_bytes(generic_change["change_id"], generic_change["files"])
+    ).hexdigest()
+    validate(generic_change, "self-test.generic-change-0001")
 
     valid = sample()
     validate(valid, "self-test.valid")
@@ -899,8 +800,14 @@ def self_test() -> None:
         ("signer drift", lambda item: item["signature_policy"].update({"principal": "someone@example.invalid"})),
         ("declarative signature bypass", lambda item: item["verification"]["git_policy"].update({"required_signature_status": "verified"})),
         ("replace object", lambda item: item["verification"]["git_policy"].update({"replace_objects": True})),
-        ("authorship digest drift", lambda item: item["authorship"].update({"inventory_sha256": "f" * 64})),
-        ("implicit publication authority", lambda item: item["authorship"].update({"implicit_operational_authorization": True})),
+        ("provenance digest drift", lambda item: item["provenance_inventory"].update({"inventory_sha256": "f" * 64})),
+        ("standing policy drift", lambda item: item["provenance_inventory"].update({"standing_policy": "OTHER.md"})),
+        ("implicit publication authority", lambda item: item["provenance_inventory"].update({"implicit_operational_authorization": True})),
+        ("parent binding missing", lambda item: item["verification"].pop("integration_parent_binding")),
+        ("parent binding default", lambda item: item["verification"]["integration_parent_binding"].update({"defaults_allowed": True})),
+        ("parent binding environment", lambda item: item["verification"]["integration_parent_binding"].update({"environment_fallback_allowed": True})),
+        ("parent binding argument drift", lambda item: item["verification"]["integration_parent_binding"].update({"commit_argument": "--parent"})),
+        ("parent binding record bypass", lambda item: item["verification"]["integration_parent_binding"].update({"record_match_required": False})),
         ("record path drift", lambda item: item.update({"record_path": "docs/engineering/changes/other.json"})),
         ("consensus smuggling", lambda item: item["surfaces"].update({"consensus": True})),
         ("missing scenario", lambda item: item["verification"]["scenarios"].pop()),
@@ -960,25 +867,6 @@ def self_test() -> None:
             "accepted commit preclaimed",
             sample(status="accepted"),
             lambda item: item["decision"].update({"public_commit": "9" * 40}),
-        ),
-        (
-            "attested inventory substitution",
-            sample(status="under-review"),
-            lambda item: (
-                item.update(
-                    {
-                        "change_id": "ERGON-CHANGE-0001",
-                        "record_path": "docs/engineering/changes/ergon-change-0001.json",
-                    }
-                ),
-                item["authorship"].update(
-                    {
-                        "inventory_sha256": hashlib.sha256(
-                            authorship_inventory("ERGON-CHANGE-0001", item["files"])
-                        ).hexdigest()
-                    }
-                ),
-            ),
         ),
     ]
     for name, candidate, mutate in stage_mutations:

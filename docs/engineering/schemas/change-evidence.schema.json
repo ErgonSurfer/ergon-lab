@@ -16,7 +16,7 @@
     "baseline",
     "public_lineage",
     "signature_policy",
-    "authorship",
+    "provenance_inventory",
     "prerequisites",
     "files",
     "surfaces",
@@ -30,7 +30,7 @@
   "properties": {
     "$comment": {"const": "SPDX-License-Identifier: MIT"},
     "$schema": {"const": "../schemas/change-evidence.schema.json"},
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
     "change_id": {"type": "string", "pattern": "^ERGON-(CHANGE|RESEARCH)-[0-9]{4}$"},
     "stage": {
       "enum": [
@@ -96,28 +96,22 @@
         "candidate_same_key": true
       }
     },
-    "authorship": {
+    "provenance_inventory": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "inventory_schema",
         "inventory_sha256",
-        "identity",
-        "date",
         "license",
-        "scope",
-        "right_to_license",
+        "standing_policy",
         "exclusions",
         "implicit_operational_authorization"
       ],
       "properties": {
         "inventory_schema": {"const": "ergon-authorship-inventory/v1"},
         "inventory_sha256": {"$ref": "#/$defs/sha256"},
-        "identity": {"$ref": "#/$defs/nonemptyString"},
-        "date": {"$ref": "#/$defs/date"},
         "license": {"const": "MIT"},
-        "scope": {"$ref": "#/$defs/nonemptyString"},
-        "right_to_license": {"const": true},
+        "standing_policy": {"const": "PUBLICATION_POLICY.md"},
         "exclusions": {"$ref": "#/$defs/nonemptyStrings"},
         "implicit_operational_authorization": {"const": false}
       }
@@ -153,25 +147,6 @@
     "counterevidence": {"$ref": "#/$defs/nonemptyStrings"},
     "decision": {"$ref": "#/$defs/decision"}
   },
-  "allOf": [
-    {
-      "if": {
-        "required": ["change_id"],
-        "properties": {"change_id": {"const": "ERGON-CHANGE-0001"}}
-      },
-      "then": {
-        "properties": {
-          "authorship": {
-            "properties": {
-              "inventory_sha256": {
-                "const": "090a0a36db8a141fd43e93b0790be578a94bf09f07043d853119b627f5c0dfa0"
-              }
-            }
-          }
-        }
-      }
-    }
-  ],
   "$defs": {
     "nonemptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
     "nonemptyStrings": {
@@ -399,7 +374,7 @@
     "verification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["builds", "scenarios", "child_environment", "dependencies", "git_policy", "report_policy"],
+      "required": ["builds", "scenarios", "child_environment", "dependencies", "integration_parent_binding", "git_policy", "report_policy"],
       "properties": {
         "builds": {"type": "array", "items": {"$ref": "#/$defs/build"}},
         "scenarios": {"type": "array", "items": {"$ref": "#/$defs/scenario"}},
@@ -415,6 +390,16 @@
           }
         },
         "dependencies": {"$ref": "#/$defs/dependencies"},
+        "integration_parent_binding": {
+          "const": {
+            "input_method": "explicit-reviewed-cli",
+            "commit_argument": "--expected-integration-parent-commit",
+            "tree_argument": "--expected-integration-parent-tree",
+            "defaults_allowed": false,
+            "environment_fallback_allowed": false,
+            "record_match_required": true
+          }
+        },
         "git_policy": {
           "const": {
             "system_config": false,
