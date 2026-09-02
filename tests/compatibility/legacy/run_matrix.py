@@ -24,8 +24,8 @@ BASE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 PUBLIC_ROOT_TREE = BASE_TREE
 PUBLIC_MAIN_REF = "refs/remotes/origin/main"
-CHANGE_ID = "ERGON-CHANGE-0003"
-PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0003.json"
+CHANGE_ID = "ERGON-CHANGE-0004"
+PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0004.json"
 PUBLIC_SCHEMA_PATH = "docs/engineering/schemas/change-evidence.schema.json"
 PUBLIC_VALIDATOR_PATH = "tools/engineering/check_change.py"
 PUBLIC_SCHEMA_VERSION = "1.1"
@@ -140,7 +140,9 @@ REVIEWED_FILE_METADATA = {
         },
         "role": "test",
         "spdx": "MIT",
-        "test_reachability": "Covers runner contracts and fail-closed paths.",
+        "test_reachability": (
+            "Covers runner contracts, record binding, and fail-closed paths."
+        ),
     },
 }
 PUBLIC_CHANGE_ENTRIES = (
@@ -156,9 +158,9 @@ BASELINE_CONTROLLED_PATHS = (
 )
 INTEGRATION_PARENT_PREIMAGES = {
     "tests/compatibility/legacy/run_matrix.py":
-        "f4d1294040a351a64834c34961ef0eaa8edf58c6",
+        "2dcb8a694e138deef9f5a4019f0be04a3147618d",
     "tests/compatibility/legacy/self_test.py":
-        "60302ca15a529aa5fac846b086e463e38d8695d0",
+        "74ac2ac491fe9c4a2054db8b6620288de7715416",
 }
 BUILD_ROLES = ("baseline", "candidate")
 INTEGRATION_PARENT_BINDING = {

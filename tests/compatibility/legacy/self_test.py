@@ -130,9 +130,9 @@ class MatrixContractTest(unittest.TestCase):
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
                 "tests/compatibility/legacy/run_matrix.py":
-                    "f4d1294040a351a64834c34961ef0eaa8edf58c6",
+                    "2dcb8a694e138deef9f5a4019f0be04a3147618d",
                 "tests/compatibility/legacy/self_test.py":
-                    "60302ca15a529aa5fac846b086e463e38d8695d0",
+                    "74ac2ac491fe9c4a2054db8b6620288de7715416",
             },
         )
 
@@ -141,10 +141,10 @@ class MatrixContractTest(unittest.TestCase):
         parent_record = json.loads(
             (
                 source_root
-                / "docs/engineering/changes/ergon-change-0002.json"
+                / "docs/engineering/changes/ergon-change-0003.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0002")
+        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0003")
         parent_postimages = {
             file_record["path"]: file_record["after"]["git_blob"]
             for file_record in parent_record["files"]
@@ -154,6 +154,34 @@ class MatrixContractTest(unittest.TestCase):
             parent_postimages,
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
         )
+
+    def test_current_record_binds_reviewed_file_metadata(self):
+        source_root = MODULE_PATH.parents[3]
+        record = json.loads(
+            (source_root / MATRIX.PUBLIC_RECORD_PATH).read_text(encoding="utf-8")
+        )
+        metadata_fields = (
+            "production_reachability",
+            "provenance",
+            "role",
+            "spdx",
+            "test_reachability",
+        )
+        recorded_metadata = {
+            file_record["path"]: {
+                field: file_record[field]
+                for field in metadata_fields
+            }
+            for file_record in record["files"]
+        }
+        runner_metadata = {
+            path: {
+                field: MATRIX.REVIEWED_FILE_METADATA[path][field]
+                for field in metadata_fields
+            }
+            for _operation, path in MATRIX.TECHNICAL_CHANGE_ENTRIES
+        }
+        self.assertEqual(recorded_metadata, runner_metadata)
 
     def test_public_framework_imports_against_legacy_helpers(self):
         source_root = MODULE_PATH.parents[3]
