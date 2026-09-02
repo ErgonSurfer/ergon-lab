@@ -299,7 +299,7 @@ def validate_cockpit(cockpit: Any) -> dict[str, Any]:
     }
     require(chronik == expected_chronik, "cockpit.boundaries.chronik", "must remain observe/index only and non-authoritative")
     require(boundaries["price_scope"] == "historical-context-no-financial-forecasting", "cockpit.boundaries.price_scope", "must prohibit financial forecasting")
-    require(boundaries["publication_policy"] == "clean-room-allowlist-only", "cockpit.boundaries.publication_policy", "must remain allowlist-only")
+    require(boundaries["publication_policy"] == "public-source-provenance-only", "cockpit.boundaries.publication_policy", "must remain public-source provenance only")
 
     gates = require_list(value["gates"], "cockpit.gates")
     topics = require_list(value["research_topics"], "cockpit.research_topics")
@@ -436,7 +436,7 @@ def render_roadmap(cockpit: dict[str, Any], digest: str, event: dict[str, Any]) 
         "- The standalone node is the only consensus authority.",
         "- Chronik may observe and index. It is never a consensus, mempool, activation, or chain-selection authority and is not required for correctness.",
         "- Price material is limited to historical context; financial forecasting is out of scope.",
-        "- Publication is clean-room and allowlist-only.",
+        "- Publication uses reviewed public-source provenance only.",
         "",
         "## Delivery-state legend",
         "",

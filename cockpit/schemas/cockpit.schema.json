@@ -102,7 +102,7 @@
           }
         },
         "price_scope": {"const": "historical-context-no-financial-forecasting"},
-        "publication_policy": {"const": "clean-room-allowlist-only"}
+        "publication_policy": {"const": "public-source-provenance-only"}
       }
     },
     "gates": {
