@@ -122,9 +122,10 @@
       "workstream": "build-operate",
       "title": "Validate legacy compatibility",
       "summary": "Use isolated public harness roles to seek chain, mining, validation, and peer-behavior contradictions between the legacy node and the standalone candidate.",
-      "delivery_state": "blocked",
-      "knowledge_status": "Open Question",
-      "blockers": ["No public engineering change record or public-tree harness currently establishes mixed-node compatibility."],
+      "delivery_state": "active",
+      "knowledge_status": "Observed",
+      "verification_evidence": ["A public-tree run of signed commit ba3f0715ff0542278668b504b22acbb8fbb193bd passed the exact mixed-node coexistence, baseline mining, candidate mining, and inherited default-launch scenarios; the normalized report SHA-256 is 31bc30e88e952848348f170afc09d1a4a633708e7a9b98703c2262c479291961."],
+      "blockers": ["The observed assembled-component regtest result does not establish build causality or cover full or chainstate reindex, pruning, consensus reorganization, operator-binary parity, historical-chain parity, sustained operation, or mainnet coexistence."],
       "roadmap": {
         "lane": "Build / Operate",
         "order": 60,
@@ -139,7 +140,7 @@
       "summary": "Operate the standalone candidate on the existing Ergon mainnet without changing consensus, and compare chain history, accepted blocks, mining behavior, restart behavior, and datadir evidence against the legacy implementation.",
       "delivery_state": "blocked",
       "knowledge_status": "Open Question",
-      "blockers": ["Public legacy-compatibility evidence and operator-binary, historical-chain, and real-datadir parity records do not yet exist."],
+      "blockers": ["The bounded public regtest observation does not establish operator-binary, historical-chain, real-datadir, sustained-operation, or passive-mainnet coexistence parity."],
       "roadmap": {
         "lane": "Build / Operate",
         "order": 70,
@@ -154,7 +155,7 @@
       "summary": "Prove the node remains correct with indexing compiled out or disabled and bound local-regtest opt-in to restart, reindex, pruning, and deep-reorganization failure checks over 288 blocks.",
       "delivery_state": "blocked",
       "knowledge_status": "Open Question",
-      "blockers": ["The coexistence and three-role build matrix have no accepted public manifest or public-tree reproduction pack."],
+      "blockers": ["Legacy Phase 2 remains active: reindex, pruning, consensus-reorganization, operator-binary, historical-chain, and mainnet-coexistence gates are not closed."],
       "roadmap": {
         "lane": "Build / Operate",
         "order": 80,
@@ -210,9 +211,9 @@
       "kind": "gate",
       "workstream": "research",
       "title": "Reproduce the zero-subsidy fixture repair",
-      "summary": "A narrowly scoped test repair and harness have defined identities, but public integration and public-tree reproduction remain separate gates.",
+      "summary": "The public tree now records passing baseline and candidate zero-subsidy mining fixtures; independent reproduction and broader legacy parity remain separate gates.",
       "delivery_state": "active",
-      "knowledge_status": "Open Question",
+      "knowledge_status": "Observed",
       "roadmap": {
         "lane": "Research",
         "order": 10,
@@ -235,8 +236,8 @@
         },
         "data": {
           "policy": "public-only",
-          "status": "not-collected",
-          "references": []
+          "status": "partial",
+          "references": ["docs/engineering/evidence/ergon-change-0004/legacy-compatibility.json"]
         },
         "units": {
           "status": "draft",
@@ -245,7 +246,7 @@
             {"quantity": "repeat count", "unit": "processes"}
           ]
         },
-        "uncertainty": ["The proposed file identities passed local review, but no independently generated public native-node report exists."],
+        "uncertainty": ["The public-tree report is an assembled-component observation and has not been independently reproduced from a locked build environment."],
         "limitations": ["The current ceiling is a component observation, not operator-binary or historical-chain parity."],
         "counter_evidence": {
           "status": "partial",
@@ -253,7 +254,7 @@
         },
         "reproduction_pack": {
           "availability": "not-yet-published",
-          "blockers": ["The narrowed six-path integration is not authorized or committed, and a public native-node report must be regenerated from public inputs."]
+          "blockers": ["An independent public-input reproduction and locked build-provenance pack remain unavailable."]
         }
       }
     },

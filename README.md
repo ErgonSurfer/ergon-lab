@@ -119,8 +119,10 @@ fork.
 coexistence** → **Optional observation** → **Experimental fork testnet** →
 **Possible future mainnet decision**
 
-The first step is verified. Every later step remains visibly blocked until its
-own tests, evidence, limitations, and signed engineering record are public.
+The baseline is verified. Legacy compatibility is now active with one bounded
+public regtest observation; it remains incomplete. Mainnet coexistence,
+optional observation, testnet activation, and every future consensus decision
+remain visibly blocked until their own evidence and limitations are public.
 
 [See the complete node journey&nbsp;↗](node/README.md) ·
 [Open the engineering ledger&nbsp;↗](docs/engineering/changes/README.md)

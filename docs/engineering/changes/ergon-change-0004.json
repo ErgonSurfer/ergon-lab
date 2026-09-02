@@ -4,7 +4,7 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0004",
   "stage": "legacy-compatibility",
-  "status": "accepted",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0004.json",
   "purpose": {
     "summary": "Align the public legacy matrix file declaration with its accepted record without changing node behavior or consensus.",
@@ -258,28 +258,33 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "active",
+    "knowledge_status": "Observed",
+    "ceiling": "assembled_component",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0004/legacy-compatibility.json",
+        "sha256": "31bc30e88e952848348f170afc09d1a4a633708e7a9b98703c2262c479291961"
+      }
+    ]
   },
   "limitations": [
-    "The signed ERGON-CHANGE-0003 commit and its baseline and candidate builds succeeded, but no compatibility scenario ran because the matrix rejected a file declaration mismatch before execution.",
-    "This change aligns only harness metadata and adds a metadata-binding self-test; it does not itself establish any legacy-compatibility runtime result.",
-    "A future successful four-scenario matrix may reproduce only the corrected ERGON-CHANGE-0004 state; it cannot retroactively reproduce ERGON-CHANGE-0001, ERGON-CHANGE-0002, or ERGON-CHANGE-0003.",
-    "Phase 2 remains open: reindex, pruning, and reorganization gates are separate later legacy-only changes.",
+    "The public report observes only the exact ERGON-CHANGE-0004 candidate and cannot retroactively reproduce ERGON-CHANGE-0001, ERGON-CHANGE-0002, or ERGON-CHANGE-0003.",
+    "The four passing scenarios establish a bounded short-chain regtest observation with cross-node synchronization and clean restart; they do not establish crash recovery, historical-chain or sustained-operation parity.",
+    "Phase 2 remains open: full reindex, chainstate reindex, pruning, and consensus-reorganization gates are separate later legacy-only changes.",
     "Binary digests and config.ini source/build bindings do not prove build causality.",
     "The dependency profile is not locked, and operator-binary equivalence and mainnet coexistence remain unproved.",
-    "If origin/main advances before reconstruction, the parent and all controlled preimages must be reviewed again instead of rebasing silently."
+    "This evidence has an assembled-component ceiling and is not an independent reproduction pack."
   ],
   "counterevidence": [
-    "The signed public ERGON-CHANGE-0003 record declares the self-test reachability as Covers runner contracts, parent-record binding, and fail-closed paths. while its runner declares Covers runner contracts and fail-closed paths.; the unequal strings make the matrix stop before every scenario.",
-    "The successful public baseline and candidate builds do not supply a coexistence, mining, restart, or inherited-default-launch result.",
-    "An aligned unpublished runner copy passed all four scenarios against the public builds, but that local diagnostic is not public evidence and cannot promote the Open Question status; no signed public correction commit or public evidence artifact exists."
+    "The signed public ERGON-CHANGE-0003 matrix stopped before every scenario on unequal file-declaration metadata; ERGON-CHANGE-0004 corrected and directly tests that binding.",
+    "An aligned unpublished diagnostic passed the same four scenarios before ERGON-CHANGE-0004 landed, but it is excluded from the public artifact and supplies no evidence to this promotion.",
+    "No contradiction was observed inside the four declared oracles, but reindex, pruning, deep-reorganization, operator-binary, historical-chain, and mainnet surfaces remain evidence gaps."
   ],
   "decision": {
     "status": "accepted",
     "reviewer": "Ergon Public Node GitHub Cockpit",
-    "date": "2026-09-02"
+    "date": "2026-09-02",
+    "public_commit": "ba3f0715ff0542278668b504b22acbb8fbb193bd"
   }
 }

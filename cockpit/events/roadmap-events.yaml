@@ -91,6 +91,17 @@
         "gates.assess-future-mainnet-fork.roadmap.order",
         "gates.assess-future-mainnet-fork.roadmap.label"
       ]
+    },
+    {
+      "id": "ROADMAP-0007",
+      "sequence": 7,
+      "effective_date": "2026-09-02",
+      "previous_projection_sha256": "3616ebe930635182c9b642352f2423dafd06410b6d2f5801e629590cf3814e9b",
+      "projection_sha256": "f456423751670ea81f851e8c207cf9de6a45a5df99e0c30fc78dec2bd0ee9088",
+      "reason": "Record the first bounded public-tree ERGON-CHANGE-0004 legacy observation while keeping legacy compatibility active and all later node gates blocked.",
+      "changes": [
+        "gates.validate-legacy-compatibility.delivery_state"
+      ]
     }
   ]
 }
