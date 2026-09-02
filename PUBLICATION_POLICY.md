@@ -210,6 +210,33 @@ A change may be merged or released only after the applicable checks are current:
 - reproducibility and evidence-pack validation; and
 - required code-owner and domain review.
 
+### Protected exact-SHA publication
+
+`protected-exact-sha/v1` separates public review from publication without
+changing the reviewed commit:
+
+1. The topic branch contains one SSH-signed commit whose sole parent is the
+   current public `main` commit.
+2. A public pull request runs review and every required status check on that
+   exact commit ID.
+3. After all required checks succeed on that commit ID, `main` advances only by
+   a non-force fast-forward push of the same commit.
+4. Publication succeeds only when a fresh fetch proves that `origin/main`
+   equals the reviewed commit ID and tree.
+
+Squash and rebase merges are forbidden for this workflow because they replace
+the reviewed commit ID and its SSH signature. Pull requests remain the public
+review and CI mechanism; the exact fast-forward is the publication mechanism.
+The protected branch must continue to require linear history, signed commits,
+the declared status checks, restricted deletion, and blocked force pushes.
+
+The GitHub-signed squash commit
+`56a18f3bd78e34e78caa7946dc7e1c0a45e8e6b2` preserved the exact reviewed tree
+of SSH-signed pull-request commit
+`1c728c27094bf52d02c3cea23e06b72a08c5f264` but replaced its identity and
+signature. This resolved workflow counterexample motivates the exact-SHA rule;
+it does not change any evidence status or supply a legacy-compatibility result.
+
 Release artifacts additionally require a protected source tag, checksums,
 provenance, a software bill of materials, and the repository's declared
 reproducible-build evidence. A gate is not waived by urgency or by an unrelated
