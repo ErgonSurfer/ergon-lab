@@ -117,8 +117,6 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
-                ("M", "test/functional/test_framework/test_framework.py"),
-                ("M", "test/functional/test_framework/test_node.py"),
                 ("M", "tests/compatibility/legacy/run_matrix.py"),
                 ("M", "tests/compatibility/legacy/self_test.py"),
             ),
@@ -131,15 +129,30 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
-                "test/functional/test_framework/test_framework.py":
-                    "71452d1505f8ba1f88dbbd8d6917689b16b8cc03",
-                "test/functional/test_framework/test_node.py":
-                    "8b60029180e6b141bba9c0ec3283a41f743a0bb2",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "3e88c160983b7f5d3acc5ede8fe17c2d0654f72b",
+                    "f4d1294040a351a64834c34961ef0eaa8edf58c6",
                 "tests/compatibility/legacy/self_test.py":
-                    "28fa1b8655a7b567722ce202e55104bc4011a80a",
+                    "60302ca15a529aa5fac846b086e463e38d8695d0",
             },
+        )
+
+    def test_parent_record_binds_preimages(self):
+        source_root = MODULE_PATH.parents[3]
+        parent_record = json.loads(
+            (
+                source_root
+                / "docs/engineering/changes/ergon-change-0002.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0002")
+        parent_postimages = {
+            file_record["path"]: file_record["after"]["git_blob"]
+            for file_record in parent_record["files"]
+            if file_record["path"] in MATRIX.INTEGRATION_PARENT_PREIMAGES
+        }
+        self.assertEqual(
+            parent_postimages,
+            MATRIX.INTEGRATION_PARENT_PREIMAGES,
         )
 
     def test_public_framework_imports_against_legacy_helpers(self):
