@@ -121,12 +121,16 @@ coexistence** → **Optional observation** → **Experimental fork testnet** →
 
 The baseline is verified. Legacy compatibility remains `active` / `Observed`,
 with public `assembled_component` evidence for the four bounded regtest
-scenarios and for clean restart, full reindex, and chainstate reindex on a short
-regtest chain; it remains incomplete. Pruning, corruption handling, crash
-recovery, deep reorganization, sustained public-network operation, and mainnet
-coexistence remain open. Optional observation, testnet activation, and every
-future consensus decision remain visibly blocked until their own evidence and
-limitations are public.
+scenarios, including clean restart, full reindex, chainstate reindex, and
+bounded manual physical pruning on both roles in
+[ERGON-CHANGE-0007](docs/engineering/changes/ergon-change-0007.json); it remains
+incomplete. Automatic pruning, corrupt or inaccessible storage, disk
+exhaustion, interruption and crash recovery, reindex or redownload after
+pruning, reorganization across pruned history, operator-build provenance,
+historical-chain and real-datadir behavior, sustained public-network operation,
+and mainnet coexistence remain open. Optional observation, testnet activation,
+and every future consensus decision remain visibly blocked until their own
+evidence and limitations are public.
 
 [See the complete node journey&nbsp;↗](node/README.md) ·
 [Open the engineering ledger&nbsp;↗](docs/engineering/changes/README.md)
