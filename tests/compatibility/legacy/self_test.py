@@ -181,11 +181,6 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
-                ("M", "tests/compatibility/legacy/README.md"),
-                (
-                    "M",
-                    "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py",
-                ),
                 ("M", "tests/compatibility/legacy/run_matrix.py"),
                 ("M", "tests/compatibility/legacy/self_test.py"),
             ),
@@ -198,39 +193,73 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
-                "tests/compatibility/legacy/README.md":
-                    "5daa25f6c80e3917f086171b7cb128cb159e3626",
-                "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
-                    "618a628d0dc0477cbf30f3e15547e900608ca401",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "2687efda955d6c83432fca64d837484f47023b8b",
+                    "71d5d69941c15b8c9eb26013e4f405ae6028f809",
                 "tests/compatibility/legacy/self_test.py":
-                    "b836eee27b78cec17c24ed4da6165a8c67a73e4c",
+                    "bb4b026905878d77bf33a3310c39255f4f6fbe11",
             },
         )
 
     def test_parent_record_binds_preimages(self):
         source_root = MODULE_PATH.parents[3]
-        parent_postimages = {}
-        for change_id in ("0001", "0004"):
-            parent_record = json.loads(
-                (
-                    source_root
-                    / f"docs/engineering/changes/ergon-change-{change_id}.json"
-                ).read_text(encoding="utf-8")
-            )
-            self.assertEqual(
-                parent_record["change_id"], f"ERGON-CHANGE-{change_id}"
-            )
-            parent_postimages.update({
-                file_record["path"]: file_record["after"]["git_blob"]
-                for file_record in parent_record["files"]
-                if file_record["path"] in MATRIX.INTEGRATION_PARENT_PREIMAGES
-            })
+        parent_record = json.loads(
+            (
+                source_root
+                / "docs/engineering/changes/ergon-change-0005.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0005")
+        parent_postimages = {
+            file_record["path"]: file_record["after"]["git_blob"]
+            for file_record in parent_record["files"]
+            if file_record["path"] in MATRIX.INTEGRATION_PARENT_PREIMAGES
+        }
         self.assertEqual(
             parent_postimages,
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
         )
+
+    def test_0005_review_state_is_visible_counterevidence(self):
+        source_root = MODULE_PATH.parents[3]
+        parent_record = json.loads(
+            (
+                source_root
+                / "docs/engineering/changes/ergon-change-0005.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0005")
+        self.assertEqual(parent_record["status"], "under-review")
+        self.assertEqual(parent_record["decision"], {"status": "pending"})
+
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(
+            MATRIX, "run_public_record_validator"
+        ):
+            record_path = Path(root) / MATRIX.PUBLIC_RECORD_PATH
+            record_path.parent.mkdir(parents=True)
+            record_path.write_text(json.dumps(parent_record), encoding="utf-8")
+            with self.assertRaisesRegex(MATRIX.MatrixError, "invalid change_id"):
+                MATRIX.load_change_record(
+                    root,
+                    expected_sha256=MATRIX.sha256_file(record_path),
+                    expected_reviewer_identity="ErgonSurfer",
+                    expected_decision_date="2026-09-02",
+                    expected_integration_parent_commit="6" * 40,
+                    expected_integration_parent_tree="7" * 40,
+                )
+
+            unresolved = json.loads(json.dumps(parent_record))
+            unresolved["change_id"] = MATRIX.CHANGE_ID
+            unresolved["record_path"] = MATRIX.PUBLIC_RECORD_PATH
+            record_path.write_text(json.dumps(unresolved), encoding="utf-8")
+            with self.assertRaisesRegex(MATRIX.MatrixError, "invalid status"):
+                MATRIX.load_change_record(
+                    root,
+                    expected_sha256=MATRIX.sha256_file(record_path),
+                    expected_reviewer_identity="ErgonSurfer",
+                    expected_decision_date="2026-09-02",
+                    expected_integration_parent_commit="6" * 40,
+                    expected_integration_parent_tree="7" * 40,
+                )
 
     def test_current_record_binds_reviewed_file_metadata(self):
         source_root = MODULE_PATH.parents[3]
@@ -667,7 +696,7 @@ class MatrixContractTest(unittest.TestCase):
                 expected_reviewer_identity=overrides.get(
                     "reviewer", "ErgonSurfer"
                 ),
-                expected_decision_date="2026-09-01",
+                expected_decision_date=overrides.get("date", "2026-09-01"),
                 expected_integration_parent_commit=overrides.get(
                     "parent_commit", parent_commit
                 ),
@@ -725,7 +754,50 @@ class MatrixContractTest(unittest.TestCase):
             with self.assertRaisesRegex(MATRIX.MatrixError, "public lineage"):
                 load(
                     root, MATRIX.sha256_file(record_path),
+                    parent_tree="8" * 40,
+                )
+            with self.assertRaisesRegex(MATRIX.MatrixError, "public lineage"):
+                load(
+                    root, MATRIX.sha256_file(record_path),
                     parent_commit="8" * 40,
+                )
+
+            wrong_change = json.loads(json.dumps(record))
+            wrong_change["change_id"] = "ERGON-CHANGE-0005"
+            record_path.write_text(json.dumps(wrong_change), encoding="utf-8")
+            with self.assertRaisesRegex(MATRIX.MatrixError, "invalid change_id"):
+                load(root, MATRIX.sha256_file(record_path))
+
+            for decision in (
+                {"status": "pending"},
+                {
+                    "date": "2026-09-01",
+                    "reviewer": "ErgonSurfer",
+                    "status": "rejected",
+                },
+                {
+                    "date": "2026-09-01",
+                    "status": "accepted",
+                },
+            ):
+                unresolved = json.loads(json.dumps(record))
+                unresolved["decision"] = decision
+                record_path.write_text(json.dumps(unresolved), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    MATRIX.MatrixError, "accepted review"
+                ):
+                    load(root, MATRIX.sha256_file(record_path))
+
+            malformed_date = json.loads(json.dumps(record))
+            malformed_date["decision"]["date"] = "2026-9-1"
+            record_path.write_text(json.dumps(malformed_date), encoding="utf-8")
+            with self.assertRaisesRegex(
+                MATRIX.MatrixError, "review date"
+            ):
+                load(
+                    root,
+                    MATRIX.sha256_file(record_path),
+                    date="2026-9-1",
                 )
 
             for private_path in (
