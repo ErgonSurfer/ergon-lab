@@ -15,6 +15,32 @@ from test_framework.test_framework import BitcoinTestFramework  # noqa: E402
 from test_framework.util import assert_equal, connect_nodes  # noqa: E402
 
 
+NODE_ARGS = ("-connect=0", "-disablewallet")
+CHAIN_SNAPSHOT_FIELDS = ("blocks", "headers", "bestblockhash", "chainwork")
+UTXO_SNAPSHOT_FIELDS = (
+    "height",
+    "bestblock",
+    "txouts",
+    "bogosize",
+    "total_amount",
+)
+UTXO_COMMITMENT_FIELDS = ("hash_serialized_2", "hash_serialized")
+REINDEX_LIFECYCLES = (
+    (
+        "full-reindex",
+        "-reindex",
+        ("Reindexing block file blk00000.dat...", "Reindexing finished"),
+        "ERGON_LEGACY_LIFECYCLE_OK full-reindex",
+    ),
+    (
+        "chainstate-reindex",
+        "-reindex-chainstate",
+        ("Wiping LevelDB in",),
+        "ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
+    ),
+)
+
+
 class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
     def add_options(self, parser):
         parser.add_argument(
@@ -35,39 +61,63 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         self.add_nodes(
             2,
             extra_args=[
-                ["-connect=0", "-disablewallet"],
-                ["-connect=0", "-disablewallet"],
+                list(NODE_ARGS),
+                list(NODE_ARGS),
             ],
             binary=[legacy, candidate],
         )
         self.start_nodes()
 
-    def assert_common_chain(self):
-        legacy_info = self.nodes[0].getblockchaininfo()
-        candidate_info = self.nodes[1].getblockchaininfo()
-        for field in ("blocks", "headers", "bestblockhash", "chainwork"):
-            assert_equal(candidate_info[field], legacy_info[field])
-
-        legacy_utxo = self.nodes[0].gettxoutsetinfo()
-        candidate_utxo = self.nodes[1].gettxoutsetinfo()
-        for field in ("height", "bestblock", "txouts", "bogosize", "total_amount"):
-            assert_equal(candidate_utxo[field], legacy_utxo[field])
+    def node_snapshot(self, node):
+        chain = node.getblockchaininfo()
+        utxo = node.gettxoutsetinfo()
         commitments = [
             field
-            for field in ("hash_serialized_2", "hash_serialized")
-            if field in legacy_utxo and field in candidate_utxo
+            for field in UTXO_COMMITMENT_FIELDS
+            if field in utxo
         ]
         if not commitments:
-            raise AssertionError("gettxoutsetinfo omitted a shared commitment")
-        assert_equal(candidate_utxo[commitments[0]], legacy_utxo[commitments[0]])
+            raise AssertionError("gettxoutsetinfo omitted a UTXO commitment")
+        commitment = commitments[0]
+        tip = chain["bestblockhash"]
+        return {
+            "chain": {field: chain[field] for field in CHAIN_SNAPSHOT_FIELDS},
+            "utxo": {field: utxo[field] for field in UTXO_SNAPSHOT_FIELDS},
+            "utxo_commitment": {
+                "field": commitment,
+                "value": utxo[commitment],
+            },
+            "raw_tip": node.getblock(tip, 0),
+        }
 
-        tip = legacy_info["bestblockhash"]
-        assert_equal(self.nodes[1].getblock(tip, 0), self.nodes[0].getblock(tip, 0))
+    def assert_common_chain(self):
+        legacy_snapshot = self.node_snapshot(self.nodes[0])
+        assert_equal(self.node_snapshot(self.nodes[1]), legacy_snapshot)
+        return legacy_snapshot
 
     def mine_and_compare(self, miner, blocks, address):
         self.nodes[miner].generatetoaddress(blocks, address)
         self.sync_all()
         self.assert_common_chain()
+
+    def rebuild_and_compare(self, lifecycle, address):
+        _name, argument, expected_log_markers, success_marker = lifecycle
+        expected_snapshot = self.assert_common_chain()
+
+        for node_index in (0, 1):
+            with self.nodes[node_index].assert_debug_log(expected_log_markers):
+                self.restart_node(
+                    node_index,
+                    extra_args=[*NODE_ARGS, argument],
+                )
+
+        connect_nodes(self.nodes[0], self.nodes[1])
+        self.sync_all()
+        assert_equal(self.assert_common_chain(), expected_snapshot)
+
+        self.mine_and_compare(0, 1, address)
+        self.mine_and_compare(1, 1, address)
+        self.log.info(success_marker)
 
     def run_test(self):
         connect_nodes(self.nodes[0], self.nodes[1])
@@ -76,14 +126,18 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         for miner in (0, 1, 0, 1):
             self.mine_and_compare(miner, 2, address)
 
-        self.restart_node(0, extra_args=["-connect=0", "-disablewallet"])
-        self.restart_node(1, extra_args=["-connect=0", "-disablewallet"])
+        expected_snapshot = self.assert_common_chain()
+        self.restart_node(0, extra_args=list(NODE_ARGS))
+        self.restart_node(1, extra_args=list(NODE_ARGS))
         connect_nodes(self.nodes[0], self.nodes[1])
         self.sync_all()
-        self.assert_common_chain()
+        assert_equal(self.assert_common_chain(), expected_snapshot)
 
         self.mine_and_compare(0, 1, address)
         self.mine_and_compare(1, 1, address)
+
+        for lifecycle in REINDEX_LIFECYCLES:
+            self.rebuild_and_compare(lifecycle, address)
 
 
 if __name__ == "__main__":

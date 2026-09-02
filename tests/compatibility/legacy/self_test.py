@@ -3,6 +3,7 @@
 # Copyright (c) 2026 The Ergon developers
 """Self-test the fail-closed legacy-compatibility matrix contract."""
 
+import ast
 import importlib.util
 import contextlib
 import io
@@ -17,9 +18,25 @@ from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("run_matrix.py")
+FEATURE_PATH = Path(__file__).with_name(
+    "feature_ergon_legacy_compatibility.py"
+)
 SPEC = importlib.util.spec_from_file_location("legacy_run_matrix", MODULE_PATH)
 MATRIX = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MATRIX)
+
+
+def module_literal(path, name):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for statement in tree.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        if any(
+            isinstance(target, ast.Name) and target.id == name
+            for target in statement.targets
+        ):
+            return ast.literal_eval(statement.value)
+    raise AssertionError(f"{path.name} omitted {name}")
 
 
 def accepted_record(parent_commit, parent_tree):
@@ -112,11 +129,63 @@ class MatrixContractTest(unittest.TestCase):
             ],
         )
         self.assertFalse(MATRIX.EXECUTIONS[-1]["hermetic_nodes"])
+        self.assertEqual(
+            MATRIX.EXECUTIONS[0]["required_output_markers"],
+            MATRIX.MIXED_NODE_SUCCESS_MARKERS,
+        )
+        self.assertTrue(all(
+            "required_output_markers" not in execution
+            for execution in MATRIX.EXECUTIONS[1:]
+        ))
+
+    def test_reindex_lifecycle_contract(self):
+        self.assertEqual(
+            module_literal(FEATURE_PATH, "CHAIN_SNAPSHOT_FIELDS"),
+            ("blocks", "headers", "bestblockhash", "chainwork"),
+        )
+        self.assertEqual(
+            module_literal(FEATURE_PATH, "UTXO_SNAPSHOT_FIELDS"),
+            ("height", "bestblock", "txouts", "bogosize", "total_amount"),
+        )
+        self.assertEqual(
+            module_literal(FEATURE_PATH, "UTXO_COMMITMENT_FIELDS"),
+            ("hash_serialized_2", "hash_serialized"),
+        )
+        lifecycles = module_literal(FEATURE_PATH, "REINDEX_LIFECYCLES")
+        self.assertEqual(
+            lifecycles,
+            (
+                (
+                    "full-reindex",
+                    "-reindex",
+                    (
+                        "Reindexing block file blk00000.dat...",
+                        "Reindexing finished",
+                    ),
+                    "ERGON_LEGACY_LIFECYCLE_OK full-reindex",
+                ),
+                (
+                    "chainstate-reindex",
+                    "-reindex-chainstate",
+                    ("Wiping LevelDB in",),
+                    "ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
+                ),
+            ),
+        )
+        self.assertEqual(
+            tuple(item[3].encode("ascii") for item in lifecycles),
+            MATRIX.MIXED_NODE_SUCCESS_MARKERS,
+        )
 
     def test_exact_change_inventory(self):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
+                ("M", "tests/compatibility/legacy/README.md"),
+                (
+                    "M",
+                    "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py",
+                ),
                 ("M", "tests/compatibility/legacy/run_matrix.py"),
                 ("M", "tests/compatibility/legacy/self_test.py"),
             ),
@@ -129,27 +198,35 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
+                "tests/compatibility/legacy/README.md":
+                    "5daa25f6c80e3917f086171b7cb128cb159e3626",
+                "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
+                    "618a628d0dc0477cbf30f3e15547e900608ca401",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "2dcb8a694e138deef9f5a4019f0be04a3147618d",
+                    "2687efda955d6c83432fca64d837484f47023b8b",
                 "tests/compatibility/legacy/self_test.py":
-                    "74ac2ac491fe9c4a2054db8b6620288de7715416",
+                    "b836eee27b78cec17c24ed4da6165a8c67a73e4c",
             },
         )
 
     def test_parent_record_binds_preimages(self):
         source_root = MODULE_PATH.parents[3]
-        parent_record = json.loads(
-            (
-                source_root
-                / "docs/engineering/changes/ergon-change-0003.json"
-            ).read_text(encoding="utf-8")
-        )
-        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0003")
-        parent_postimages = {
-            file_record["path"]: file_record["after"]["git_blob"]
-            for file_record in parent_record["files"]
-            if file_record["path"] in MATRIX.INTEGRATION_PARENT_PREIMAGES
-        }
+        parent_postimages = {}
+        for change_id in ("0001", "0004"):
+            parent_record = json.loads(
+                (
+                    source_root
+                    / f"docs/engineering/changes/ergon-change-{change_id}.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                parent_record["change_id"], f"ERGON-CHANGE-{change_id}"
+            )
+            parent_postimages.update({
+                file_record["path"]: file_record["after"]["git_blob"]
+                for file_record in parent_record["files"]
+                if file_record["path"] in MATRIX.INTEGRATION_PARENT_PREIMAGES
+            })
         self.assertEqual(
             parent_postimages,
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
@@ -889,6 +966,29 @@ class MatrixContractTest(unittest.TestCase):
         ):
             with self.assertRaises(MATRIX.MatrixError):
                 MATRIX.validate_test_output(returncode, stdout, stderr)
+
+    def test_reindex_lifecycle_markers_fail_closed(self):
+        success = b"Tests successful\n" + b"\n".join(
+            MATRIX.MIXED_NODE_SUCCESS_MARKERS
+        )
+        MATRIX.validate_test_output(
+            0, success, b"", MATRIX.MIXED_NODE_SUCCESS_MARKERS
+        )
+        for missing in MATRIX.MIXED_NODE_SUCCESS_MARKERS:
+            incomplete = b"Tests successful\n" + b"\n".join(
+                marker
+                for marker in MATRIX.MIXED_NODE_SUCCESS_MARKERS
+                if marker != missing
+            )
+            with self.assertRaisesRegex(
+                MATRIX.MatrixError, "required lifecycle marker"
+            ):
+                MATRIX.validate_test_output(
+                    0,
+                    incomplete,
+                    b"",
+                    MATRIX.MIXED_NODE_SUCCESS_MARKERS,
+                )
 
     def test_source_build_roots_and_build_files_are_disjoint(self):
         with tempfile.TemporaryDirectory() as root:
