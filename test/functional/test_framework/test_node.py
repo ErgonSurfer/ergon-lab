@@ -25,6 +25,7 @@ from .messages import COIN, CTransaction, FromHex
 from .util import (
     append_config,
     delete_cookie_file,
+    get_chain_datadir,
     get_rpc_proxy,
     p2p_port,
     rpc_url,
@@ -58,7 +59,8 @@ class TestNode():
     be dispatched to the RPC connection."""
 
     def __init__(self, i, datadir, *, host, rpc_port, p2p_port, timewait, bitcoind,
-                 bitcoin_cli, mocktime, coverage_dir, extra_conf=None, extra_args=None, use_cli=False, emulator=None):
+                 bitcoin_cli, mocktime, coverage_dir, extra_conf=None, extra_args=None,
+                 use_cli=False, emulator=None, chain="regtest", hermetic_env=False):
         self.index = i
         self.datadir = datadir
         self.bitcoinconf = os.path.join(self.datadir, "bitcoin.conf")
@@ -67,6 +69,9 @@ class TestNode():
         self.host = host
         self.rpc_port = rpc_port
         self.p2p_port = p2p_port
+        self.chain = chain
+        self.hermetic_env = hermetic_env
+        self.process_start_count = 0
         self.name = "testnode-{}".format(i)
         self.rpc_timeout = timewait
         self.binary = bitcoind
@@ -208,11 +213,27 @@ class TestNode():
         # Delete any existing cookie file -- if such a file exists (eg due to
         # unclean shutdown), it will get overwritten anyway by bitcoind, and
         # potentially interfere with our attempt to authenticate
-        delete_cookie_file(self.datadir)
+        delete_cookie_file(self.datadir, self.chain)
 
-        # add environment variable LIBC_FATAL_STDERR_=1 so that libc errors are
-        # written to stderr and not the terminal
-        subp_env = dict(os.environ, LIBC_FATAL_STDERR_="1")
+        if self.hermetic_env:
+            self.process_start_count += 1
+            process_tmp_root = os.path.join(self.datadir, "process-tmp")
+            os.makedirs(process_tmp_root, mode=0o700, exist_ok=True)
+            process_tmpdir = tempfile.mkdtemp(
+                prefix="{}-".format(self.process_start_count),
+                dir=process_tmp_root)
+            subp_env = {
+                "LANG": "C",
+                "LC_ALL": "C",
+                "NO_COLOR": "1",
+                "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+                "TERM": "dumb",
+                "TZ": "UTC",
+                "TMPDIR": process_tmpdir,
+            }
+        else:
+            # Write libc diagnostics to stderr for ordinary functional tests.
+            subp_env = dict(os.environ, LIBC_FATAL_STDERR_="1")
 
         p_args = [self.binary] + self.default_args + extra_args
         if self.emulator is not None:
@@ -237,7 +258,7 @@ class TestNode():
                 raise FailedToStartError(self._node_msg(
                     'bitcoind exited with status {} during initialization'.format(self.process.returncode)))
             try:
-                rpc = get_rpc_proxy(rpc_url(self.datadir, self.host, self.rpc_port),
+                rpc = get_rpc_proxy(rpc_url(self.datadir, self.host, self.rpc_port, self.chain),
                                     self.index, timeout=self.rpc_timeout, coveragedir=self.coverage_dir)
                 rpc.getblockcount()
                 # If the call to getblockcount() succeeds then the RPC
@@ -340,7 +361,8 @@ class TestNode():
     @contextlib.contextmanager
     def assert_debug_log(self, expected_msgs, timeout=2):
         time_end = time.time() + timeout
-        debug_log = os.path.join(self.datadir, 'regtest', 'debug.log')
+        debug_log = os.path.join(
+            self.datadir, get_chain_datadir(self.chain), 'debug.log')
         with open(debug_log, encoding='utf-8') as dl:
             dl.seek(0, 2)
             prev_size = dl.tell()

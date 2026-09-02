@@ -74,6 +74,8 @@ class MiningTest(BitcoinTestFramework):
 
         next_height = int(tmpl["height"])
         coinbase_tx = create_coinbase(height=next_height)
+        assert_equal(tmpl["coinbasevalue"], 0)
+        coinbase_tx.vout[0].nValue = tmpl["coinbasevalue"]
         # sequence numbers must not be max for nLockTime to have effect
         coinbase_tx.vin[0].nSequence = 2 ** 32 - 2
         coinbase_tx.rehash()
