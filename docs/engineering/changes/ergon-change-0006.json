@@ -4,7 +4,7 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0006",
   "stage": "legacy-compatibility",
-  "status": "accepted",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0006.json",
   "purpose": {
     "summary": "Correct the public reindex matrix review-state binding without changing tested behavior or consensus.",
@@ -260,28 +260,34 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "active",
+    "knowledge_status": "Observed",
+    "ceiling": "assembled_component",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0006/legacy-compatibility.json",
+        "sha256": "0922e4a0ada0a0990021578b53d645eb1aa4ec5870a354d9d13d1539ae8ad7cc"
+      }
+    ]
   },
   "limitations": [
-    "ERGON-CHANGE-0005 published the reindex scenario, but its under-review decision state makes the governed runner stop before every build and scenario.",
-    "This correction changes only harness identity and review-state binding; it does not itself establish any restart or reconstruction runtime result.",
-    "A future successful matrix can observe only the corrected ERGON-CHANGE-0006 public state and cannot retroactively promote ERGON-CHANGE-0005.",
-    "Pruning, corrupt storage, interrupted reconstruction, crash recovery, deep reorganization, historical-chain replay, sustained operation, public-network peers, and mainnet remain untested.",
+    "ERGON-CHANGE-0005 published the reindex scenario, but its under-review decision state made the governed runner stop before every build and scenario.",
+    "The public report observes only the exact ERGON-CHANGE-0006 candidate and cannot retroactively promote ERGON-CHANGE-0005.",
+    "The four passing scenarios establish a bounded short-chain regtest observation with cross-node synchronization, clean restart, full reindex, and chainstate reindex on both roles.",
+    "Pruning, corrupt storage, interrupted reconstruction, crash recovery, consensus and deep reorganization behavior, historical-chain replay, sustained operation, public-network peers, and mainnet remain untested.",
     "Binary digests and config.ini source/build bindings do not prove build causality, and the dependency profile is not locked.",
     "Operator-binary equivalence and mainnet coexistence remain unproved.",
-    "If origin/main advances before reconstruction, the parent and all controlled preimages must be reviewed again instead of rebasing silently."
+    "This evidence has an assembled-component ceiling and is not an independent reproduction pack."
   ],
   "counterevidence": [
     "At public commit ee1f3535b5941e6b898d3c8ffebf17585ba2416e, ergon-change-0005.json says status under-review and decision pending while run_matrix.py requires status accepted plus reviewer and date; the unequal states force a pre-execution failure.",
     "The successful local prototype run used the same reindex feature postimage but is excluded from public evidence and cannot repair the public record binding.",
-    "No public ERGON-CHANGE-0006 candidate, build, scenario result, or evidence artifact exists."
+    "No contradiction was observed inside the four declared public oracles, but pruning, corrupt or interrupted rebuild, crash recovery, consensus and deep reorganization, operator-binary, historical-chain, real-datadir, sustained public-network, and mainnet surfaces remain evidence gaps."
   ],
   "decision": {
     "status": "accepted",
     "reviewer": "Ergon Public Node GitHub Cockpit",
-    "date": "2026-09-02"
+    "date": "2026-09-02",
+    "public_commit": "afba6a23a17724a79b3f457af99612994334887b"
   }
 }
