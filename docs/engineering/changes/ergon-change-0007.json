@@ -4,7 +4,7 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0007",
   "stage": "legacy-compatibility",
-  "status": "accepted",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0007.json",
   "purpose": {
     "summary": "Add a bounded physical-pruning oracle to the public legacy-compatibility matrix without changing node or consensus code.",
@@ -312,26 +312,36 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "active",
+    "knowledge_status": "Observed",
+    "ceiling": "assembled_component",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0007/legacy-compatibility.json",
+        "sha256": "441e9d5e04ca44e1012cf713fb0cd81b2118090300f3bc515faa5bc5cb8c4c40"
+      }
+    ]
   },
   "limitations": [
-    "This change defines a bounded manual-pruning experiment over a synthetic short regtest chain; it does not itself establish any pruning result.",
-    "Automatic target pruning, corrupt storage, permissions and disk exhaustion, interrupted pruning or reconstruction, and crash recovery remain untested.",
-    "Reindex or redownload after pruning, reorganization across pruned history, historical-chain replay, sustained operation, public-network peers, and mainnet remain untested.",
+    "The public report observes only the exact ERGON-CHANGE-0007 candidate and cannot promote any later code or operator binary.",
+    "The four passing scenarios establish a bounded synthetic short-chain regtest observation with cross-node synchronization, clean restart, full reindex, chainstate reindex, and manual physical pruning on both roles.",
+    "The pruning oracle observes removal of the first block and undo file pair, a bounded readable prune height, preserved chain and UTXO state across same-datadir restart, and post-prune mining by both roles.",
+    "The normalized report does not serialize raw logs, physical paths, or per-role pruning measurements; those oracles are enforced by the exact signed scenario and are not independently recomputable from the report alone.",
+    "Automatic target pruning, corrupt storage, permissions and disk exhaustion, interrupted pruning or reconstruction, crash recovery, reindex or redownload after pruning, and reorganization across pruned history remain untested.",
+    "Historical-chain replay, sustained operation, public-network peers, and mainnet remain untested.",
     "Binary digests and config.ini source/build bindings do not prove build causality, and the dependency profile is not locked.",
-    "Operator-binary equivalence and mainnet coexistence remain unproved."
+    "Operator-binary equivalence and mainnet coexistence remain unproved.",
+    "This evidence has an assembled-component ceiling and is not an independent reproduction pack."
   ],
   "counterevidence": [
-    "The public ERGON-CHANGE-0006 report observed four passing legacy scenarios, clean restart, full reindex, and chainstate reindex, but did not exercise pruning.",
-    "No public ERGON-CHANGE-0007 candidate, build, scenario result, or evidence artifact exists.",
-    "A future manual-pruning pass cannot establish automatic-pruning, pruned-history recovery, deep-reorganization, public-network, or mainnet behavior."
+    "No contradiction was observed inside the four declared public oracles, including the bounded manual-pruning lifecycle.",
+    "Manual pruning does not establish automatic-pruning, pruned-history recovery, deep-reorganization, public-network, or mainnet behavior.",
+    "Build causality, operator-binary parity, historical-chain and real-datadir parity, sustained operation, and mainnet coexistence remain evidence gaps."
   ],
   "decision": {
     "status": "accepted",
     "reviewer": "Ergon Public Node GitHub Cockpit",
-    "date": "2026-09-02"
+    "date": "2026-09-02",
+    "public_commit": "afaeda8006320bda1dbb41bb3e9f4fe319300ee2"
   }
 }
