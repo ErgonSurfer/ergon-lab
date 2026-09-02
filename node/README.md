@@ -34,7 +34,7 @@ before the next one can begin.
 | Step | Public objective | Current state |
 | ---: | --- | --- |
 | **0 · Foundation** | Preserve the exact Bitcoin Static v24.0.5 tree as the signed public root. | `verified` |
-| **1 · Compatibility** | Build the standalone candidate and falsify differences from the legacy node in mining, relay, validation, and chain following. | `blocked` pending the first public change record |
+| **1 · Compatibility** | Build the standalone candidate and falsify differences from the legacy node in mining, relay, validation, and chain following. | `active` / `Observed`; the first bounded four-scenario regtest report is public, while reindex, pruning, reorganization, operator, historical-chain, and mainnet evidence remain open |
 | **2 · Mainnet coexistence** | Run the candidate on the existing Ergon mainnet beside legacy nodes, with no consensus change. | `blocked` by compatibility and real-chain evidence |
 | **3 · Optional observation** | Prove indexing can be absent, disabled, or explicitly enabled without becoming authoritative. | `blocked` by the preceding node evidence |
 | **4 · Experimental fork testnet** | Test separately reviewed consensus changes—including a possible native-assets model—on a governed testnet. | `blocked` by coexistence and an accepted specification |
@@ -84,12 +84,12 @@ legible.
 | Verify the public baseline snapshot | `verified` | `Observed` |
 | Launch publication gates and cockpit | `verified` | `Explainer` |
 | Establish engineering change evidence | `verified` | `Explainer` |
-| Validate legacy compatibility | `blocked` | `Open Question` |
+| Validate legacy compatibility | `active` | `Observed` |
 | Prove mainnet coexistence with the legacy node | `blocked` | `Open Question` |
 | Verify optional indexing | `blocked` | `Open Question` |
 | Validate the experimental fork on testnet | `blocked` | `Open Question` |
 | Assess a future mainnet fork | `blocked` | `Open Question` |
-| Reproduce the zero-subsidy fixture repair | `active` | `Open Question` |
+| Reproduce the zero-subsidy fixture repair | `active` | `Observed` |
 
 These are evidence-scoped labels, not release promises. Consult the
 [`canonical cockpit`](../cockpit/cockpit.yaml) and

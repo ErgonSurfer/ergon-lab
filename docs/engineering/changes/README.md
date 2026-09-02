@@ -57,7 +57,9 @@ Machine-readable records use IDs such as `ERGON-CHANGE-0001` or
   counterevidence; and
 - the review decision and public commit once known.
 
-For the current optional-indexing stage, the build roles are:
+For the future optional-indexing stage, the build roles are shown below.
+Current public node work remains legacy-only until its compatibility gate is
+closed:
 
 ```text
 compiled-out
