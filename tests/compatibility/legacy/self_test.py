@@ -24,6 +24,11 @@ FEATURE_PATH = Path(__file__).with_name(
 SPEC = importlib.util.spec_from_file_location("legacy_run_matrix", MODULE_PATH)
 MATRIX = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MATRIX)
+FEATURE_SPEC = importlib.util.spec_from_file_location(
+    "legacy_feature", FEATURE_PATH
+)
+FEATURE = importlib.util.module_from_spec(FEATURE_SPEC)
+FEATURE_SPEC.loader.exec_module(FEATURE)
 
 
 def module_literal(path, name):
@@ -37,6 +42,20 @@ def module_literal(path, name):
         ):
             return ast.literal_eval(statement.value)
     raise AssertionError(f"{path.name} omitted {name}")
+
+
+def function_source(path, name):
+    source = path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    for statement in tree.body:
+        if isinstance(statement, (ast.FunctionDef, ast.ClassDef)) \
+                and statement.name == name:
+            return ast.get_source_segment(source, statement)
+        if isinstance(statement, ast.ClassDef):
+            for member in statement.body:
+                if isinstance(member, ast.FunctionDef) and member.name == name:
+                    return ast.get_source_segment(source, member)
+    raise AssertionError(f"{path.name} omitted function {name}")
 
 
 def accepted_record(parent_commit, parent_tree):
@@ -174,13 +193,196 @@ class MatrixContractTest(unittest.TestCase):
         )
         self.assertEqual(
             tuple(item[3].encode("ascii") for item in lifecycles),
-            MATRIX.MIXED_NODE_SUCCESS_MARKERS,
+            MATRIX.MIXED_NODE_SUCCESS_MARKERS[:2],
         )
+
+    def test_physical_pruning_contract(self):
+        feature_source = FEATURE_PATH.read_text(encoding="utf-8")
+        self.assertEqual(
+            module_literal(FEATURE_PATH, "NODE_ARGS"),
+            (
+                "-connect=0",
+                "-disablewallet",
+            ),
+        )
+        self.assertIn(
+            'PRUNE_NODE_ARGS = (*NODE_ARGS, "-prune=1")',
+            feature_source,
+        )
+        self.assertIn(
+            "from test_framework.mininode import P2PInterface",
+            feature_source,
+        )
+        self.assertEqual(module_literal(FEATURE_PATH, "PRUNE_AFTER_HEIGHT"), 1000)
+        self.assertEqual(module_literal(FEATURE_PATH, "MIN_BLOCKS_TO_KEEP"), 288)
+        self.assertEqual(
+            module_literal(FEATURE_PATH, "LARGE_COINBASE_SCRIPT_NOPS"),
+            950000,
+        )
+        self.assertEqual(module_literal(FEATURE_PATH, "LARGE_BLOCK_COUNT"), 150)
+        marker = module_literal(
+            FEATURE_PATH, "PHYSICAL_PRUNING_SUCCESS_MARKER"
+        )
+        self.assertEqual(
+            marker, "ERGON_LEGACY_LIFECYCLE_OK physical-pruning"
+        )
+        self.assertEqual(
+            MATRIX.MIXED_NODE_SUCCESS_MARKERS,
+            (
+                b"ERGON_LEGACY_LIFECYCLE_OK full-reindex",
+                b"ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
+                marker.encode("ascii"),
+            ),
+        )
+
+        mining = function_source(FEATURE_PATH, "mine_large_blocks")
+        for required in (
+            'template = baseline.getblocktemplate()',
+            'template["height"]',
+            'template["coinbasevalue"]',
+            'template["version"]',
+            'template["previousblockhash"]',
+            'template["curtime"]',
+            'template["bits"]',
+            'baseline.getblocktemplate(proposal)',
+            'candidate.getblocktemplate(proposal)',
+            'baseline.submitblock(raw_block)',
+            'candidate.submitblock(raw_block)',
+        ):
+            self.assertIn(required, mining)
+        self.assertLess(
+            mining.index('coinbase.vout[0].nValue'),
+            mining.index('coinbase.rehash()'),
+        )
+        self.assertLess(
+            mining.index('coinbase.vin[0].nSequence = 0xFFFFFFFF'),
+            mining.index('coinbase.rehash()'),
+        )
+        self.assertLess(
+            mining.index('candidate.getblocktemplate(proposal)'),
+            mining.index('baseline.submitblock(raw_block)'),
+        )
+
+        advance = function_source(FEATURE_PATH, "advance_to_prune_boundary")
+        for required in (
+            "disconnect_nodes(self.nodes[0], self.nodes[1])",
+            "self.nodes[0].add_p2p_connection(P2PInterface())",
+            "self.nodes[0].disconnect_p2ps()",
+        ):
+            self.assertIn(required, advance)
+        self.assertLess(
+            advance.index("add_p2p_connection"),
+            advance.index("mine_large_blocks"),
+        )
+        self.assertLess(
+            advance.index("mine_large_blocks"),
+            advance.index("disconnect_p2ps"),
+        )
+        self.assertLess(
+            advance.index("disconnect_p2ps"),
+            advance.index("\n        connect_nodes"),
+        )
+        self.assertLess(
+            advance.index("\n        connect_nodes"),
+            advance.index("mine_and_compare"),
+        )
+        enable = function_source(FEATURE_PATH, "enable_pruning")
+        for required in (
+            "directory_identity(Path(node.datadir))",
+            "self.restart_node(0, extra_args=list(PRUNE_NODE_ARGS))",
+            "self.restart_node(1, extra_args=list(PRUNE_NODE_ARGS))",
+            'assert_equal(chain["pruneheight"], 0)',
+        ):
+            self.assertIn(required, enable)
+        pruning = function_source(FEATURE_PATH, "physical_prune_and_compare")
+        for required in (
+            "node.pruneblockchain(tip_height)",
+            "assert_file_pair_absent(old_pair)",
+            '"Prune: UnlinkPrunedFiles deleted blk/rev (00000)"',
+            '"Prune (Manual): prune_height="',
+            'f"{expected_prune_height} removed "',
+            'chain["size_on_disk"] >= pre_prune_usage[node_index]',
+            "for path in retained_pair:",
+            "1 < prune_height <= expected_prune_height",
+            "assert_equal(prune_heights[1], prune_heights[0])",
+            'assert_equal(chain["pruneheight"], durable_prune_height)',
+            "directory_identity(Path(node.datadir))",
+            'node.getblockheader(old_hash)',
+            '"Block not available (pruned data)"',
+            "self.restart_node(0",
+            "self.restart_node(1",
+            "self.mine_and_compare(0, 1, address)",
+            "self.mine_and_compare(1, 1, address)",
+            "self.log.info(PHYSICAL_PRUNING_SUCCESS_MARKER)",
+        ):
+            self.assertIn(required, pruning)
+        self.assertLess(
+            pruning.rindex("assert_file_pair_absent(old_pair)"),
+            pruning.index("self.mine_and_compare(0, 1, address)"),
+        )
+        self.assertLess(
+            pruning.index("self.mine_and_compare(1, 1, address)"),
+            pruning.index("self.log.info(PHYSICAL_PRUNING_SUCCESS_MARKER)"),
+        )
+        run_test = function_source(FEATURE_PATH, "run_test")
+        self.assertLess(
+            run_test.index("for lifecycle in REINDEX_LIFECYCLES"),
+            run_test.index("self.enable_pruning()"),
+        )
+        self.assertLess(
+            run_test.index("self.enable_pruning()"),
+            run_test.index("self.advance_to_prune_boundary(address)"),
+        )
+
+    def test_pruning_filesystem_helpers(self):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root)
+            root_stat = root_path.stat()
+            self.assertEqual(
+                FEATURE.directory_identity(root_path),
+                (root_stat.st_dev, root_stat.st_ino),
+            )
+
+            regular = root_path / "regular.dat"
+            regular.write_bytes(b"x")
+            regular_stat = regular.stat()
+            self.assertEqual(
+                FEATURE.regular_file_identity(regular),
+                (regular_stat.st_dev, regular_stat.st_ino, 1),
+            )
+            with self.assertRaisesRegex(AssertionError, "not a directory"):
+                FEATURE.directory_identity(regular)
+
+            empty = root_path / "empty.dat"
+            empty.touch()
+            with self.assertRaisesRegex(AssertionError, "nonempty file"):
+                FEATURE.regular_file_identity(empty)
+            with self.assertRaisesRegex(AssertionError, "missing"):
+                FEATURE.regular_file_identity(root_path / "missing.dat")
+
+            symlink = root_path / "linked.dat"
+            symlink.symlink_to(regular)
+            with self.assertRaisesRegex(AssertionError, "symlink"):
+                FEATURE.regular_file_identity(symlink)
+            with self.assertRaisesRegex(AssertionError, "symlink"):
+                FEATURE.directory_identity(symlink)
+
+            absent = (root_path / "absent-blk", root_path / "absent-rev")
+            FEATURE.assert_file_pair_absent(absent)
+            absent[0].write_bytes(b"x")
+            with self.assertRaisesRegex(AssertionError, "survived"):
+                FEATURE.assert_file_pair_absent(absent)
 
     def test_exact_change_inventory(self):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
+                ("M", "tests/compatibility/legacy/README.md"),
+                (
+                    "M",
+                    "tests/compatibility/legacy/"
+                    "feature_ergon_legacy_compatibility.py",
+                ),
                 ("M", "tests/compatibility/legacy/run_matrix.py"),
                 ("M", "tests/compatibility/legacy/self_test.py"),
             ),
@@ -193,73 +395,56 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
+                "tests/compatibility/legacy/README.md":
+                    "54d0f749c3e9a04ff1602d2a1cbd4b2b2a25be10",
+                "tests/compatibility/legacy/"
+                "feature_ergon_legacy_compatibility.py":
+                    "61cf65cc9c4914c52a8478cac6a018cecae80f9c",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "71d5d69941c15b8c9eb26013e4f405ae6028f809",
+                    "4409a90091e22e78a9c4ea538df7b444a4e5118a",
                 "tests/compatibility/legacy/self_test.py":
-                    "bb4b026905878d77bf33a3310c39255f4f6fbe11",
+                    "c6814709277399a98d293950abbfb4f3a47d2ce9",
             },
         )
 
-    def test_parent_record_binds_preimages(self):
+    def test_prior_records_bind_preimages(self):
         source_root = MODULE_PATH.parents[3]
-        parent_record = json.loads(
-            (
-                source_root
-                / "docs/engineering/changes/ergon-change-0005.json"
-            ).read_text(encoding="utf-8")
-        )
-        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0005")
-        parent_postimages = {
-            file_record["path"]: file_record["after"]["git_blob"]
-            for file_record in parent_record["files"]
-            if file_record["path"] in MATRIX.INTEGRATION_PARENT_PREIMAGES
+        expected_by_record = {
+            "ergon-change-0005.json": {
+                "tests/compatibility/legacy/README.md",
+                "tests/compatibility/legacy/"
+                "feature_ergon_legacy_compatibility.py",
+            },
+            "ergon-change-0006.json": {
+                "tests/compatibility/legacy/run_matrix.py",
+                "tests/compatibility/legacy/self_test.py",
+            },
         }
-        self.assertEqual(
-            parent_postimages,
-            MATRIX.INTEGRATION_PARENT_PREIMAGES,
-        )
+        observed = {}
+        for record_name, paths in expected_by_record.items():
+            record = json.loads(
+                (
+                    source_root / "docs/engineering/changes" / record_name
+                ).read_text(encoding="utf-8")
+            )
+            for file_record in record["files"]:
+                if file_record["path"] in paths:
+                    observed[file_record["path"]] = \
+                        file_record["after"]["git_blob"]
+        self.assertEqual(observed, MATRIX.INTEGRATION_PARENT_PREIMAGES)
 
-    def test_0005_review_state_is_visible_counterevidence(self):
+    def test_previous_public_reindex_evidence_is_visible(self):
         source_root = MODULE_PATH.parents[3]
-        parent_record = json.loads(
+        record = json.loads(
             (
                 source_root
-                / "docs/engineering/changes/ergon-change-0005.json"
+                / "docs/engineering/changes/ergon-change-0006.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(parent_record["change_id"], "ERGON-CHANGE-0005")
-        self.assertEqual(parent_record["status"], "under-review")
-        self.assertEqual(parent_record["decision"], {"status": "pending"})
-
-        with tempfile.TemporaryDirectory() as root, mock.patch.object(
-            MATRIX, "run_public_record_validator"
-        ):
-            record_path = Path(root) / MATRIX.PUBLIC_RECORD_PATH
-            record_path.parent.mkdir(parents=True)
-            record_path.write_text(json.dumps(parent_record), encoding="utf-8")
-            with self.assertRaisesRegex(MATRIX.MatrixError, "invalid change_id"):
-                MATRIX.load_change_record(
-                    root,
-                    expected_sha256=MATRIX.sha256_file(record_path),
-                    expected_reviewer_identity="ErgonSurfer",
-                    expected_decision_date="2026-09-02",
-                    expected_integration_parent_commit="6" * 40,
-                    expected_integration_parent_tree="7" * 40,
-                )
-
-            unresolved = json.loads(json.dumps(parent_record))
-            unresolved["change_id"] = MATRIX.CHANGE_ID
-            unresolved["record_path"] = MATRIX.PUBLIC_RECORD_PATH
-            record_path.write_text(json.dumps(unresolved), encoding="utf-8")
-            with self.assertRaisesRegex(MATRIX.MatrixError, "invalid status"):
-                MATRIX.load_change_record(
-                    root,
-                    expected_sha256=MATRIX.sha256_file(record_path),
-                    expected_reviewer_identity="ErgonSurfer",
-                    expected_decision_date="2026-09-02",
-                    expected_integration_parent_commit="6" * 40,
-                    expected_integration_parent_tree="7" * 40,
-                )
+        self.assertEqual(record["change_id"], "ERGON-CHANGE-0006")
+        self.assertEqual(record["status"], "landed")
+        self.assertEqual(record["evidence"]["knowledge_status"], "Observed")
+        self.assertEqual(record["evidence"]["ceiling"], "assembled_component")
 
     def test_current_record_binds_reviewed_file_metadata(self):
         source_root = MODULE_PATH.parents[3]

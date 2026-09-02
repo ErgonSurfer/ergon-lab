@@ -5,17 +5,31 @@
 
 import os
 from pathlib import Path
+import stat
 import sys
 
 
 SOURCE_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(SOURCE_ROOT / "test" / "functional"))
 
+from test_framework.blocktools import create_coinbase  # noqa: E402
+from test_framework.messages import CBlock, ToHex  # noqa: E402
+from test_framework.mininode import P2PInterface  # noqa: E402
+from test_framework.script import CScript, OP_NOP, OP_RETURN  # noqa: E402
 from test_framework.test_framework import BitcoinTestFramework  # noqa: E402
-from test_framework.util import assert_equal, connect_nodes  # noqa: E402
+from test_framework.util import (  # noqa: E402
+    assert_equal,
+    assert_raises_rpc_error,
+    connect_nodes,
+    disconnect_nodes,
+)
 
 
-NODE_ARGS = ("-connect=0", "-disablewallet")
+NODE_ARGS = (
+    "-connect=0",
+    "-disablewallet",
+)
+PRUNE_NODE_ARGS = (*NODE_ARGS, "-prune=1")
 CHAIN_SNAPSHOT_FIELDS = ("blocks", "headers", "bestblockhash", "chainwork")
 UTXO_SNAPSHOT_FIELDS = (
     "height",
@@ -39,6 +53,88 @@ REINDEX_LIFECYCLES = (
         "ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
     ),
 )
+PRUNE_AFTER_HEIGHT = 1000
+MIN_BLOCKS_TO_KEEP = 288
+LARGE_COINBASE_SCRIPT_NOPS = 950000
+LARGE_BLOCK_COUNT = 150
+PHYSICAL_PRUNING_SUCCESS_MARKER = (
+    "ERGON_LEGACY_LIFECYCLE_OK physical-pruning"
+)
+
+
+def mine_large_blocks(nodes, count, script_pub_key):
+    """Submit identical template-bound near-megabyte blocks to both roles."""
+    baseline, candidate = nodes
+    for _ in range(count):
+        template = baseline.getblocktemplate()
+        previous_height = baseline.getblockcount()
+        previous_hash = baseline.getbestblockhash()
+        assert_equal(candidate.getblockcount(), previous_height)
+        assert_equal(candidate.getbestblockhash(), previous_hash)
+        assert_equal(template["height"], previous_height + 1)
+        assert_equal(template["previousblockhash"], previous_hash)
+        assert_equal(template["coinbasevalue"], 0)
+
+        coinbase = create_coinbase(template["height"])
+        coinbase.vout[0].nValue = int(template["coinbasevalue"])
+        coinbase.vout[0].scriptPubKey = script_pub_key
+        coinbase.vin[0].nSequence = 0xFFFFFFFF
+        coinbase.rehash()
+
+        block = CBlock()
+        block.nVersion = template["version"]
+        block.hashPrevBlock = int(template["previousblockhash"], 16)
+        block.nTime = template["curtime"]
+        block.nBits = int(template["bits"], 16)
+        block.nNonce = 0
+        block.vtx = [coinbase]
+        block.hashMerkleRoot = block.calc_merkle_root()
+        block.solve()
+        raw_block = ToHex(block)
+
+        proposal = {"data": raw_block, "mode": "proposal"}
+        assert_equal(baseline.getblocktemplate(proposal), None)
+        assert_equal(candidate.getblocktemplate(proposal), None)
+        assert_equal(baseline.submitblock(raw_block), None)
+        assert_equal(candidate.submitblock(raw_block), None)
+        assert_equal(baseline.getbestblockhash(), candidate.getbestblockhash())
+
+
+def block_file_pair(node, file_number):
+    block_dir = Path(node.datadir) / "regtest" / "blocks"
+    return (
+        block_dir / f"blk{file_number:05d}.dat",
+        block_dir / f"rev{file_number:05d}.dat",
+    )
+
+
+def regular_file_identity(path):
+    if path.is_symlink():
+        raise AssertionError(f"physical block path is a symlink: {path.name}")
+    try:
+        identity = path.stat()
+    except FileNotFoundError as error:
+        raise AssertionError(
+            f"physical block path is missing: {path.name}"
+        ) from error
+    if not stat.S_ISREG(identity.st_mode) or identity.st_size <= 0:
+        raise AssertionError(f"physical block path is not a nonempty file: {path.name}")
+    return (identity.st_dev, identity.st_ino, identity.st_size)
+
+
+def directory_identity(path):
+    if path.is_symlink():
+        raise AssertionError(f"datadir path is a symlink: {path}")
+    identity = path.stat()
+    if not stat.S_ISDIR(identity.st_mode):
+        raise AssertionError(f"datadir path is not a directory: {path}")
+    return (identity.st_dev, identity.st_ino)
+
+
+def assert_file_pair_absent(paths):
+    for path in paths:
+        if path.exists() or path.is_symlink():
+            raise AssertionError(f"pruned physical path survived: {path.name}")
 
 
 class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
@@ -119,6 +215,168 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         self.mine_and_compare(1, 1, address)
         self.log.info(success_marker)
 
+    def advance_to_prune_boundary(self, address):
+        script_pub_key = CScript(
+            [OP_RETURN] + [OP_NOP] * LARGE_COINBASE_SCRIPT_NOPS
+        )
+        disconnect_nodes(self.nodes[0], self.nodes[1])
+        self.nodes[0].add_p2p_connection(P2PInterface())
+        try:
+            mine_large_blocks(self.nodes, LARGE_BLOCK_COUNT, script_pub_key)
+        finally:
+            self.nodes[0].disconnect_p2ps()
+        connect_nodes(self.nodes[0], self.nodes[1])
+        self.assert_common_chain()
+
+        remaining = PRUNE_AFTER_HEIGHT + 1 - self.nodes[0].getblockcount()
+        if remaining <= 1:
+            raise AssertionError("large-block phase left no cross-mining budget")
+        baseline_blocks = (remaining + 1) // 2
+        self.mine_and_compare(0, baseline_blocks, address)
+        self.mine_and_compare(1, remaining - baseline_blocks, address)
+        assert_equal(self.nodes[0].getblockcount(), PRUNE_AFTER_HEIGHT + 1)
+
+    def enable_pruning(self):
+        expected_snapshot = self.assert_common_chain()
+        datadir_identities = [
+            directory_identity(Path(node.datadir)) for node in self.nodes
+        ]
+        self.restart_node(0, extra_args=list(PRUNE_NODE_ARGS))
+        self.restart_node(1, extra_args=list(PRUNE_NODE_ARGS))
+        connect_nodes(self.nodes[0], self.nodes[1])
+        self.sync_all()
+        assert_equal(self.assert_common_chain(), expected_snapshot)
+
+        for node_index, node in enumerate(self.nodes):
+            assert_equal(
+                directory_identity(Path(node.datadir)),
+                datadir_identities[node_index],
+            )
+            chain = node.getblockchaininfo()
+            assert_equal(chain["pruned"], True)
+            assert_equal(chain["automatic_pruning"], False)
+            assert_equal(chain["pruneheight"], 0)
+
+    def physical_prune_and_compare(self, address):
+        expected_snapshot = self.assert_common_chain()
+        tip_height = expected_snapshot["chain"]["blocks"]
+        assert_equal(tip_height, PRUNE_AFTER_HEIGHT + 1)
+        expected_prune_height = tip_height - MIN_BLOCKS_TO_KEEP
+
+        old_hash = self.nodes[0].getblockhash(1)
+        old_raw_block = self.nodes[0].getblock(old_hash, 0)
+        old_header = self.nodes[0].getblockheader(old_hash)
+        physical_pairs = []
+        pre_prune_usage = []
+        old_pair_identities = []
+        datadir_identities = [
+            directory_identity(Path(node.datadir)) for node in self.nodes
+        ]
+
+        for node in self.nodes:
+            assert_equal(node.getblockhash(1), old_hash)
+            assert_equal(node.getblock(old_hash, 0), old_raw_block)
+            assert_equal(node.getblockheader(old_hash), old_header)
+            chain = node.getblockchaininfo()
+            assert_equal(chain["pruned"], True)
+            assert_equal(chain["automatic_pruning"], False)
+            assert_equal(chain["pruneheight"], 0)
+            pre_prune_usage.append(chain["size_on_disk"])
+
+            old_pair = block_file_pair(node, 0)
+            retained_pair = block_file_pair(node, 1)
+            old_pair_identities.append(
+                tuple(regular_file_identity(path) for path in old_pair)
+            )
+            for path in retained_pair:
+                regular_file_identity(path)
+            physical_pairs.append((old_pair, retained_pair))
+
+        for left, right in zip(old_pair_identities[0], old_pair_identities[1]):
+            if left[:2] == right[:2]:
+                raise AssertionError("legacy and candidate block files share an inode")
+
+        log_markers = (
+            "Prune: UnlinkPrunedFiles deleted blk/rev (00000)",
+            (
+                "Prune (Manual): prune_height="
+                f"{expected_prune_height} removed "
+            ),
+        )
+        prune_heights = []
+        first_available_blocks = []
+        for node_index, node in enumerate(self.nodes):
+            with node.assert_debug_log(log_markers):
+                assert_equal(
+                    node.pruneblockchain(tip_height), expected_prune_height
+                )
+            old_pair, retained_pair = physical_pairs[node_index]
+            assert_file_pair_absent(old_pair)
+            for path in retained_pair:
+                regular_file_identity(path)
+
+            chain = node.getblockchaininfo()
+            assert_equal(chain["pruned"], True)
+            assert_equal(chain["automatic_pruning"], False)
+            prune_height = chain["pruneheight"]
+            if not 1 < prune_height <= expected_prune_height:
+                raise AssertionError("pruneheight escaped the retained range")
+            prune_heights.append(prune_height)
+            first_available_blocks.append(
+                node.getblock(node.getblockhash(prune_height), 0)
+            )
+            if chain["size_on_disk"] >= pre_prune_usage[node_index]:
+                raise AssertionError("reported block storage did not shrink")
+            assert_equal(node.getblockheader(old_hash), old_header)
+            assert_raises_rpc_error(
+                -1,
+                "Block not available (pruned data)",
+                node.getblock,
+                old_hash,
+                0,
+            )
+
+        assert_equal(prune_heights[1], prune_heights[0])
+        assert_equal(first_available_blocks[1], first_available_blocks[0])
+        durable_prune_height = prune_heights[0]
+
+        assert_equal(self.assert_common_chain(), expected_snapshot)
+
+        self.restart_node(0, extra_args=list(PRUNE_NODE_ARGS))
+        self.restart_node(1, extra_args=list(PRUNE_NODE_ARGS))
+        connect_nodes(self.nodes[0], self.nodes[1])
+        self.sync_all()
+        assert_equal(self.assert_common_chain(), expected_snapshot)
+        for node_index, node in enumerate(self.nodes):
+            assert_equal(
+                directory_identity(Path(node.datadir)),
+                datadir_identities[node_index],
+            )
+            old_pair, retained_pair = physical_pairs[node_index]
+            assert_file_pair_absent(old_pair)
+            for path in retained_pair:
+                regular_file_identity(path)
+            chain = node.getblockchaininfo()
+            assert_equal(chain["pruned"], True)
+            assert_equal(chain["automatic_pruning"], False)
+            assert_equal(chain["pruneheight"], durable_prune_height)
+            assert_equal(
+                node.getblock(node.getblockhash(durable_prune_height), 0),
+                first_available_blocks[node_index],
+            )
+            assert_equal(node.getblockheader(old_hash), old_header)
+            assert_raises_rpc_error(
+                -1,
+                "Block not available (pruned data)",
+                node.getblock,
+                old_hash,
+                0,
+            )
+
+        self.mine_and_compare(0, 1, address)
+        self.mine_and_compare(1, 1, address)
+        self.log.info(PHYSICAL_PRUNING_SUCCESS_MARKER)
+
     def run_test(self):
         connect_nodes(self.nodes[0], self.nodes[1])
         address = self.nodes[0].get_deterministic_priv_key().address
@@ -138,6 +396,10 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
 
         for lifecycle in REINDEX_LIFECYCLES:
             self.rebuild_and_compare(lifecycle, address)
+
+        self.enable_pruning()
+        self.advance_to_prune_boundary(address)
+        self.physical_prune_and_compare(address)
 
 
 if __name__ == "__main__":

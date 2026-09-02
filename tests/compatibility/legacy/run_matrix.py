@@ -24,8 +24,8 @@ BASE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 PUBLIC_ROOT_TREE = BASE_TREE
 PUBLIC_MAIN_REF = "refs/remotes/origin/main"
-CHANGE_ID = "ERGON-CHANGE-0006"
-PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0006.json"
+CHANGE_ID = "ERGON-CHANGE-0007"
+PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0007.json"
 PUBLIC_SCHEMA_PATH = "docs/engineering/schemas/change-evidence.schema.json"
 PUBLIC_VALIDATOR_PATH = "tools/engineering/check_change.py"
 PUBLIC_SCHEMA_VERSION = "1.1"
@@ -60,6 +60,8 @@ SIGNATURE_CONTRACT = {
     "public_key_sha256": SIGNING_PUBLIC_KEY_SHA256,
 }
 TECHNICAL_CHANGE_ENTRIES = (
+    ("M", "tests/compatibility/legacy/README.md"),
+    ("M", "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py"),
     ("M", "tests/compatibility/legacy/run_matrix.py"),
     ("M", "tests/compatibility/legacy/self_test.py"),
 )
@@ -108,7 +110,8 @@ REVIEWED_FILE_METADATA = {
         "role": "documentation",
         "spdx": "MIT",
         "test_reachability": (
-            "Documents the governed restart and reconstruction lifecycle contract."
+            "Documents the governed restart, reconstruction, and physical-pruning "
+            "lifecycle contract."
         ),
     },
     "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py": {
@@ -122,7 +125,7 @@ REVIEWED_FILE_METADATA = {
         "spdx": "MIT",
         "test_reachability": (
             "Exercises honest two-node coexistence, clean restart, full reindex, "
-            "and chainstate reindex."
+            "chainstate reindex, and manual physical pruning."
         ),
     },
     "tests/compatibility/legacy/run_matrix.py": {
@@ -135,8 +138,8 @@ REVIEWED_FILE_METADATA = {
         "role": "harness",
         "spdx": "MIT",
         "test_reachability": (
-            "Runs the identity-bound fail-closed public matrix and requires both "
-            "reconstruction lifecycle markers."
+            "Runs the identity-bound fail-closed public matrix and requires all "
+            "reviewed lifecycle markers."
         ),
     },
     "tests/compatibility/legacy/self_test.py": {
@@ -149,8 +152,8 @@ REVIEWED_FILE_METADATA = {
         "role": "test",
         "spdx": "MIT",
         "test_reachability": (
-            "Covers runner contracts, reconstruction lifecycle canaries, record "
-            "binding, and fail-closed paths."
+            "Covers runner contracts, reconstruction and physical-pruning "
+            "canaries, record binding, and fail-closed paths."
         ),
     },
 }
@@ -166,10 +169,14 @@ BASELINE_CONTROLLED_PATHS = (
     "src",
 )
 INTEGRATION_PARENT_PREIMAGES = {
+    "tests/compatibility/legacy/README.md":
+        "54d0f749c3e9a04ff1602d2a1cbd4b2b2a25be10",
+    "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
+        "61cf65cc9c4914c52a8478cac6a018cecae80f9c",
     "tests/compatibility/legacy/run_matrix.py":
-        "71d5d69941c15b8c9eb26013e4f405ae6028f809",
+        "4409a90091e22e78a9c4ea538df7b444a4e5118a",
     "tests/compatibility/legacy/self_test.py":
-        "bb4b026905878d77bf33a3310c39255f4f6fbe11",
+        "c6814709277399a98d293950abbfb4f3a47d2ce9",
 }
 BUILD_ROLES = ("baseline", "candidate")
 INTEGRATION_PARENT_BINDING = {
@@ -204,6 +211,7 @@ CHILD_ENVIRONMENT = {
 MIXED_NODE_SUCCESS_MARKERS = (
     b"ERGON_LEGACY_LIFECYCLE_OK full-reindex",
     b"ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
+    b"ERGON_LEGACY_LIFECYCLE_OK physical-pruning",
 )
 ALLOWED_ABSOLUTE_RECORD_VALUES = {CHILD_ENVIRONMENT["PATH"]}
 POSIX_ABSOLUTE_PATH_RE = re.compile(

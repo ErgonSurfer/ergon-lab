@@ -36,7 +36,14 @@ aliases or implicit role defaults. It executes exactly:
   a full `-reindex` and a chainstate-only `-reindex-chainstate`. Each lifecycle
   requires its daemon log markers after the restart offset, restores the exact
   pre-rebuild chain, UTXO commitment and raw-tip snapshot, then accepts one new
-  block mined by each role;
+  block mined by each role. Only after both reindex lifecycles, it restarts the
+  same datadirs with manual pruning enabled, submits the same 150 near-megabyte,
+  baseline-template-bound blocks to both disconnected roles, mines small blocks
+  to height 1001, and manually prunes both datadirs. The pruning oracle requires
+  fresh daemon markers, physical removal of `blk00000.dat` and `rev00000.dat`,
+  retention of the next file pair, reduced reported storage, preserved headers
+  but unavailable pruned block data, exact tip and UTXO state, clean restart,
+  and post-prune mining by each role;
 - `legacy-mining-baseline`: the corrected zero-subsidy mining fixture against
   the baseline daemon;
 - `legacy-mining-candidate`: the same fixture against the candidate daemon;
@@ -80,6 +87,9 @@ and normalized signature results. Before a reviewed public run, every
 compatibility claim remains an Open Question. A private run cannot promote the
 public evidence status.
 
-This remains a short, clean-shutdown regtest comparison. It does not exercise
-pruning, corrupt storage, interrupted reconstruction, crash recovery, deep
-reorganizations, sustained operation, public-network peers, or mainnet.
+This remains a bounded, clean-shutdown regtest comparison. Its pruning check is
+manual (`-prune=1`) and uses synthetic consensus-valid blocks; it does not test
+automatic target pruning, corrupt storage, permissions or disk exhaustion,
+interrupted pruning or reconstruction, crash recovery, reindex or redownload
+after pruning, deep reorganizations across pruned history, historical-chain
+replay, sustained operation, public-network peers, or mainnet.
