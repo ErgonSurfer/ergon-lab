@@ -1,0 +1,335 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0002",
+  "stage": "legacy-compatibility",
+  "status": "accepted",
+  "record_path": "docs/engineering/changes/ergon-change-0002.json",
+  "purpose": {
+    "summary": "Repair the public legacy-compatibility harness import closure without changing node behavior or consensus.",
+    "scope": [
+      "Restore the Bitcoin Static v24.0.5 functional-framework helper contracts while preserving hermetic child process environments.",
+      "Bind the exact four-path correction and require a real framework import before public evidence can run."
+    ],
+    "exclusions": [
+      "No production-node, consensus, activation, native-asset, optional-indexing, testnet, or mainnet-parameter change.",
+      "No private source, history, operator material, host metadata, binary, or incoming evidence."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "09557e7f5eaf0539aa7313317bdf3535591cd0b9",
+      "tree": "81565d34a357bbf35cd38414eefa748bfcc37e99"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "ecf64d462ef30beb7abb659dd62ccfb45a430d84292e9d4748f0b70cc8bab01d",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [],
+  "files": [
+    {
+      "path": "test/functional/test_framework/test_framework.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 26413,
+        "git_blob": "71452d1505f8ba1f88dbbd8d6917689b16b8cc03",
+        "sha256": "7febdf106bc954d86f3ec482dc5348db45dbe39106f4e7145a35c4bca1001bf8"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 25592,
+        "git_blob": "ee486a8d30cf3cf659313c824f231fbb1546ef09",
+        "sha256": "b5744185287483d18c2e122ddfbfc2e2a032e470c9f9f6c91a333f76f02c710b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; functional test framework only.",
+      "test_reachability": "Propagates the explicit hermetic-launch option."
+    },
+    {
+      "path": "test/functional/test_framework/test_node.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 24106,
+        "git_blob": "8b60029180e6b141bba9c0ec3283a41f743a0bb2",
+        "sha256": "fdfa25cf830c5f597798f4d40c6a32806406705568decbcad504abe4c511fcd5"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 23982,
+        "git_blob": "8e7788da6bc9ea039d2616ae2cadc4d5c7ce9641",
+        "sha256": "699be2fd8572f448eda78eb50e9af8f7a98b10b65d7223c26d730393a3c79e5d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; functional test framework only.",
+      "test_reachability": "Closes node child environments and assigns unique TMPDIR paths."
+    },
+    {
+      "path": "tests/compatibility/legacy/run_matrix.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100755",
+        "bytes": 47928,
+        "git_blob": "3e88c160983b7f5d3acc5ede8fe17c2d0654f72b",
+        "sha256": "dca7d6e615a898ae157f8bd90e7cd7147deabb3b7bb1cd7d5c79f1a3e97e79a2"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 47868,
+        "git_blob": "f4d1294040a351a64834c34961ef0eaa8edf58c6",
+        "sha256": "73d76b0352367315802460be00d4da7c9b85f5e2fdfc3f0bc7c2a250a7f9b0ca"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; governed compatibility harness only.",
+      "test_reachability": "Runs the identity-bound fail-closed public evidence matrix."
+    },
+    {
+      "path": "tests/compatibility/legacy/self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 40112,
+        "git_blob": "28fa1b8655a7d567722ce202e55104bc4011a80a",
+        "sha256": "4ed20401f143676afc2bed15845636f65552aba9776f91e99d1e03f31ac1cd42"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 41670,
+        "git_blob": "60302ca15a529aa5fac846b086e463e38d8695d0",
+        "sha256": "61ae45d024b833106721b26af0d1e87bd3e744dc650d3acdb50eade4a141e4bd"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; governed compatibility tests only.",
+      "test_reachability": "Covers runner contracts and fail-closed paths."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": false,
+    "ui": false,
+    "build_release": false,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "baseline",
+        "commands": [
+          "Configure and build the exact Bitcoin Static v24.0.5 public baseline with the reviewed dependency profile."
+        ],
+        "expected_results": [
+          "The baseline daemon is bound to the exact baseline commit, tree, build profile, and binary digest."
+        ]
+      },
+      {
+        "role": "candidate",
+        "commands": [
+          "Configure and build the exact direct-child public correction with the same reviewed dependency profile."
+        ],
+        "expected_results": [
+          "The candidate daemon is bound to the reviewed correction commit, tree, build profile, and binary digest."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "mixed-node-coexistence",
+        "command": "Run the governed two-node legacy/candidate coexistence scenario.",
+        "expected_results": [
+          "Alternating mining, relay, restart, chain, UTXO commitment, and raw-tip projections match."
+        ],
+        "failure_conditions": [
+          "Any process, chain, UTXO, raw-tip, cleanup, identity, or success-marker divergence fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-baseline",
+        "command": "Run the corrected zero-subsidy mining fixture with the baseline daemon.",
+        "expected_results": [
+          "The inherited mining fixture passes without skip under the exact baseline role."
+        ],
+        "failure_conditions": [
+          "Any skip, timeout, nonzero exit, identity mismatch, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-candidate",
+        "command": "Run the corrected zero-subsidy mining fixture with the candidate daemon.",
+        "expected_results": [
+          "The inherited mining fixture passes without skip under the exact candidate role."
+        ],
+        "failure_conditions": [
+          "Any skip, timeout, nonzero exit, identity mismatch, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "inherited-functional-default-launch",
+        "command": "Run the unchanged inherited feature_abortnode.py selection through its default node-launch path.",
+        "expected_results": [
+          "The inherited default-launch scenario passes with byte-equivalent selection."
+        ],
+        "failure_conditions": [
+          "Any inherited-selection drift, skip, timeout, nonzero exit, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "Ubuntu 22.04 arm64 with the reviewed public dependency profile",
+        "macOS arm64 local contradiction testing only"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "No signed public repair candidate, public build, execution, report, mainnet peer, consensus change, or activation is claimed.",
+    "This change repairs only the public functional-framework import closure; it does not itself establish any legacy-compatibility runtime result.",
+    "A future successful four-scenario matrix may reproduce only the corrected ERGON-CHANGE-0002 state; it cannot retroactively reproduce the broken ERGON-CHANGE-0001 commit.",
+    "Phase 2 remains open: reindex, pruning, and reorganization gates are separate later legacy-only changes.",
+    "Binary digests and config.ini source/build bindings do not prove build causality.",
+    "The dependency profile is not locked, and operator-binary equivalence and mainnet coexistence remain unproved.",
+    "If origin/main advances before reconstruction, the parent and all controlled preimages must be reviewed again instead of rebasing silently."
+  ],
+  "counterevidence": [
+    "The signed public ERGON-CHANGE-0001 commit 09557e7f5eaf0539aa7313317bdf3535591cd0b9 cannot import test_framework.test_framework because its modified framework expects chain-generalization symbols and helper signatures absent from the public Bitcoin Static test utility; syntax compilation and the successful publication workflow did not exercise this import boundary.",
+    "The four proposed repair postimages have only private diagnostic import and self-test observations; no signed public repair commit, public build, four-scenario execution, or public evidence artifact exists.",
+    "Because execution stops at import, ERGON-CHANGE-0001 supplies no public mixed-node coexistence, restart, mining, or inherited-default-launch result; every such outcome remains an Open Question for the corrected change."
+  ],
+  "decision": {
+    "status": "accepted",
+    "reviewer": "Ergon Public Node GitHub Cockpit",
+    "date": "2026-09-02"
+  }
+}

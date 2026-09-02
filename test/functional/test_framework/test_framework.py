@@ -30,7 +30,6 @@ from .util import (
     p2p_port,
     PortSeed,
     rpc_port,
-    REGTEST_CHAIN,
     set_node_times,
     sync_blocks,
     sync_mempools,
@@ -104,7 +103,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         self.rpc_timeout = 60
         self.supports_cli = False
         self.bind_to_localhost_only = True
-        self.chain = REGTEST_CHAIN
 
     def main(self):
         """Main function. This should not be overridden by the subclass test scripts."""
@@ -338,7 +336,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
                 extra_args=extra_args[i],
                 use_cli=self.options.usecli,
                 emulator=self.options.emulator,
-                chain=self.chain,
                 hermetic_env=self.options.hermetic_child_env,
             ))
             if self.options.axionactivation:
@@ -470,8 +467,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         Afterward, create num_nodes copies from the cache."""
 
         assert self.num_nodes <= MAX_NODES
-        assert self.chain == REGTEST_CHAIN, \
-            "Cached functional-test chains support regtest only"
         create_cache = False
         for i in range(MAX_NODES):
             if not os.path.isdir(get_datadir_path(self.options.cachedir, i)):
@@ -503,7 +498,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
                     mocktime=self.mocktime,
                     coverage_dir=None,
                     emulator=self.options.emulator,
-                    chain=self.chain,
                     hermetic_env=self.options.hermetic_child_env,
                 ))
                 self.nodes[i].clear_default_args()
@@ -578,7 +572,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         Create an empty blockchain and num_nodes wallets.
         Useful if a test case wants complete control over initialization."""
         for i in range(self.num_nodes):
-            initialize_datadir(self.options.tmpdir, i, self.chain)
+            initialize_datadir(self.options.tmpdir, i)
 
     def skip_if_no_py3_zmq(self):
         """Attempt to import the zmq package and skip the test if the import fails."""
@@ -602,24 +596,12 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         if not self.is_cli_compiled():
             raise SkipTest("bitcoin-cli has not been compiled.")
 
-    def skip_if_no_chronik_observer(self):
-        """Skip the test if the in-memory Chronik observer is not compiled."""
-        if not self.is_chronik_observer_compiled():
-            raise SkipTest("bitcoind has not been built with the Chronik observer.")
-
     def is_cli_compiled(self):
         """Checks whether bitcoin-cli was compiled."""
         config = configparser.ConfigParser()
         config.read_file(open(self.options.configfile, encoding='utf-8'))
 
         return config["components"].getboolean("ENABLE_CLI")
-
-    def is_chronik_observer_compiled(self):
-        """Check whether the in-memory Chronik observer was compiled."""
-        config = configparser.ConfigParser()
-        config.read_file(open(self.options.configfile, encoding='utf-8'))
-
-        return config["components"].getboolean("ENABLE_CHRONIK_OBSERVER")
 
     def is_wallet_compiled(self):
         """Checks whether the wallet module was compiled."""

@@ -25,7 +25,6 @@ from .messages import COIN, CTransaction, FromHex
 from .util import (
     append_config,
     delete_cookie_file,
-    get_chain_datadir,
     get_rpc_proxy,
     p2p_port,
     rpc_url,
@@ -60,7 +59,7 @@ class TestNode():
 
     def __init__(self, i, datadir, *, host, rpc_port, p2p_port, timewait, bitcoind,
                  bitcoin_cli, mocktime, coverage_dir, extra_conf=None, extra_args=None,
-                 use_cli=False, emulator=None, chain="regtest", hermetic_env=False):
+                 use_cli=False, emulator=None, hermetic_env=False):
         self.index = i
         self.datadir = datadir
         self.bitcoinconf = os.path.join(self.datadir, "bitcoin.conf")
@@ -69,7 +68,6 @@ class TestNode():
         self.host = host
         self.rpc_port = rpc_port
         self.p2p_port = p2p_port
-        self.chain = chain
         self.hermetic_env = hermetic_env
         self.process_start_count = 0
         self.name = "testnode-{}".format(i)
@@ -213,7 +211,7 @@ class TestNode():
         # Delete any existing cookie file -- if such a file exists (eg due to
         # unclean shutdown), it will get overwritten anyway by bitcoind, and
         # potentially interfere with our attempt to authenticate
-        delete_cookie_file(self.datadir, self.chain)
+        delete_cookie_file(self.datadir)
 
         if self.hermetic_env:
             self.process_start_count += 1
@@ -258,7 +256,7 @@ class TestNode():
                 raise FailedToStartError(self._node_msg(
                     'bitcoind exited with status {} during initialization'.format(self.process.returncode)))
             try:
-                rpc = get_rpc_proxy(rpc_url(self.datadir, self.host, self.rpc_port, self.chain),
+                rpc = get_rpc_proxy(rpc_url(self.datadir, self.host, self.rpc_port),
                                     self.index, timeout=self.rpc_timeout, coveragedir=self.coverage_dir)
                 rpc.getblockcount()
                 # If the call to getblockcount() succeeds then the RPC
@@ -361,8 +359,7 @@ class TestNode():
     @contextlib.contextmanager
     def assert_debug_log(self, expected_msgs, timeout=2):
         time_end = time.time() + timeout
-        debug_log = os.path.join(
-            self.datadir, get_chain_datadir(self.chain), 'debug.log')
+        debug_log = os.path.join(self.datadir, 'regtest', 'debug.log')
         with open(debug_log, encoding='utf-8') as dl:
             dl.seek(0, 2)
             prev_size = dl.tell()

@@ -27,7 +27,7 @@ def accepted_record(parent_commit, parent_tree):
         "$comment": "SPDX-License-Identifier: MIT",
         "$schema": "../schemas/change-evidence.schema.json",
         "schema_version": MATRIX.PUBLIC_SCHEMA_VERSION,
-        "change_id": "ERGON-CHANGE-0001",
+        "change_id": MATRIX.CHANGE_ID,
         "record_path": MATRIX.PUBLIC_RECORD_PATH,
         "stage": "legacy-compatibility",
         "status": "accepted",
@@ -117,16 +117,10 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
-                ("M", "test/functional/mining_basic.py"),
                 ("M", "test/functional/test_framework/test_framework.py"),
                 ("M", "test/functional/test_framework/test_node.py"),
-                ("A", "tests/compatibility/legacy/README.md"),
-                (
-                    "A",
-                    "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py",
-                ),
-                ("A", "tests/compatibility/legacy/run_matrix.py"),
-                ("A", "tests/compatibility/legacy/self_test.py"),
+                ("M", "tests/compatibility/legacy/run_matrix.py"),
+                ("M", "tests/compatibility/legacy/self_test.py"),
             ),
         )
         self.assertEqual(
@@ -137,14 +131,48 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
-                "test/functional/mining_basic.py":
-                    "c4ae4b6e967b62c52165511d0201ba21c63ec343",
                 "test/functional/test_framework/test_framework.py":
-                    "9b33040f3b052f797f1c2723b7d3f1465a92d9c1",
+                    "71452d1505f8ba1f88dbbd8d6917689b16b8cc03",
                 "test/functional/test_framework/test_node.py":
-                    "a967b07f2366c7436b8ef2674d995b01b42c665e",
+                    "8b60029180e6b141bba9c0ec3283a41f743a0bb2",
+                "tests/compatibility/legacy/run_matrix.py":
+                    "3e88c160983b7f5d3acc5ede8fe17c2d0654f72b",
+                "tests/compatibility/legacy/self_test.py":
+                    "28fa1b8655a7b567722ce202e55104bc4011a80a",
             },
         )
+
+    def test_public_framework_imports_against_legacy_helpers(self):
+        source_root = MODULE_PATH.parents[3]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        "import inspect, sys; "
+                        "sys.path.insert(0, 'test/functional'); "
+                        "from test_framework import util; "
+                        "from test_framework.test_framework import BitcoinTestFramework; "
+                        "from test_framework.test_node import TestNode; "
+                        "assert str(inspect.signature(util.initialize_datadir)) == '(dirname, n)'; "
+                        "assert str(inspect.signature(util.rpc_url)) == '(datadir, host, port)'; "
+                        "assert str(inspect.signature(util.delete_cookie_file)) == '(datadir)'; "
+                        "assert 'chain' not in inspect.signature(TestNode.__init__).parameters; "
+                        "assert 'hermetic_env' in inspect.signature(TestNode.__init__).parameters; "
+                        "assert not hasattr(BitcoinTestFramework, 'is_chronik_observer_compiled'); "
+                        "print('imports-ok')"
+                    ),
+                ],
+                cwd=source_root,
+                env=MATRIX.child_environment(tmpdir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8"))
+        self.assertEqual(result.stdout, b"imports-ok\n")
 
     def test_parent_cli_identity_is_mandatory_unique_and_lowercase(self):
         base = [
@@ -690,7 +718,7 @@ class MatrixContractTest(unittest.TestCase):
                 "sha256": after[path]["sha256"],
             })
         inventory = {
-            "change_id": "ERGON-CHANGE-0001",
+            "change_id": MATRIX.CHANGE_ID,
             "entries": provenance_entries,
             "schema": "ergon-authorship-inventory/v1",
         }

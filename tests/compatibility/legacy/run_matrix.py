@@ -24,7 +24,8 @@ BASE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 PUBLIC_ROOT_TREE = BASE_TREE
 PUBLIC_MAIN_REF = "refs/remotes/origin/main"
-PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0001.json"
+CHANGE_ID = "ERGON-CHANGE-0002"
+PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0002.json"
 PUBLIC_SCHEMA_PATH = "docs/engineering/schemas/change-evidence.schema.json"
 PUBLIC_VALIDATOR_PATH = "tools/engineering/check_change.py"
 PUBLIC_SCHEMA_VERSION = "1.1"
@@ -59,13 +60,10 @@ SIGNATURE_CONTRACT = {
     "public_key_sha256": SIGNING_PUBLIC_KEY_SHA256,
 }
 TECHNICAL_CHANGE_ENTRIES = (
-    ("M", "test/functional/mining_basic.py"),
     ("M", "test/functional/test_framework/test_framework.py"),
     ("M", "test/functional/test_framework/test_node.py"),
-    ("A", "tests/compatibility/legacy/README.md"),
-    ("A", "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py"),
-    ("A", "tests/compatibility/legacy/run_matrix.py"),
-    ("A", "tests/compatibility/legacy/self_test.py"),
+    ("M", "tests/compatibility/legacy/run_matrix.py"),
+    ("M", "tests/compatibility/legacy/self_test.py"),
 )
 GIT_OPERATION_NAMES = {"A": "add", "D": "delete", "M": "modify"}
 REVIEWED_FILE_METADATA = {
@@ -157,14 +155,16 @@ BASELINE_CONTROLLED_PATHS = (
     "cmake",
     "configure.ac",
     "src",
-    "test",
 )
 INTEGRATION_PARENT_PREIMAGES = {
-    "test/functional/mining_basic.py": "c4ae4b6e967b62c52165511d0201ba21c63ec343",
     "test/functional/test_framework/test_framework.py":
-        "9b33040f3b052f797f1c2723b7d3f1465a92d9c1",
+        "71452d1505f8ba1f88dbbd8d6917689b16b8cc03",
     "test/functional/test_framework/test_node.py":
-        "a967b07f2366c7436b8ef2674d995b01b42c665e",
+        "8b60029180e6b141bba9c0ec3283a41f743a0bb2",
+    "tests/compatibility/legacy/run_matrix.py":
+        "3e88c160983b7f5d3acc5ede8fe17c2d0654f72b",
+    "tests/compatibility/legacy/self_test.py":
+        "28fa1b8655a7b567722ce202e55104bc4011a80a",
 }
 BUILD_ROLES = ("baseline", "candidate")
 INTEGRATION_PARENT_BINDING = {
@@ -536,7 +536,7 @@ def load_change_record(source_root, *, expected_sha256,
         "$comment": "SPDX-License-Identifier: MIT",
         "$schema": "../schemas/change-evidence.schema.json",
         "schema_version": PUBLIC_SCHEMA_VERSION,
-        "change_id": "ERGON-CHANGE-0001",
+        "change_id": CHANGE_ID,
         "record_path": PUBLIC_RECORD_PATH,
         "stage": "legacy-compatibility",
         "status": "accepted",
@@ -684,7 +684,7 @@ def validate_recorded_files(source_root, integration_parent_commit,
         raise MatrixError("public change record changed the technical file set")
     provenance_inventory = record.get("provenance_inventory", {})
     inventory = {
-        "change_id": "ERGON-CHANGE-0001",
+        "change_id": CHANGE_ID,
         "entries": provenance_entries,
         "schema": "ergon-authorship-inventory/v1",
     }
