@@ -34,7 +34,7 @@ before the next one can begin.
 | Step | Public objective | Current state |
 | ---: | --- | --- |
 | **0 · Foundation** | Preserve the exact Bitcoin Static v24.0.5 tree as the signed public root. | `verified` |
-| **1 · Compatibility** | Build the standalone candidate and falsify differences from the legacy node in mining, relay, validation, and chain following. | `active` / `Observed`; the first bounded four-scenario regtest report is public, while reindex, pruning, reorganization, operator, historical-chain, and mainnet evidence remain open |
+| **1 · Compatibility** | Build the standalone candidate and falsify differences from the legacy node in mining, relay, validation, and chain following. | `active` / `Observed`; public `assembled_component` evidence covers the four bounded legacy scenarios plus clean restart, full reindex, and chainstate reindex on a short regtest chain. Pruning, corruption handling, crash recovery, deep reorganization, sustained public-network operation, operator-build provenance, historical-chain behavior, and mainnet evidence remain open |
 | **2 · Mainnet coexistence** | Run the candidate on the existing Ergon mainnet beside legacy nodes, with no consensus change. | `blocked` by compatibility and real-chain evidence |
 | **3 · Optional observation** | Prove indexing can be absent, disabled, or explicitly enabled without becoming authoritative. | `blocked` by the preceding node evidence |
 | **4 · Experimental fork testnet** | Test separately reviewed consensus changes—including a possible native-assets model—on a governed testnet. | `blocked` by coexistence and an accepted specification |
