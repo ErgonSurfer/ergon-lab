@@ -24,8 +24,8 @@ BASE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 PUBLIC_ROOT_TREE = BASE_TREE
 PUBLIC_MAIN_REF = "refs/remotes/origin/main"
-CHANGE_ID = "ERGON-CHANGE-0010"
-PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0010.json"
+CHANGE_ID = "ERGON-CHANGE-0014"
+PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0014.json"
 PUBLIC_SCHEMA_PATH = "docs/engineering/schemas/change-evidence.schema.json"
 PUBLIC_VALIDATOR_PATH = "tools/engineering/check_change.py"
 PUBLIC_SCHEMA_VERSION = "1.1"
@@ -60,6 +60,7 @@ SIGNATURE_CONTRACT = {
     "public_key_sha256": SIGNING_PUBLIC_KEY_SHA256,
 }
 TECHNICAL_CHANGE_ENTRIES = (
+    ("M", "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py"),
     ("M", "tests/compatibility/legacy/run_matrix.py"),
     ("M", "tests/compatibility/legacy/self_test.py"),
 )
@@ -169,10 +170,12 @@ BASELINE_CONTROLLED_PATHS = (
     "src",
 )
 INTEGRATION_PARENT_PREIMAGES = {
+    "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
+        "dbb55bf49eb19eda153139fd26e415c1ebcf5697",
     "tests/compatibility/legacy/run_matrix.py":
-        "735442bf32fddb8675ba49d7c196aada50314f56",
+        "364f96de47630dc73f346f8893458007a168423b",
     "tests/compatibility/legacy/self_test.py":
-        "5e0e3cb7e04877918fee4813b9ab912d8816c8d6",
+        "2272e3fa182fd782a0d423d22bb2435d3c4dbe60",
 }
 BUILD_ROLES = ("baseline", "candidate")
 INTEGRATION_PARENT_BINDING = {

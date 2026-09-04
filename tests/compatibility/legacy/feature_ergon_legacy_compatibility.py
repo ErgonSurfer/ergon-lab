@@ -58,6 +58,7 @@ PRUNE_AFTER_HEIGHT = 1000
 MIN_BLOCKS_TO_KEEP = 288
 LARGE_COINBASE_SCRIPT_NOPS = 950000
 LARGE_BLOCK_COUNT = 150
+GENERATE_BATCH_SIZE = 50
 PHYSICAL_PRUNING_SUCCESS_MARKER = (
     "ERGON_LEGACY_LIFECYCLE_OK physical-pruning"
 )
@@ -225,7 +226,14 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         return legacy_snapshot
 
     def mine_and_compare(self, miner, blocks, address):
-        self.nodes[miner].generatetoaddress(blocks, address)
+        remaining = blocks
+        while remaining:
+            batch_size = min(remaining, GENERATE_BATCH_SIZE)
+            generated = self.nodes[miner].generatetoaddress(
+                batch_size, address
+            )
+            assert_equal(len(generated), batch_size)
+            remaining -= batch_size
         self.sync_all([self.nodes[:2]])
         self.assert_common_chain()
 

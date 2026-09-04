@@ -300,6 +300,7 @@ class MatrixContractTest(unittest.TestCase):
             950000,
         )
         self.assertEqual(module_literal(FEATURE_PATH, "LARGE_BLOCK_COUNT"), 150)
+        self.assertEqual(module_literal(FEATURE_PATH, "GENERATE_BATCH_SIZE"), 50)
         marker = module_literal(
             FEATURE_PATH, "PHYSICAL_PRUNING_SUCCESS_MARKER"
         )
@@ -419,6 +420,53 @@ class MatrixContractTest(unittest.TestCase):
             run_test.index("self.advance_to_prune_boundary(address)"),
         )
 
+    def test_cross_mining_uses_bounded_rpc_batches(self):
+        for blocks, expected_batches in (
+            (1, [1]),
+            (2, [2]),
+            (50, [50]),
+            (415, [50] * 8 + [15]),
+        ):
+            events = []
+            miner = mock.Mock()
+            miner.generatetoaddress.side_effect = (
+                lambda count, address: events.append(
+                    ("generate", count, address)
+                ) or ["hash"] * count
+            )
+            harness = mock.Mock(unsafe=True)
+            harness.nodes = [miner, mock.Mock()]
+            harness.sync_all.side_effect = (
+                lambda nodes: events.append(("sync", nodes))
+            )
+            harness.assert_common_chain.side_effect = (
+                lambda: events.append(("compare",))
+            )
+
+            FEATURE.ErgonLegacyCompatibilityTest.mine_and_compare(
+                harness, 0, blocks, "address"
+            )
+
+            self.assertEqual(
+                miner.generatetoaddress.call_args_list,
+                [mock.call(batch, "address") for batch in expected_batches],
+            )
+            self.assertEqual(sum(expected_batches), blocks)
+            self.assertEqual(events[-2][0], "sync")
+            self.assertEqual(events[-1], ("compare",))
+            harness.sync_all.assert_called_once_with([harness.nodes[:2]])
+            harness.assert_common_chain.assert_called_once_with()
+
+        incomplete = mock.Mock(unsafe=True)
+        incomplete.nodes = [mock.Mock(), mock.Mock()]
+        incomplete.nodes[0].generatetoaddress.return_value = []
+        with self.assertRaises(AssertionError):
+            FEATURE.ErgonLegacyCompatibilityTest.mine_and_compare(
+                incomplete, 0, 1, "address"
+            )
+        incomplete.sync_all.assert_not_called()
+        incomplete.assert_common_chain.assert_not_called()
+
     def test_pruning_filesystem_helpers(self):
         with tempfile.TemporaryDirectory() as root:
             root_path = Path(root)
@@ -462,6 +510,7 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
+                ("M", "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py"),
                 ("M", "tests/compatibility/legacy/run_matrix.py"),
                 ("M", "tests/compatibility/legacy/self_test.py"),
             ),
@@ -474,10 +523,12 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
+                "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
+                    "dbb55bf49eb19eda153139fd26e415c1ebcf5697",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "735442bf32fddb8675ba49d7c196aada50314f56",
+                    "364f96de47630dc73f346f8893458007a168423b",
                 "tests/compatibility/legacy/self_test.py":
-                    "5e0e3cb7e04877918fee4813b9ab912d8816c8d6",
+                    "2272e3fa182fd782a0d423d22bb2435d3c4dbe60",
             },
         )
 
@@ -485,6 +536,9 @@ class MatrixContractTest(unittest.TestCase):
         source_root = MODULE_PATH.parents[3]
         expected_by_record = {
             "ergon-change-0009.json": {
+                "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py",
+            },
+            "ergon-change-0010.json": {
                 "tests/compatibility/legacy/run_matrix.py",
                 "tests/compatibility/legacy/self_test.py",
             },
