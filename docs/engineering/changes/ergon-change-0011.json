@@ -1,0 +1,316 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0011",
+  "stage": "legacy-compatibility",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0011.json",
+  "purpose": {
+    "summary": "Add a public, dependency-locked GitHub-hosted ARM64 reproduction gate for the exact accepted ERGON-CHANGE-0010 legacy-compatibility matrix.",
+    "scope": [
+      "Build the exact public baseline and technical candidate from fresh public clones in distinct roots on a fresh GitHub-hosted Ubuntu 22.04 ARM64 virtual machine.",
+      "Pin the Dockerfile frontend and Ubuntu container by immutable OCI digests, resolve the build profile from one signed Ubuntu archive snapshot, and record the complete installed package set and public build provenance.",
+      "Run the exact accepted ERGON-CHANGE-0010 matrix at commit 889212482c964ec98dcc2ac55321cb0e04e17666 and compare a positive allowlisted semantic projection against the existing public Observed report.",
+      "Keep both matrix reports Observed and emit only a proposed Reproduced comparison that requires separate external review before any evidence promotion."
+    ],
+    "exclusions": [
+      "No production-node build-system or release-pipeline change, and no consensus, validation, P2P, storage, RPC, wallet, Chronik, activation, testnet, mainnet, or operator-binary change.",
+      "No modification of the accepted ERGON-CHANGE-0010 technical target, runner, scenarios, inherited test selection, or existing Observed report.",
+      "No deterministic-build, byte-identical-binary, historical-chain, public-network, sustained-operation, or mainnet-coexistence claim.",
+      "No incoming evidence, workflow artifact, proof promotion, private source, private history, operator material, host path, parent environment, secret, cache, binary, or datadir."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "c8cb14126de69c69f443f7ad07f561f17b34b89b",
+      "tree": "b91dd02dd63d840cac396f21de8161891f2a852e"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "acfb32beabf990a8cc9f8e0a7f69d179748a6aa6b1e49f8a318a0c504d3d86b3",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [],
+  "files": [
+    {
+      "path": ".github/workflows/legacy-reproduction.yml",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5123,
+        "git_blob": "1da5439dc266203a3f498999cf057641d7b1d16b",
+        "sha256": "7133bf707216fb159a444d5898adcd4552e2d7f6b5bebc7d45e7c46f0cbcde8e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; manual public evidence workflow only.",
+      "test_reachability": "Runs fast tooling validation on relevant changes and permits the full fresh hosted reproduction only through an explicit workflow dispatch."
+    },
+    {
+      "path": "contrib/reproducibility/legacy-ubuntu22-arm64.Containerfile",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2131,
+        "git_blob": "e96a6467b9811aed3e8cfbb0fdb6d240659c12fe",
+        "sha256": "f87b5f51a32d5f193f6fa5ffa0422d85774d663f3c3bcfed8b76577e20a13410"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; evidence-only container environment, absent from node builds and releases.",
+      "test_reachability": "Constructs the digest-pinned Ubuntu 22.04 ARM64 environment with the exact signed-snapshot dependency profile."
+    },
+    {
+      "path": "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2225,
+        "git_blob": "16b43704c61ab4384570cb7b805f0727170c6586",
+        "sha256": "a625d09aaa97e54f5fa7487f1000b139dcdf93472bc984425a25e2bf3777eab0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; evidence-method provenance only.",
+      "test_reachability": "Binds the runner architecture, OCI identities, signed Ubuntu snapshot, direct dependency versions, build options, and claim limits."
+    },
+    {
+      "path": "tools/engineering/check_legacy_reproduction.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100755",
+        "bytes": 54668,
+        "git_blob": "362a92e587749ed5b257f0bdc79252e3436af191",
+        "sha256": "a9293e938153ff4108e2a657a3944166c712ba339bde87772c1a3a7dcff51dee"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public evidence orchestration and validation only.",
+      "test_reachability": "Fresh-clones and builds both exact roles, invokes the exact accepted matrix, records build provenance, validates full reports, and compares a positive semantic allowlist fail closed."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": false,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "baseline",
+        "commands": [
+          "Fresh-clone and build Bitcoin Static v24.0.5 commit 2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b in the exact locked Ubuntu 22.04 ARM64 environment."
+        ],
+        "expected_results": [
+          "The baseline source is clean at the exact public commit and tree, its build root was absent before configuration, and its binary and config identities are recorded in the build receipt."
+        ]
+      },
+      {
+        "role": "candidate",
+        "commands": [
+          "Fresh-clone and build the exact accepted ERGON-CHANGE-0010 technical candidate 889212482c964ec98dcc2ac55321cb0e04e17666 in a distinct root under the same locked environment."
+        ],
+        "expected_results": [
+          "The candidate source is clean at the exact signed public commit and tree, its build root was absent before configuration, and its binary and config identities are recorded independently."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "mixed-node-coexistence",
+        "command": "Run the unchanged accepted mixed-node coexistence, restart, full-reindex, chainstate-reindex, bounded protected-reorganization, physical-pruning, and cross-mining scenario from the exact technical candidate.",
+        "expected_results": [
+          "Every accepted lifecycle and compatibility oracle passes, both source identities remain unchanged, the work root is removed, and the semantic projection matches the existing public Observed report."
+        ],
+        "failure_conditions": [
+          "Any clone, signature, lineage, record, source, build, lifecycle, scenario, cleanup, privacy, report, or semantic-projection divergence fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-baseline",
+        "command": "Run the unchanged accepted zero-subsidy mining fixture with the freshly built exact baseline daemon and its own cache and datadir.",
+        "expected_results": [
+          "The inherited mining fixture passes without skip or source mutation under the exact baseline role."
+        ],
+        "failure_conditions": [
+          "Any cache reuse or escape, skip, timeout, nonzero exit, source mutation, identity mismatch, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-candidate",
+        "command": "Run the unchanged accepted zero-subsidy mining fixture with the freshly built exact candidate daemon and a distinct cache and datadir.",
+        "expected_results": [
+          "The inherited mining fixture passes without skip or source mutation under the exact candidate role."
+        ],
+        "failure_conditions": [
+          "Any cache alias, reuse or escape, skip, timeout, nonzero exit, source mutation, identity mismatch, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "inherited-functional-default-launch",
+        "command": "Run the unchanged accepted feature_abortnode.py selection through its default node-launch path with a fresh candidate build and scenario-local cache.",
+        "expected_results": [
+          "The inherited default-launch scenario passes with byte-identical selection and no source-tree writes."
+        ],
+        "failure_conditions": [
+          "Any inherited-selection drift, cache escape, skip, timeout, nonzero exit, source mutation, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "GitHub-hosted Ubuntu 22.04 ARM64 virtual machine with its mutable image identity recorded but excluded from deterministic-build claims",
+        "Digest-pinned Ubuntu 22.04 linux/arm64 container with packages resolved from the signed 20260901T000000Z Ubuntu archive snapshot"
+      ],
+      "lock_reference": "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Publishing this tooling does not reproduce ERGON-CHANGE-0010; the exact hosted run, artifacts, comparison, and external review remain future work.",
+    "The GitHub-hosted virtual-machine image is mutable and is recorded at execution time; the digest-pinned container and signed Ubuntu snapshot lock the reproduction userland, not the host kernel or service.",
+    "The reproduction can establish semantic agreement for the bounded synthetic regtest matrix only; it does not claim deterministic or byte-identical builds, operator-binary equivalence, historical-chain replay, public-network peering, sustained operation, or mainnet coexistence.",
+    "Workflow artifacts expire and are not durable evidence until separately reviewed and committed through an evidence-only change.",
+    "The ERGON-CHANGE-0010 report remains Observed with an assembled-component ceiling until a separate accepted evidence promotion binds an independent successful execution."
+  ],
+  "counterevidence": [
+    "The comparator self-test and local digest-pinned container preflight validate the method only; they are maintainer-environment observations and not independent reproduction.",
+    "A semantic match allows only Git version, current origin/main object, binary sizes and hashes, and config hashes to differ; every consensus, scenario, lineage, selection, signature, privacy, or claim difference fails closed.",
+    "Even a successful hosted comparison cannot establish mainnet coexistence, operator binary parity, deterministic builds, or behavior outside the four exact accepted scenarios."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
