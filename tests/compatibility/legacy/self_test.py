@@ -196,6 +196,86 @@ class MatrixContractTest(unittest.TestCase):
             MATRIX.MIXED_NODE_SUCCESS_MARKERS[:2],
         )
 
+    def test_default_protected_reorg_contract(self):
+        feature_source = FEATURE_PATH.read_text(encoding="utf-8")
+        self.assertEqual(FEATURE.REORG_DEPTH, 3)
+        self.assertEqual(FEATURE.REORG_UNPARK_MARGIN, 2)
+        self.assertEqual(FEATURE.REORG_REPLACEMENT_BLOCKS, 5)
+        self.assertEqual(
+            FEATURE.REORG_SUCCESS_MARKER,
+            "ERGON_LEGACY_LIFECYCLE_OK default-protected-reorg",
+        )
+        self.assertEqual(
+            MATRIX.MIXED_NODE_SUCCESS_MARKERS[2],
+            FEATURE.REORG_SUCCESS_MARKER.encode("ascii"),
+        )
+        feature_lines = [line.strip() for line in feature_source.splitlines()]
+        self.assertEqual(
+            feature_lines.count("connect_nodes(self.nodes[0], self.nodes[1])"),
+            0,
+        )
+        self.assertEqual(
+            feature_source.count(
+                "connect_nodes_bi(self.nodes[0], self.nodes[1])"
+            ),
+            8,
+        )
+        self.assertEqual(
+            feature_lines.count("connect_nodes(self.nodes[0], generator)"),
+            1,
+        )
+
+        setup_network = function_source(FEATURE_PATH, "setup_network")
+        for required in (
+            "self.setup_nodes()",
+            "connect_nodes_bi(self.nodes[0], self.nodes[1])",
+            "self.sync_all([self.nodes[:2]])",
+        ):
+            self.assertIn(required, setup_network)
+
+        bundle = function_source(FEATURE_PATH, "generate_reorg_bundle")
+        for required in (
+            "generator = self.nodes[2]",
+            "connect_nodes(self.nodes[0], generator)",
+            "self.sync_all([[self.nodes[0], generator]])",
+            "disconnect_nodes(self.nodes[0], generator)",
+            "REORG_DEPTH, incumbent_address",
+            '"raw": generator.getblock(block_hash, 0)',
+            'generator.invalidateblock(incumbent[0]["hash"])',
+            "REORG_REPLACEMENT_BLOCKS, replacement_address",
+            "self.stop_node(2)",
+        ):
+            self.assertIn(required, bundle)
+
+        reorg = function_source(
+            FEATURE_PATH, "default_protected_reorg_and_compare"
+        )
+        for required in (
+            "disconnect_nodes(self.nodes[0], self.nodes[1])",
+            'proposal = {"data": record["raw"], "mode": "proposal"}',
+            "for node in self.nodes[:2]",
+            'branch_tip_status(node, record["hash"], "equal-work")',
+            'branch_tip_status(node, record["hash"], "one-block-lead")',
+            'branch_tip_status(node, incumbent_tip, "incumbent")',
+            '"parked"',
+            '"valid-fork"',
+            "self.assert_common_chain()",
+            "connect_nodes_bi(self.nodes[0], self.nodes[1])",
+            "self.mine_and_compare(0, 1, address)",
+            "self.mine_and_compare(1, 1, address)",
+            "self.log.info(REORG_SUCCESS_MARKER)",
+        ):
+            self.assertIn(required, reorg)
+
+        submit = function_source(FEATURE_PATH, "submit_branch_block")
+        for required in (
+            'result = node.submitblock(record["raw"])',
+            'result == "inconclusive"',
+            'header["hash"]',
+            'header["confirmations"]',
+        ):
+            self.assertIn(required, submit)
+
     def test_physical_pruning_contract(self):
         feature_source = FEATURE_PATH.read_text(encoding="utf-8")
         self.assertEqual(
@@ -231,6 +311,7 @@ class MatrixContractTest(unittest.TestCase):
             (
                 b"ERGON_LEGACY_LIFECYCLE_OK full-reindex",
                 b"ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
+                b"ERGON_LEGACY_LIFECYCLE_OK default-protected-reorg",
                 marker.encode("ascii"),
             ),
         )
@@ -280,10 +361,10 @@ class MatrixContractTest(unittest.TestCase):
         )
         self.assertLess(
             advance.index("disconnect_p2ps"),
-            advance.index("\n        connect_nodes"),
+            advance.index("\n        connect_nodes_bi"),
         )
         self.assertLess(
-            advance.index("\n        connect_nodes"),
+            advance.index("\n        connect_nodes_bi"),
             advance.index("mine_and_compare"),
         )
         enable = function_source(FEATURE_PATH, "enable_pruning")
@@ -327,6 +408,10 @@ class MatrixContractTest(unittest.TestCase):
         run_test = function_source(FEATURE_PATH, "run_test")
         self.assertLess(
             run_test.index("for lifecycle in REINDEX_LIFECYCLES"),
+            run_test.index("self.default_protected_reorg_and_compare(address)"),
+        )
+        self.assertLess(
+            run_test.index("self.default_protected_reorg_and_compare(address)"),
             run_test.index("self.enable_pruning()"),
         )
         self.assertLess(
@@ -396,26 +481,24 @@ class MatrixContractTest(unittest.TestCase):
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
                 "tests/compatibility/legacy/README.md":
-                    "54d0f749c3e9a04ff1602d2a1cbd4b2b2a25be10",
+                    "a279e32c9a6c5ffb0a0e4be7ac7b5464dcd8ac15",
                 "tests/compatibility/legacy/"
                 "feature_ergon_legacy_compatibility.py":
-                    "61cf65cc9c4914c52a8478cac6a018cecae80f9c",
+                    "eeb6ba8c13079fd187bf41c66472bff011232757",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "4409a90091e22e78a9c4ea538df7b444a4e5118a",
+                    "8c6e21ca8f08cedb8c6de0ed641a783cdbbcdf26",
                 "tests/compatibility/legacy/self_test.py":
-                    "c6814709277399a98d293950abbfb4f3a47d2ce9",
+                    "bf62956ebc9b425587fe371a43c412110fa5d91b",
             },
         )
 
     def test_prior_records_bind_preimages(self):
         source_root = MODULE_PATH.parents[3]
         expected_by_record = {
-            "ergon-change-0005.json": {
+            "ergon-change-0007.json": {
                 "tests/compatibility/legacy/README.md",
                 "tests/compatibility/legacy/"
                 "feature_ergon_legacy_compatibility.py",
-            },
-            "ergon-change-0006.json": {
                 "tests/compatibility/legacy/run_matrix.py",
                 "tests/compatibility/legacy/self_test.py",
             },

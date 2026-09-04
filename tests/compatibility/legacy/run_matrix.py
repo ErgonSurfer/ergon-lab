@@ -24,8 +24,8 @@ BASE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 PUBLIC_ROOT_TREE = BASE_TREE
 PUBLIC_MAIN_REF = "refs/remotes/origin/main"
-CHANGE_ID = "ERGON-CHANGE-0007"
-PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0007.json"
+CHANGE_ID = "ERGON-CHANGE-0009"
+PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0009.json"
 PUBLIC_SCHEMA_PATH = "docs/engineering/schemas/change-evidence.schema.json"
 PUBLIC_VALIDATOR_PATH = "tools/engineering/check_change.py"
 PUBLIC_SCHEMA_VERSION = "1.1"
@@ -110,8 +110,8 @@ REVIEWED_FILE_METADATA = {
         "role": "documentation",
         "spdx": "MIT",
         "test_reachability": (
-            "Documents the governed restart, reconstruction, and physical-pruning "
-            "lifecycle contract."
+            "Documents the governed restart, reconstruction, protected-reorg, "
+            "and physical-pruning lifecycle contract."
         ),
     },
     "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py": {
@@ -124,8 +124,9 @@ REVIEWED_FILE_METADATA = {
         "role": "harness",
         "spdx": "MIT",
         "test_reachability": (
-            "Exercises honest two-node coexistence, clean restart, full reindex, "
-            "chainstate reindex, and manual physical pruning."
+            "Exercises honest two-role coexistence, clean restart, full reindex, "
+            "chainstate reindex, one bounded default-protected valid-chain "
+            "reorganization, and manual physical pruning."
         ),
     },
     "tests/compatibility/legacy/run_matrix.py": {
@@ -152,8 +153,8 @@ REVIEWED_FILE_METADATA = {
         "role": "test",
         "spdx": "MIT",
         "test_reachability": (
-            "Covers runner contracts, reconstruction and physical-pruning "
-            "canaries, record binding, and fail-closed paths."
+            "Covers runner contracts, reconstruction, protected-reorg and "
+            "physical-pruning canaries, record binding, and fail-closed paths."
         ),
     },
 }
@@ -170,13 +171,13 @@ BASELINE_CONTROLLED_PATHS = (
 )
 INTEGRATION_PARENT_PREIMAGES = {
     "tests/compatibility/legacy/README.md":
-        "54d0f749c3e9a04ff1602d2a1cbd4b2b2a25be10",
+        "a279e32c9a6c5ffb0a0e4be7ac7b5464dcd8ac15",
     "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
-        "61cf65cc9c4914c52a8478cac6a018cecae80f9c",
+        "eeb6ba8c13079fd187bf41c66472bff011232757",
     "tests/compatibility/legacy/run_matrix.py":
-        "4409a90091e22e78a9c4ea538df7b444a4e5118a",
+        "8c6e21ca8f08cedb8c6de0ed641a783cdbbcdf26",
     "tests/compatibility/legacy/self_test.py":
-        "c6814709277399a98d293950abbfb4f3a47d2ce9",
+        "bf62956ebc9b425587fe371a43c412110fa5d91b",
 }
 BUILD_ROLES = ("baseline", "candidate")
 INTEGRATION_PARENT_BINDING = {
@@ -211,6 +212,7 @@ CHILD_ENVIRONMENT = {
 MIXED_NODE_SUCCESS_MARKERS = (
     b"ERGON_LEGACY_LIFECYCLE_OK full-reindex",
     b"ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex",
+    b"ERGON_LEGACY_LIFECYCLE_OK default-protected-reorg",
     b"ERGON_LEGACY_LIFECYCLE_OK physical-pruning",
 )
 ALLOWED_ABSOLUTE_RECORD_VALUES = {CHILD_ENVIRONMENT["PATH"]}

@@ -1,0 +1,343 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0009",
+  "stage": "legacy-compatibility",
+  "status": "accepted",
+  "record_path": "docs/engineering/changes/ergon-change-0009.json",
+  "purpose": {
+    "summary": "Add a bounded default-protected valid-chain reorganization oracle to the public legacy-compatibility matrix without changing node or consensus code.",
+    "scope": [
+      "Extend only mixed-node-coexistence with one short protected-reorganization check before pruning; retain the existing scenario and build-role inventories.",
+      "Use an isolated exact-baseline generator to create a three-block incumbent and five-block replacement from one exact common tip, then submit the same raw blocks in the same order to the disconnected baseline and candidate roles.",
+      "Require both evaluated roles to keep the replacement parked at equal work and a one-block lead, activate it at a two-block lead, retain the incumbent as a valid fork, converge on the exact chain and UTXO snapshot, and resume cross-mining."
+    ],
+    "exclusions": [
+      "No production-node, consensus, activation, native-asset, optional-indexing, testnet, or mainnet-parameter change.",
+      "No new scenario ID, build role, inherited functional-test selection, or evidence promotion.",
+      "No P2P reorganization-propagation, invalid-branch, transaction-conflict, mempool, variable-depth, pruned-history, interruption, crash, public-network, or mainnet claim.",
+      "No private source, history, operator material, host metadata, binary, or incoming evidence."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "5593868c3cb76c9faf700443c388c6fbc3246fd3",
+      "tree": "08830cb69941c40011cb6e6e208da2a65cc464a8"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "8a7e79e0b32c3fe1dae5ce2e53f22e5579bbd1cdd4a0e140d4369f40379f7e90",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [],
+  "files": [
+    {
+      "path": "tests/compatibility/legacy/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 5488,
+        "git_blob": "a279e32c9a6c5ffb0a0e4be7ac7b5464dcd8ac15",
+        "sha256": "f63e1aa6b9c3949a7b1f0b512f8dc06f64afab21a31f63f6e9b886424ea1b197"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6223,
+        "git_blob": "07aaba5265b0ad5694fc3042ba889c9a1eb0db83",
+        "sha256": "365e45ba2f0137b3cb519dc67432fdd274c755cd0fd738b937378d3e4e1748b2"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; documentation only.",
+      "test_reachability": "Documents the governed restart, reconstruction, protected-reorg, and physical-pruning lifecycle contract."
+    },
+    {
+      "path": "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100755",
+        "bytes": 15330,
+        "git_blob": "eeb6ba8c13079fd187bf41c66472bff011232757",
+        "sha256": "c815066cbaccf0a2130cd72f45eef859c2772db659d016f99bef82ad4d39cb8c"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 21995,
+        "git_blob": "dbb55bf49eb19eda153139fd26e415c1ebcf5697",
+        "sha256": "bb65642339ac31b36eb4e15ed861c48a0c34b6058b051b026a530cc8da48f5a1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; governed compatibility harness only.",
+      "test_reachability": "Exercises honest two-role coexistence, clean restart, full reindex, chainstate reindex, one bounded default-protected valid-chain reorganization, and manual physical pruning."
+    },
+    {
+      "path": "tests/compatibility/legacy/run_matrix.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100755",
+        "bytes": 48755,
+        "git_blob": "8c6e21ca8f08cedb8c6de0ed641a783cdbbcdf26",
+        "sha256": "07187528826d7c180795a9e325a4e15dd534f312821947a87f292aaab6f9478d"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 48920,
+        "git_blob": "735442bf32fddb8675ba49d7c196aada50314f56",
+        "sha256": "078b20966bd5a9aeec9ee1596cbb38cb976144e609b6b48366500c35073eb725"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; governed compatibility harness only.",
+      "test_reachability": "Runs the identity-bound fail-closed public matrix and requires all reviewed lifecycle markers."
+    },
+    {
+      "path": "tests/compatibility/legacy/self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 57352,
+        "git_blob": "bf62956ebc9b425587fe371a43c412110fa5d91b",
+        "sha256": "224a770a5a771a262e05dc03697df76b7dbb209dbc61d68eb4299f794b98c3dc"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 60775,
+        "git_blob": "5e0e3cb7e04877918fee4813b9ab912d8816c8d6",
+        "sha256": "cb2653813fa0f429de44d80cfa3ebf9e7f38f061cc23671f1f61f1406cd8fb36"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; governed compatibility tests only.",
+      "test_reachability": "Covers runner contracts, reconstruction, protected-reorg and physical-pruning canaries, record binding, and fail-closed paths."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": false,
+    "ui": false,
+    "build_release": false,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "baseline",
+        "commands": [
+          "Configure and build the exact Bitcoin Static v24.0.5 public baseline with the reviewed dependency profile."
+        ],
+        "expected_results": [
+          "The baseline daemon is bound to the exact baseline commit, tree, build profile, and binary digest."
+        ]
+      },
+      {
+        "role": "candidate",
+        "commands": [
+          "Configure and build the exact direct-child public protected-reorg harness with the same reviewed dependency profile."
+        ],
+        "expected_results": [
+          "The candidate daemon is bound to the reviewed commit, tree, build profile, and binary digest."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "mixed-node-coexistence",
+        "command": "Run the governed legacy/candidate coexistence, restart, reconstruction, default-protected-reorganization, and physical-pruning scenario.",
+        "expected_results": [
+          "Alternating mining and clean same-datadir restart preserve exact chain, UTXO commitment, and raw-tip projections.",
+          "Full reindex and chainstate-only reindex on both roles emit fresh lifecycle markers, restore the exact pre-rebuild snapshot, and accept one new block mined by each role.",
+          "Before pruning, an isolated exact-baseline generator builds one three-block incumbent and five-block replacement from the same common tip; both evaluated roles receive identical raw blocks, keep the replacement parked at equal work and a one-block lead, activate it at a two-block lead, retain the incumbent as a valid fork, converge exactly, and resume cross-mining.",
+          "Only after the protected-reorganization check, both roles restart their unchanged datadir directories in manual-pruning mode, accept identical baseline-template-bound large blocks, physically remove the first block and undo file pair, agree on a bounded readable prune height, preserve the exact tip and UTXO state across same-datadir restart, and accept post-prune mining by each role."
+        ],
+        "failure_conditions": [
+          "Any process, generator isolation, common parent, raw-block ordering or acceptance, chainwork threshold, branch status, active tip, lifecycle marker, physical file, prune mode, chain, UTXO, raw tip, restart, mining, cleanup, or identity divergence fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-baseline",
+        "command": "Run the corrected zero-subsidy mining fixture with the baseline daemon.",
+        "expected_results": [
+          "The inherited mining fixture passes without skip under the exact baseline role."
+        ],
+        "failure_conditions": [
+          "Any skip, timeout, nonzero exit, identity mismatch, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-candidate",
+        "command": "Run the corrected zero-subsidy mining fixture with the candidate daemon.",
+        "expected_results": [
+          "The inherited mining fixture passes without skip under the exact candidate role."
+        ],
+        "failure_conditions": [
+          "Any skip, timeout, nonzero exit, identity mismatch, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "inherited-functional-default-launch",
+        "command": "Run the unchanged inherited feature_abortnode.py selection through its default node-launch path.",
+        "expected_results": [
+          "The inherited default-launch scenario passes with byte-equivalent selection."
+        ],
+        "failure_conditions": [
+          "Any inherited-selection drift, skip, timeout, nonzero exit, or cleanup failure fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "Ubuntu 22.04 arm64 with the reviewed public dependency profile",
+        "macOS arm64 local contradiction testing only"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "No public candidate execution evidence exists for ERGON-CHANGE-0009; any later successful public promotion remains capped at Observed / assembled_component.",
+    "The new oracle covers one short valid coinbase-only replacement on local regtest: a three-block incumbent, parking at equal work and a one-block lead, and activation at a two-block lead under the default policy.",
+    "Blocks are replayed through RPC to disconnected evaluated roles; P2P reorganization propagation, variable depths, invalid branches, transaction and mempool conflicts, DAA transitions, restart or crash during reorganization, and reorganization across pruned history remain untested.",
+    "The normalized report will not serialize raw logs, physical paths, or per-role branch measurements; those oracles are enforced by the exact signed scenario and will not be independently recomputable from the report alone.",
+    "Historical-chain replay, sustained operation, public-network peers, and mainnet remain untested.",
+    "Binary digests and config.ini source/build bindings do not prove build causality, and the dependency profile is not locked.",
+    "Operator-binary equivalence and mainnet coexistence remain unproved.",
+    "This initial record carries no execution evidence and is not an independent reproduction pack."
+  ],
+  "counterevidence": [
+    "ERGON-CHANGE-0007 public evidence observes restart, full reindex, chainstate reindex, and manual physical pruning, but it contains no competing-branch reorganization oracle.",
+    "An unpublished r1 draft stopped during the long pruning-boundary block burst after its single one-way evaluated-role P2P connection closed, leaving the baseline and candidate at different heights without an observed consensus disagreement. The r2 correction makes every evaluated-role connection bidirectional and adds an exact topology canary; this private diagnostic is not public execution evidence.",
+    "The private focused smoke cannot promote public evidence and is excluded from the public record.",
+    "A future pass of this short oracle cannot establish deep, pruned-history, invalid-branch, transaction-conflict, P2P, DAA, public-network, operator-binary, or mainnet behavior."
+  ],
+  "decision": {
+    "status": "accepted",
+    "reviewer": "Ergon Public Node GitHub Cockpit",
+    "date": "2026-09-03"
+  }
+}

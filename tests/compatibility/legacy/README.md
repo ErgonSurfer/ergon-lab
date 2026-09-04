@@ -31,12 +31,19 @@ The matrix requires clean, distinct source trees and builds for the exact
 baseline and candidate. Those are the only build-role identifiers; there are no
 aliases or implicit role defaults. It executes exactly:
 
-- `mixed-node-coexistence`: honest two-node legacy/candidate coexistence with
-  alternating mining and clean same-datadir restarts, followed on both roles by
-  a full `-reindex` and a chainstate-only `-reindex-chainstate`. Each lifecycle
-  requires its daemon log markers after the restart offset, restores the exact
-  pre-rebuild chain, UTXO commitment and raw-tip snapshot, then accepts one new
-  block mined by each role. Only after both reindex lifecycles, it restarts the
+- `mixed-node-coexistence`: honest legacy/candidate coexistence between two
+  evaluated roles with alternating mining and clean same-datadir restarts,
+  followed on both roles by a full `-reindex` and a chainstate-only
+  `-reindex-chainstate`. Each lifecycle requires its daemon log markers after
+  the restart offset, restores the exact pre-rebuild chain, UTXO commitment and
+  raw-tip snapshot, then accepts one new block mined by each role. An isolated
+  exact-baseline generator then creates one three-block incumbent branch and
+  one five-block replacement branch from the same common tip. Both evaluated
+  roles receive the same raw blocks in the same order and must keep the
+  replacement parked at equal work and at a one-block lead, activate it at a
+  two-block lead, expose the incumbent as `valid-fork`, converge on the exact
+  chain and UTXO snapshot, and resume cross-mining. Only after this bounded
+  protected-reorganization check, it restarts the
   same datadirs with manual pruning enabled, submits the same 150 near-megabyte,
   baseline-template-bound blocks to both disconnected roles, mines small blocks
   to height 1001, and manually prunes both datadirs. The pruning oracle requires
@@ -87,9 +94,13 @@ and normalized signature results. Before a reviewed public run, every
 compatibility claim remains an Open Question. A private run cannot promote the
 public evidence status.
 
-This remains a bounded, clean-shutdown regtest comparison. Its pruning check is
-manual (`-prune=1`) and uses synthetic consensus-valid blocks; it does not test
+This remains a bounded, clean-shutdown regtest comparison. Its reorganization
+check uses short, valid, coinbase-only branches submitted through RPC; it does
+not cover P2P branch propagation, restart or crash during a reorganization,
+transaction or mempool conflicts, invalid branches, variable-depth behavior,
+or reorganizations across pruned history. Its pruning check is manual
+(`-prune=1`) and uses synthetic consensus-valid blocks; it does not test
 automatic target pruning, corrupt storage, permissions or disk exhaustion,
 interrupted pruning or reconstruction, crash recovery, reindex or redownload
-after pruning, deep reorganizations across pruned history, historical-chain
-replay, sustained operation, public-network peers, or mainnet.
+after pruning, historical-chain replay, sustained operation, public-network
+peers, or mainnet.

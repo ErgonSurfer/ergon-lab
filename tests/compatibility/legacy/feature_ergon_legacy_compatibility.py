@@ -21,6 +21,7 @@ from test_framework.util import (  # noqa: E402
     assert_equal,
     assert_raises_rpc_error,
     connect_nodes,
+    connect_nodes_bi,
     disconnect_nodes,
 )
 
@@ -60,6 +61,32 @@ LARGE_BLOCK_COUNT = 150
 PHYSICAL_PRUNING_SUCCESS_MARKER = (
     "ERGON_LEGACY_LIFECYCLE_OK physical-pruning"
 )
+REORG_DEPTH = 3
+REORG_UNPARK_MARGIN = 2
+REORG_REPLACEMENT_BLOCKS = REORG_DEPTH + REORG_UNPARK_MARGIN
+REORG_SUCCESS_MARKER = "ERGON_LEGACY_LIFECYCLE_OK default-protected-reorg"
+
+
+def submit_branch_block(node, record, label):
+    result = node.submitblock(record["raw"])
+    if result == "inconclusive":
+        header = node.getblockheader(record["hash"])
+        assert_equal(header["hash"], record["hash"])
+        assert_equal(header["confirmations"], -1)
+        return
+    if result not in (None, ""):
+        raise AssertionError(f"{label} block was rejected: {result}")
+
+
+def branch_tip_status(node, block_hash, label):
+    statuses = [
+        item["status"]
+        for item in node.getchaintips()
+        if item.get("hash") == block_hash
+    ]
+    if len(statuses) != 1:
+        raise AssertionError(f"{label} branch tip is missing or duplicated")
+    return statuses[0]
 
 
 def mine_large_blocks(nodes, count, script_pub_key):
@@ -147,7 +174,7 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
 
     def set_test_params(self):
         self.setup_clean_chain = True
-        self.num_nodes = 2
+        self.num_nodes = 3
 
     def setup_nodes(self):
         legacy = os.path.realpath(self.options.legacy_bitcoind)
@@ -155,14 +182,20 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         if legacy == candidate or os.path.samestat(os.stat(legacy), os.stat(candidate)):
             raise AssertionError("legacy and candidate daemons must be distinct files")
         self.add_nodes(
-            2,
+            3,
             extra_args=[
                 list(NODE_ARGS),
                 list(NODE_ARGS),
+                list(NODE_ARGS),
             ],
-            binary=[legacy, candidate],
+            binary=[legacy, candidate, legacy],
         )
         self.start_nodes()
+
+    def setup_network(self):
+        self.setup_nodes()
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
+        self.sync_all([self.nodes[:2]])
 
     def node_snapshot(self, node):
         chain = node.getblockchaininfo()
@@ -193,7 +226,7 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
 
     def mine_and_compare(self, miner, blocks, address):
         self.nodes[miner].generatetoaddress(blocks, address)
-        self.sync_all()
+        self.sync_all([self.nodes[:2]])
         self.assert_common_chain()
 
     def rebuild_and_compare(self, lifecycle, address):
@@ -207,8 +240,8 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
                     extra_args=[*NODE_ARGS, argument],
                 )
 
-        connect_nodes(self.nodes[0], self.nodes[1])
-        self.sync_all()
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
+        self.sync_all([self.nodes[:2]])
         assert_equal(self.assert_common_chain(), expected_snapshot)
 
         self.mine_and_compare(0, 1, address)
@@ -222,10 +255,12 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         disconnect_nodes(self.nodes[0], self.nodes[1])
         self.nodes[0].add_p2p_connection(P2PInterface())
         try:
-            mine_large_blocks(self.nodes, LARGE_BLOCK_COUNT, script_pub_key)
+            mine_large_blocks(
+                self.nodes[:2], LARGE_BLOCK_COUNT, script_pub_key
+            )
         finally:
             self.nodes[0].disconnect_p2ps()
-        connect_nodes(self.nodes[0], self.nodes[1])
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
         self.assert_common_chain()
 
         remaining = PRUNE_AFTER_HEIGHT + 1 - self.nodes[0].getblockcount()
@@ -239,15 +274,15 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
     def enable_pruning(self):
         expected_snapshot = self.assert_common_chain()
         datadir_identities = [
-            directory_identity(Path(node.datadir)) for node in self.nodes
+            directory_identity(Path(node.datadir)) for node in self.nodes[:2]
         ]
         self.restart_node(0, extra_args=list(PRUNE_NODE_ARGS))
         self.restart_node(1, extra_args=list(PRUNE_NODE_ARGS))
-        connect_nodes(self.nodes[0], self.nodes[1])
-        self.sync_all()
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
+        self.sync_all([self.nodes[:2]])
         assert_equal(self.assert_common_chain(), expected_snapshot)
 
-        for node_index, node in enumerate(self.nodes):
+        for node_index, node in enumerate(self.nodes[:2]):
             assert_equal(
                 directory_identity(Path(node.datadir)),
                 datadir_identities[node_index],
@@ -270,10 +305,10 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         pre_prune_usage = []
         old_pair_identities = []
         datadir_identities = [
-            directory_identity(Path(node.datadir)) for node in self.nodes
+            directory_identity(Path(node.datadir)) for node in self.nodes[:2]
         ]
 
-        for node in self.nodes:
+        for node in self.nodes[:2]:
             assert_equal(node.getblockhash(1), old_hash)
             assert_equal(node.getblock(old_hash, 0), old_raw_block)
             assert_equal(node.getblockheader(old_hash), old_header)
@@ -305,7 +340,7 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         )
         prune_heights = []
         first_available_blocks = []
-        for node_index, node in enumerate(self.nodes):
+        for node_index, node in enumerate(self.nodes[:2]):
             with node.assert_debug_log(log_markers):
                 assert_equal(
                     node.pruneblockchain(tip_height), expected_prune_height
@@ -344,10 +379,10 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
 
         self.restart_node(0, extra_args=list(PRUNE_NODE_ARGS))
         self.restart_node(1, extra_args=list(PRUNE_NODE_ARGS))
-        connect_nodes(self.nodes[0], self.nodes[1])
-        self.sync_all()
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
+        self.sync_all([self.nodes[:2]])
         assert_equal(self.assert_common_chain(), expected_snapshot)
-        for node_index, node in enumerate(self.nodes):
+        for node_index, node in enumerate(self.nodes[:2]):
             assert_equal(
                 directory_identity(Path(node.datadir)),
                 datadir_identities[node_index],
@@ -377,8 +412,127 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         self.mine_and_compare(1, 1, address)
         self.log.info(PHYSICAL_PRUNING_SUCCESS_MARKER)
 
+    def generate_reorg_bundle(self, incumbent_address, replacement_address):
+        common_snapshot = self.assert_common_chain()
+        common_height = common_snapshot["chain"]["blocks"]
+        common_hash = common_snapshot["chain"]["bestblockhash"]
+        generator = self.nodes[2]
+        connect_nodes(self.nodes[0], generator)
+        self.sync_all([[self.nodes[0], generator]])
+        assert_equal(self.node_snapshot(generator), common_snapshot)
+        disconnect_nodes(self.nodes[0], generator)
+
+        incumbent_hashes = generator.generatetoaddress(
+            REORG_DEPTH, incumbent_address
+        )
+        incumbent = [
+            {"hash": block_hash, "raw": generator.getblock(block_hash, 0)}
+            for block_hash in incumbent_hashes
+        ]
+        incumbent_chainwork = generator.getblockheader(
+            incumbent[-1]["hash"]
+        )["chainwork"]
+        assert_equal(generator.invalidateblock(incumbent[0]["hash"]), None)
+        assert_equal(generator.getblockcount(), common_height)
+        assert_equal(generator.getbestblockhash(), common_hash)
+
+        replacement_hashes = generator.generatetoaddress(
+            REORG_REPLACEMENT_BLOCKS, replacement_address
+        )
+        replacement = [
+            {"hash": block_hash, "raw": generator.getblock(block_hash, 0)}
+            for block_hash in replacement_hashes
+        ]
+        if incumbent[-1]["hash"] == replacement[-1]["hash"]:
+            raise AssertionError("competing branches have the same tip")
+        if int(
+            generator.getblockheader(replacement[-1]["hash"])["chainwork"], 16
+        ) <= int(incumbent_chainwork, 16):
+            raise AssertionError("generated replacement does not have more work")
+        self.stop_node(2)
+        return incumbent, replacement
+
+    def default_protected_reorg_and_compare(self, address):
+        common_snapshot = self.assert_common_chain()
+        common_height = common_snapshot["chain"]["blocks"]
+        replacement_address = self.nodes[1].get_deterministic_priv_key().address
+        if replacement_address == address:
+            raise AssertionError("competing branches require distinct addresses")
+        incumbent, replacement = self.generate_reorg_bundle(
+            address, replacement_address
+        )
+
+        disconnect_nodes(self.nodes[0], self.nodes[1])
+        for offset, record in enumerate(incumbent, start=1):
+            proposal = {"data": record["raw"], "mode": "proposal"}
+            for node in self.nodes[:2]:
+                assert_equal(node.getblocktemplate(proposal), None)
+                submit_branch_block(node, record, "incumbent")
+                assert_equal(node.getblockcount(), common_height + offset)
+                assert_equal(node.getbestblockhash(), record["hash"])
+        incumbent_tip = incumbent[-1]["hash"]
+        incumbent_chainwork = [
+            node.getblockheader(incumbent_tip)["chainwork"]
+            for node in self.nodes[:2]
+        ]
+        assert_equal(incumbent_chainwork[1], incumbent_chainwork[0])
+        self.assert_common_chain()
+
+        for offset, record in enumerate(replacement, start=1):
+            for node in self.nodes[:2]:
+                submit_branch_block(node, record, "replacement")
+            final = offset == REORG_REPLACEMENT_BLOCKS
+            expected_height = (
+                common_height + REORG_REPLACEMENT_BLOCKS
+                if final else common_height + REORG_DEPTH
+            )
+            expected_tip = record["hash"] if final else incumbent_tip
+            for node in self.nodes[:2]:
+                assert_equal(node.getblockcount(), expected_height)
+                assert_equal(node.getbestblockhash(), expected_tip)
+
+            if offset == REORG_DEPTH:
+                for node_index, node in enumerate(self.nodes[:2]):
+                    assert_equal(
+                        node.getblockheader(record["hash"])["chainwork"],
+                        incumbent_chainwork[node_index],
+                    )
+                    assert_equal(
+                        branch_tip_status(node, record["hash"], "equal-work"),
+                        "parked",
+                    )
+            elif offset == REORG_DEPTH + 1:
+                for node_index, node in enumerate(self.nodes[:2]):
+                    if int(
+                        node.getblockheader(record["hash"])["chainwork"], 16
+                    ) <= int(incumbent_chainwork[node_index], 16):
+                        raise AssertionError(
+                            "replacement did not lead incumbent chainwork"
+                        )
+                    assert_equal(
+                        branch_tip_status(node, record["hash"], "one-block-lead"),
+                        "parked",
+                    )
+
+        for node in self.nodes[:2]:
+            assert_equal(
+                branch_tip_status(node, incumbent_tip, "incumbent"),
+                "valid-fork",
+            )
+        assert_equal(
+            self.assert_common_chain()["chain"]["blocks"],
+            common_height + REORG_REPLACEMENT_BLOCKS,
+        )
+
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
+        self.sync_all([self.nodes[:2]])
+        self.assert_common_chain()
+        self.mine_and_compare(0, 1, address)
+        self.mine_and_compare(1, 1, address)
+        self.log.info(REORG_SUCCESS_MARKER)
+
     def run_test(self):
-        connect_nodes(self.nodes[0], self.nodes[1])
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
         address = self.nodes[0].get_deterministic_priv_key().address
 
         for miner in (0, 1, 0, 1):
@@ -387,8 +541,8 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         expected_snapshot = self.assert_common_chain()
         self.restart_node(0, extra_args=list(NODE_ARGS))
         self.restart_node(1, extra_args=list(NODE_ARGS))
-        connect_nodes(self.nodes[0], self.nodes[1])
-        self.sync_all()
+        connect_nodes_bi(self.nodes[0], self.nodes[1])
+        self.sync_all([self.nodes[:2]])
         assert_equal(self.assert_common_chain(), expected_snapshot)
 
         self.mine_and_compare(0, 1, address)
@@ -397,6 +551,7 @@ class ErgonLegacyCompatibilityTest(BitcoinTestFramework):
         for lifecycle in REINDEX_LIFECYCLES:
             self.rebuild_and_compare(lifecycle, address)
 
+        self.default_protected_reorg_and_compare(address)
         self.enable_pruning()
         self.advance_to_prune_boundary(address)
         self.physical_prune_and_compare(address)
