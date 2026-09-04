@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -601,6 +602,62 @@ def run_checked(command: list[str], env: dict[str, str]) -> None:
         raise ReproductionError(f"command failed: {command[0]}") from error
 
 
+def install_matrix_attribution(module: Any) -> None:
+    original = module.run_execution
+
+    def attributed(execution: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+        scenario = execution.get("id")
+        require(scenario in SCENARIOS, "matrix scenario identity differs")
+        try:
+            return original(execution, *args, **kwargs)
+        except module.MatrixError:
+            raise module.MatrixError(f"scenario {scenario} failed") from None
+
+    module.run_execution = attributed
+
+
+def run_matrix_driver(matrix_path: Path, matrix_args: list[str]) -> None:
+    require(sys.dont_write_bytecode,
+            "matrix driver requires disabled bytecode writes")
+    matrix_path = matrix_path.resolve(strict=True)
+    spec = importlib.util.spec_from_file_location(
+        "ergon_reviewed_legacy_matrix", matrix_path
+    )
+    require(spec is not None and spec.loader is not None,
+            "reviewed matrix module cannot be loaded")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError) as error:
+        raise ReproductionError("reviewed matrix module cannot be loaded") from error
+    require(hasattr(module, "MatrixError") and
+            hasattr(module, "EXECUTIONS") and
+            hasattr(module, "main") and
+            hasattr(module, "run_execution"),
+            "reviewed matrix driver contract differs")
+    require(tuple(item.get("id") for item in module.EXECUTIONS) == SCENARIOS,
+            "reviewed matrix scenario set differs")
+    install_matrix_attribution(module)
+    previous_argv = sys.argv
+    sys.argv = [str(matrix_path), *matrix_args]
+    try:
+        module.main()
+    except module.MatrixError as error:
+        message = str(error)
+        allowed = re.fullmatch(
+            r"scenario (?:" + "|".join(map(re.escape, SCENARIOS)) +
+            r") failed",
+            message,
+        )
+        if allowed is None:
+            raise ReproductionError(
+                "matrix failed outside an attributed execution"
+            ) from None
+        raise ReproductionError(message) from None
+    finally:
+        sys.argv = previous_argv
+
+
 def git_identity(path: Path, env: dict[str, str]) -> dict[str, Any]:
     commit = capture(["git", "-C", str(path), "rev-parse", "HEAD^{commit}"], env)
     tree = capture(["git", "-C", str(path), "rev-parse", "HEAD^{tree}"], env)
@@ -1049,7 +1106,8 @@ def run_reproduction(repository_root: Path, work_root: Path,
                    lock["build"]["parallel_jobs"], env)
         matrix = candidate_source / "tests/compatibility/legacy/run_matrix.py"
         run_checked([
-            "python3", str(matrix),
+            "python3", "-B", str(Path(__file__).resolve(strict=True)),
+            "matrix-driver", f"--matrix={matrix}", "--",
             f"--baseline-source={baseline_source}",
             f"--candidate-source={candidate_source}",
             f"--expected-candidate-commit={CANDIDATE_COMMIT}",
@@ -1260,6 +1318,28 @@ def self_test(repository_root: Path) -> None:
         raise ReproductionError(
             f"self-test accepted forbidden receipt mutation {index}"
         )
+
+    class FakeMatrixError(RuntimeError):
+        pass
+
+    class FakeMatrixModule:
+        MatrixError = FakeMatrixError
+
+        @staticmethod
+        def run_execution(execution: dict[str, Any], *args: Any,
+                          **kwargs: Any) -> None:
+            raise FakeMatrixError("/private/tmp/secret-token")
+
+    fake_module = FakeMatrixModule()
+    install_matrix_attribution(fake_module)
+    for scenario in SCENARIOS:
+        try:
+            fake_module.run_execution({"id": scenario})
+        except FakeMatrixError as error:
+            require(str(error) == f"scenario {scenario} failed",
+                    "matrix execution attribution differs")
+        else:
+            raise ReproductionError("matrix execution failure was accepted")
     print("Legacy reproduction self-tests passed (10 rejection classes).")
 
 
@@ -1277,6 +1357,9 @@ def parse_args() -> argparse.Namespace:
     compare_parser.add_argument("--reproduced-report", required=True)
     compare_parser.add_argument("--build-receipt", required=True)
     compare_parser.add_argument("--output", required=True)
+    driver_parser = subparsers.add_parser("matrix-driver", allow_abbrev=False)
+    driver_parser.add_argument("--matrix", required=True)
+    driver_parser.add_argument("matrix_args", nargs=argparse.REMAINDER)
     return parser.parse_args()
 
 
@@ -1289,13 +1372,18 @@ def main() -> None:
     elif args.command == "run":
         run_reproduction(Path(args.repository_root), Path(args.work_root),
                          Path(args.output_dir))
-    else:
+    elif args.command == "compare":
         comparison = compare_reports(
             Path(args.observed_report).resolve(strict=True),
             Path(args.reproduced_report).resolve(strict=True),
             Path(args.build_receipt).resolve(strict=True),
         )
         write_json_exclusive(Path(args.output).resolve(strict=False), comparison)
+    else:
+        matrix_args = args.matrix_args
+        if matrix_args[:1] == ["--"]:
+            matrix_args = matrix_args[1:]
+        run_matrix_driver(Path(args.matrix), matrix_args)
 
 
 if __name__ == "__main__":
