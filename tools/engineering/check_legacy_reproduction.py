@@ -100,6 +100,48 @@ SCENARIOS = (
     "inherited-functional-default-launch",
 )
 BUILD_ROLES = ("baseline", "candidate")
+MIXED_NODE_LIFECYCLES = (
+    ("full-reindex", b"ERGON_LEGACY_LIFECYCLE_OK full-reindex"),
+    ("chainstate-reindex",
+     b"ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex"),
+    ("default-protected-reorg",
+     b"ERGON_LEGACY_LIFECYCLE_OK default-protected-reorg"),
+    ("physical-pruning",
+     b"ERGON_LEGACY_LIFECYCLE_OK physical-pruning"),
+)
+MIXED_NODE_FEATURE_FUNCTIONS = (
+    "submit_branch_block",
+    "branch_tip_status",
+    "mine_large_blocks",
+    "block_file_pair",
+    "regular_file_identity",
+    "directory_identity",
+    "assert_file_pair_absent",
+    "setup_nodes",
+    "setup_network",
+    "node_snapshot",
+    "assert_common_chain",
+    "mine_and_compare",
+    "rebuild_and_compare",
+    "advance_to_prune_boundary",
+    "enable_pruning",
+    "physical_prune_and_compare",
+    "generate_reorg_bundle",
+    "default_protected_reorg_and_compare",
+    "run_test",
+)
+MIXED_NODE_FAILURE_KINDS = (
+    "child-nonzero",
+    "child-reported-skip",
+    "framework-success-marker-absent",
+    "required-lifecycle-marker-absent",
+    "before-output-validation",
+)
+MIXED_NODE_FRAME_RE = re.compile(
+    rb'^  File "[^"\r\n]*/tests/compatibility/legacy/'
+    rb'feature_ergon_legacy_compatibility\.py", line [0-9]+, in '
+    rb'([A-Za-z_][A-Za-z0-9_]*)$'
+)
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -602,17 +644,105 @@ def run_checked(command: list[str], env: dict[str, str]) -> None:
         raise ReproductionError(f"command failed: {command[0]}") from error
 
 
+def classify_mixed_node_output(stdout: bytes, stderr: bytes) -> tuple[str, str]:
+    output = stdout + b"\n" + stderr
+    lines = output.splitlines()
+    lifecycle = "none"
+    previous_position = -1
+    missing_seen = False
+    for identifier, marker in MIXED_NODE_LIFECYCLES:
+        count = output.count(marker)
+        position = output.find(marker)
+        if count > 1 or (count == 1 and missing_seen) \
+                or (count == 1 and position <= previous_position):
+            lifecycle = "invalid-marker-state"
+            break
+        if count == 0:
+            missing_seen = True
+            continue
+        lifecycle = identifier
+        previous_position = position
+
+    frame = "none"
+    for line in lines:
+        match = MIXED_NODE_FRAME_RE.fullmatch(line)
+        if match is None:
+            continue
+        candidate = match.group(1).decode("ascii")
+        if candidate in MIXED_NODE_FEATURE_FUNCTIONS:
+            frame = candidate
+    return lifecycle, frame
+
+
+def mixed_node_detail(failure_kind: str, lifecycle: str,
+                      frame: str) -> str:
+    return (
+        f"failure-kind {failure_kind} "
+        f"last-completed-lifecycle {lifecycle} "
+        f"last-allowlisted-feature-frame {frame}"
+    )
+
+
 def install_matrix_attribution(module: Any) -> None:
-    original = module.run_execution
+    original_run = module.run_execution
+    original_validate = module.validate_test_output
+    active_scenario: list[str | None] = [None]
+
+    def attributed_validate(returncode: int, stdout: bytes, stderr: bytes,
+                            required_markers: tuple[bytes, ...] = ()) -> None:
+        try:
+            original_validate(returncode, stdout, stderr, required_markers)
+        except module.MatrixError:
+            if active_scenario[0] != "mixed-node-coexistence":
+                raise
+            combined = stdout + b"\n" + stderr
+            if returncode != 0:
+                failure_kind = "child-nonzero"
+            elif b"Test skipped" in combined or b"Tests skipped" in combined:
+                failure_kind = "child-reported-skip"
+            elif b"Tests successful" not in combined:
+                failure_kind = "framework-success-marker-absent"
+            else:
+                failure_kind = "required-lifecycle-marker-absent"
+            lifecycle, frame = classify_mixed_node_output(stdout, stderr)
+            raise module.MatrixError(
+                mixed_node_detail(failure_kind, lifecycle, frame)
+            ) from None
 
     def attributed(execution: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
         scenario = execution.get("id")
         require(scenario in SCENARIOS, "matrix scenario identity differs")
+        require(active_scenario[0] is None, "matrix execution attribution nested")
+        active_scenario[0] = scenario
         try:
-            return original(execution, *args, **kwargs)
-        except module.MatrixError:
+            return original_run(execution, *args, **kwargs)
+        except module.MatrixError as error:
+            detail = str(error)
+            if scenario == "mixed-node-coexistence" and re.fullmatch(
+                r"failure-kind (?:" +
+                "|".join(map(re.escape, MIXED_NODE_FAILURE_KINDS[:-1])) +
+                r") last-completed-lifecycle (?:" +
+                "|".join(re.escape(item[0]) for item in MIXED_NODE_LIFECYCLES) +
+                r"|none|invalid-marker-state) "
+                r"last-allowlisted-feature-frame (?:" +
+                "|".join(map(re.escape, MIXED_NODE_FEATURE_FUNCTIONS)) +
+                r"|none)",
+                detail,
+            ):
+                raise module.MatrixError(
+                    f"scenario {scenario} {detail}"
+                ) from None
+            if scenario == "mixed-node-coexistence":
+                raise module.MatrixError(
+                    f"scenario {scenario} " + mixed_node_detail(
+                        "before-output-validation", "none", "none"
+                    )
+                ) from None
             raise module.MatrixError(f"scenario {scenario} failed") from None
+        finally:
+            active_scenario[0] = None
 
+    module.validate_test_output = attributed_validate
     module.run_execution = attributed
 
 
@@ -633,10 +763,15 @@ def run_matrix_driver(matrix_path: Path, matrix_args: list[str]) -> None:
     require(hasattr(module, "MatrixError") and
             hasattr(module, "EXECUTIONS") and
             hasattr(module, "main") and
-            hasattr(module, "run_execution"),
+            hasattr(module, "run_execution") and
+            hasattr(module, "validate_test_output"),
             "reviewed matrix driver contract differs")
     require(tuple(item.get("id") for item in module.EXECUTIONS) == SCENARIOS,
             "reviewed matrix scenario set differs")
+    require(hasattr(module, "MIXED_NODE_SUCCESS_MARKERS") and
+            tuple(module.MIXED_NODE_SUCCESS_MARKERS) == tuple(
+                item[1] for item in MIXED_NODE_LIFECYCLES
+            ), "reviewed matrix lifecycle marker set differs")
     install_matrix_attribution(module)
     previous_argv = sys.argv
     sys.argv = [str(matrix_path), *matrix_args]
@@ -644,12 +779,23 @@ def run_matrix_driver(matrix_path: Path, matrix_args: list[str]) -> None:
         module.main()
     except module.MatrixError as error:
         message = str(error)
-        allowed = re.fullmatch(
+        allowed_simple = re.fullmatch(
             r"scenario (?:" + "|".join(map(re.escape, SCENARIOS)) +
             r") failed",
             message,
         )
-        if allowed is None:
+        allowed_mixed = re.fullmatch(
+            r"scenario mixed-node-coexistence failure-kind (?:" +
+            "|".join(map(re.escape, MIXED_NODE_FAILURE_KINDS)) +
+            r") last-completed-lifecycle (?:" +
+            "|".join(re.escape(item[0]) for item in MIXED_NODE_LIFECYCLES) +
+            r"|none|invalid-marker-state) "
+            r"last-allowlisted-feature-frame (?:" +
+            "|".join(map(re.escape, MIXED_NODE_FEATURE_FUNCTIONS)) +
+            r"|none)",
+            message,
+        )
+        if allowed_simple is None and allowed_mixed is None:
             raise ReproductionError(
                 "matrix failed outside an attributed execution"
             ) from None
@@ -1324,10 +1470,37 @@ def self_test(repository_root: Path) -> None:
 
     class FakeMatrixModule:
         MatrixError = FakeMatrixError
+        MIXED_NODE_SUCCESS_MARKERS = tuple(
+            item[1] for item in MIXED_NODE_LIFECYCLES
+        )
 
-        @staticmethod
-        def run_execution(execution: dict[str, Any], *args: Any,
+        def __init__(self) -> None:
+            self.validation_calls = 0
+            self.last_required_markers: tuple[bytes, ...] = ()
+
+        def validate_test_output(self, returncode: int, stdout: bytes,
+                                 stderr: bytes,
+                                 required_markers: tuple[bytes, ...] = ()) -> None:
+            self.validation_calls += 1
+            self.last_required_markers = required_markers
+            if returncode != 0:
+                raise FakeMatrixError("/private/tmp/secret-token")
+
+        def run_execution(self, execution: dict[str, Any], *args: Any,
                           **kwargs: Any) -> None:
+            if execution.get("id") == "mixed-node-coexistence":
+                self.validate_test_output(
+                    1,
+                    b"ERGON_LEGACY_LIFECYCLE_OK full-reindex\n"
+                    b"ERGON_LEGACY_LIFECYCLE_OK chainstate-reindex\n"
+                    b"  File \"/tmp/tests/compatibility/legacy/"
+                    b"feature_ergon_legacy_compatibility.py\", line 455, in "
+                    b"default_protected_reorg_and_compare\n",
+                    b"/private/tmp/secret-token\n"
+                    b"  File \"/tmp/untrusted.py\", line 1, in run_test\n",
+                    self.MIXED_NODE_SUCCESS_MARKERS,
+                )
+                return
             raise FakeMatrixError("/private/tmp/secret-token")
 
     fake_module = FakeMatrixModule()
@@ -1336,11 +1509,67 @@ def self_test(repository_root: Path) -> None:
         try:
             fake_module.run_execution({"id": scenario})
         except FakeMatrixError as error:
-            require(str(error) == f"scenario {scenario} failed",
+            expected = (
+                "scenario mixed-node-coexistence failure-kind child-nonzero "
+                "last-completed-lifecycle chainstate-reindex "
+                "last-allowlisted-feature-frame "
+                "default_protected_reorg_and_compare"
+                if scenario == "mixed-node-coexistence"
+                else f"scenario {scenario} failed"
+            )
+            require(str(error) == expected,
                     "matrix execution attribution differs")
+            require("secret-token" not in str(error),
+                    "matrix execution attribution exposed raw output")
         else:
             raise ReproductionError("matrix execution failure was accepted")
-    print("Legacy reproduction self-tests passed (10 rejection classes).")
+    fake_module.validate_test_output(
+        0, b"Tests successful\n", b"", fake_module.MIXED_NODE_SUCCESS_MARKERS
+    )
+    require(fake_module.validation_calls == 2 and
+            fake_module.last_required_markers is
+            fake_module.MIXED_NODE_SUCCESS_MARKERS,
+            "matrix output validator invocation count differs")
+
+    for count in range(len(MIXED_NODE_LIFECYCLES) + 1):
+        output = b"\n".join(
+            b"2026-09-04 TestFramework (INFO): " + item[1]
+            for item in MIXED_NODE_LIFECYCLES[:count]
+        )
+        expected_lifecycle = (
+            "none" if count == 0 else MIXED_NODE_LIFECYCLES[count - 1][0]
+        )
+        lifecycle, _ = classify_mixed_node_output(output, b"")
+        require(lifecycle == expected_lifecycle,
+                "mixed-node lifecycle prefix classification differs")
+
+    invalid_marker_outputs = (
+        (b"INFO: " + MIXED_NODE_LIFECYCLES[0][1] + b"\n" +
+         b"INFO: " + MIXED_NODE_LIFECYCLES[0][1] + b"\n",
+         "invalid-marker-state"),
+        (MIXED_NODE_LIFECYCLES[0][1] + b" " +
+         MIXED_NODE_LIFECYCLES[0][1], "invalid-marker-state"),
+        (MIXED_NODE_LIFECYCLES[1][1] + b"\n", "invalid-marker-state"),
+        (MIXED_NODE_LIFECYCLES[1][1] + b"\n" +
+         MIXED_NODE_LIFECYCLES[0][1] + b"\n", "invalid-marker-state"),
+    )
+    for output, expected_lifecycle in invalid_marker_outputs:
+        lifecycle, _ = classify_mixed_node_output(output, b"")
+        require(lifecycle == expected_lifecycle,
+                "mixed-node lifecycle classification differs")
+
+    _, frame = classify_mixed_node_output(
+        b"  File \"/work/tests/compatibility/legacy/"
+        b"feature_ergon_legacy_compatibility.py\", line 200, in node_snapshot\n"
+        b"  File \"/work/tests/compatibility/legacy/"
+        b"feature_ergon_legacy_compatibility.py\", line 232, in mine_and_compare\n"
+        b"  File \"/work/tests/compatibility/legacy/"
+        b"feature_ergon_legacy_compatibility.py\", line 999, in hostile_unknown\n",
+        b"/private/tmp/secret-token",
+    )
+    require(frame == "mine_and_compare",
+            "mixed-node feature-frame classification differs")
+    print("Legacy reproduction self-tests passed.")
 
 
 def parse_args() -> argparse.Namespace:
