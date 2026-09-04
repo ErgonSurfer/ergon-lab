@@ -24,8 +24,8 @@ BASE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 PUBLIC_ROOT_TREE = BASE_TREE
 PUBLIC_MAIN_REF = "refs/remotes/origin/main"
-CHANGE_ID = "ERGON-CHANGE-0009"
-PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0009.json"
+CHANGE_ID = "ERGON-CHANGE-0010"
+PUBLIC_RECORD_PATH = "docs/engineering/changes/ergon-change-0010.json"
 PUBLIC_SCHEMA_PATH = "docs/engineering/schemas/change-evidence.schema.json"
 PUBLIC_VALIDATOR_PATH = "tools/engineering/check_change.py"
 PUBLIC_SCHEMA_VERSION = "1.1"
@@ -60,8 +60,6 @@ SIGNATURE_CONTRACT = {
     "public_key_sha256": SIGNING_PUBLIC_KEY_SHA256,
 }
 TECHNICAL_CHANGE_ENTRIES = (
-    ("M", "tests/compatibility/legacy/README.md"),
-    ("M", "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py"),
     ("M", "tests/compatibility/legacy/run_matrix.py"),
     ("M", "tests/compatibility/legacy/self_test.py"),
 )
@@ -139,8 +137,9 @@ REVIEWED_FILE_METADATA = {
         "role": "harness",
         "spdx": "MIT",
         "test_reachability": (
-            "Runs the identity-bound fail-closed public matrix and requires all "
-            "reviewed lifecycle markers."
+            "Confines each functional cache to its disposable scenario root, "
+            "prevents source bytecode writes, revalidates source identities, "
+            "and runs the identity-bound fail-closed public matrix."
         ),
     },
     "tests/compatibility/legacy/self_test.py": {
@@ -153,8 +152,8 @@ REVIEWED_FILE_METADATA = {
         "role": "test",
         "spdx": "MIT",
         "test_reachability": (
-            "Covers runner contracts, reconstruction, protected-reorg and "
-            "physical-pruning canaries, record binding, and fail-closed paths."
+            "Covers per-scenario cache confinement, source immutability, runner "
+            "contracts, reconstruction, lifecycle canaries, and fail-closed paths."
         ),
     },
 }
@@ -170,14 +169,10 @@ BASELINE_CONTROLLED_PATHS = (
     "src",
 )
 INTEGRATION_PARENT_PREIMAGES = {
-    "tests/compatibility/legacy/README.md":
-        "a279e32c9a6c5ffb0a0e4be7ac7b5464dcd8ac15",
-    "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py":
-        "eeb6ba8c13079fd187bf41c66472bff011232757",
     "tests/compatibility/legacy/run_matrix.py":
-        "8c6e21ca8f08cedb8c6de0ed641a783cdbbcdf26",
+        "735442bf32fddb8675ba49d7c196aada50314f56",
     "tests/compatibility/legacy/self_test.py":
-        "bf62956ebc9b425587fe371a43c412110fa5d91b",
+        "5e0e3cb7e04877918fee4813b9ab912d8816c8d6",
 }
 BUILD_ROLES = ("baseline", "candidate")
 INTEGRATION_PARENT_BINDING = {
@@ -1027,13 +1022,16 @@ def terminate_process_group(process):
 def run_execution(execution, *, candidate_source, builds, work_root,
                   portseed, timeout):
     execution_root = work_root / execution["id"]
+    cachedir = execution_root / "cache"
     tmpdir = execution_root / "tmp"
     datadir = execution_root / "datadir"
     tmpdir.mkdir(parents=True)
     command = [
         sys.executable,
+        "-B",
         str(candidate_source / execution["script"]),
         f"--configfile={builds[execution['build']]['config']}",
+        f"--cachedir={cachedir}",
         f"--tmpdir={datadir}",
         f"--portseed={portseed}",
     ]
@@ -1063,6 +1061,22 @@ def run_execution(execution, *, candidate_source, builds, work_root,
         stderr,
         execution.get("required_output_markers", ()),
     )
+
+
+def require_source_identities_unchanged(
+        baseline_source, baseline_identity, candidate_source,
+        candidate_identity):
+    post_baseline_root, post_baseline_identity = source_identity(
+        baseline_source, exact_base=True
+    )
+    post_candidate_root, post_candidate_identity = source_identity(
+        candidate_source
+    )
+    if post_baseline_root != baseline_source \
+            or post_baseline_identity != baseline_identity \
+            or post_candidate_root != candidate_source \
+            or post_candidate_identity != candidate_identity:
+        raise MatrixError("source tree changed during execution")
 
 
 def public_report(baseline_identity, candidate_identity, record_sha256,
@@ -1236,6 +1250,12 @@ def main():
                 timeout=args.timeout,
             )
             completed.append(execution["id"])
+        require_source_identities_unchanged(
+            baseline_source,
+            baseline_identity,
+            candidate_source,
+            candidate_identity,
+        )
     except BaseException:
         shutil.rmtree(work_root, ignore_errors=True)
         raise

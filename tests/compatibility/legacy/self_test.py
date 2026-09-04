@@ -462,12 +462,6 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.TECHNICAL_CHANGE_ENTRIES,
             (
-                ("M", "tests/compatibility/legacy/README.md"),
-                (
-                    "M",
-                    "tests/compatibility/legacy/"
-                    "feature_ergon_legacy_compatibility.py",
-                ),
                 ("M", "tests/compatibility/legacy/run_matrix.py"),
                 ("M", "tests/compatibility/legacy/self_test.py"),
             ),
@@ -480,25 +474,17 @@ class MatrixContractTest(unittest.TestCase):
         self.assertEqual(
             MATRIX.INTEGRATION_PARENT_PREIMAGES,
             {
-                "tests/compatibility/legacy/README.md":
-                    "a279e32c9a6c5ffb0a0e4be7ac7b5464dcd8ac15",
-                "tests/compatibility/legacy/"
-                "feature_ergon_legacy_compatibility.py":
-                    "eeb6ba8c13079fd187bf41c66472bff011232757",
                 "tests/compatibility/legacy/run_matrix.py":
-                    "8c6e21ca8f08cedb8c6de0ed641a783cdbbcdf26",
+                    "735442bf32fddb8675ba49d7c196aada50314f56",
                 "tests/compatibility/legacy/self_test.py":
-                    "bf62956ebc9b425587fe371a43c412110fa5d91b",
+                    "5e0e3cb7e04877918fee4813b9ab912d8816c8d6",
             },
         )
 
     def test_prior_records_bind_preimages(self):
         source_root = MODULE_PATH.parents[3]
         expected_by_record = {
-            "ergon-change-0007.json": {
-                "tests/compatibility/legacy/README.md",
-                "tests/compatibility/legacy/"
-                "feature_ergon_legacy_compatibility.py",
+            "ergon-change-0009.json": {
                 "tests/compatibility/legacy/run_matrix.py",
                 "tests/compatibility/legacy/self_test.py",
             },
@@ -1243,6 +1229,108 @@ class MatrixContractTest(unittest.TestCase):
             )
             self.assertNotIn("ERGON_PARENT_ONLY_SECRET", first_env)
             self.assertNotEqual(first_env["TMPDIR"], second_env["TMPDIR"])
+
+    def test_execution_cache_and_bytecode_are_confined(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            candidate_source = root / "candidate-source"
+            candidate_source.mkdir()
+            work_root = root / "work"
+            work_root.mkdir()
+            builds = {
+                role: {
+                    "binary": root / f"{role}-build" / "src" / "bitcoind",
+                    "config": root / f"{role}-build" / "test" / "config.ini",
+                }
+                for role in MATRIX.BUILD_ROLES
+            }
+            process = mock.Mock(pid=12345, returncode=0)
+            process.communicate.return_value = (b"Tests successful\n", b"")
+            commands = []
+            with mock.patch.object(
+                MATRIX.subprocess, "Popen", return_value=process
+            ) as popen, mock.patch.object(MATRIX, "terminate_process_group"):
+                for offset, execution in enumerate(MATRIX.EXECUTIONS[1:3]):
+                    MATRIX.run_execution(
+                        execution,
+                        candidate_source=candidate_source,
+                        builds=builds,
+                        work_root=work_root,
+                        portseed=700 + offset,
+                        timeout=10,
+                    )
+                    commands.append(popen.call_args.args[0])
+
+            cachedirs = []
+            datadirs = []
+            for execution, command in zip(MATRIX.EXECUTIONS[1:3], commands):
+                execution_root = work_root / execution["id"]
+                self.assertEqual(command[:2], [sys.executable, "-B"])
+                cachedir = f"--cachedir={execution_root / 'cache'}"
+                datadir = f"--tmpdir={execution_root / 'datadir'}"
+                self.assertIn(cachedir, command)
+                self.assertIn(datadir, command)
+                self.assertFalse(any(
+                    str(candidate_source / "test" / "cache") in argument
+                    for argument in command
+                ))
+                cachedirs.append(cachedir)
+                datadirs.append(datadir)
+            self.assertEqual(len(set(cachedirs)), 2)
+            self.assertEqual(len(set(datadirs)), 2)
+
+    def test_source_identities_are_revalidated_after_execution(self):
+        with tempfile.TemporaryDirectory() as root:
+            baseline = (Path(root) / "baseline").resolve()
+            candidate = (Path(root) / "candidate").resolve()
+            baseline.mkdir()
+            candidate.mkdir()
+            baseline_identity = {
+                "clean": True,
+                "commit": MATRIX.BASE_COMMIT,
+                "tree": MATRIX.BASE_TREE,
+            }
+            candidate_identity = {
+                "clean": True,
+                "commit": "1" * 40,
+                "tree": "2" * 40,
+            }
+            with mock.patch.object(
+                MATRIX,
+                "source_identity",
+                side_effect=[
+                    (baseline, baseline_identity),
+                    (candidate, candidate_identity),
+                ],
+            ):
+                MATRIX.require_source_identities_unchanged(
+                    baseline,
+                    baseline_identity,
+                    candidate,
+                    candidate_identity,
+                )
+            changed = dict(candidate_identity, clean=False)
+            with mock.patch.object(
+                MATRIX,
+                "source_identity",
+                side_effect=[
+                    (baseline, baseline_identity),
+                    (candidate, changed),
+                ],
+            ):
+                with self.assertRaisesRegex(
+                    MATRIX.MatrixError, "source tree changed"
+                ):
+                    MATRIX.require_source_identities_unchanged(
+                        baseline,
+                        baseline_identity,
+                        candidate,
+                        candidate_identity,
+                    )
+            self.assertIn(
+                "require_source_identities_unchanged",
+                function_source(MODULE_PATH, "main"),
+            )
 
     def test_reviewed_signing_trust_root_is_exact(self):
         MATRIX.verify_signing_trust_root()
