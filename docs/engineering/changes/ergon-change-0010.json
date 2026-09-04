@@ -4,7 +4,7 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0010",
   "stage": "legacy-compatibility",
-  "status": "accepted",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0010.json",
   "purpose": {
     "summary": "Confine every functional-test cache to its disposable scenario root and revalidate both public source identities before emitting legacy-compatibility evidence.",
@@ -260,25 +260,35 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "active",
+    "knowledge_status": "Observed",
+    "ceiling": "assembled_component",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0010/legacy-compatibility.json",
+        "sha256": "95bc5452231deb1a6be72909910c94bea3a52ee5748ceb857b8f7ca0dda8b757"
+      }
+    ]
   },
   "limitations": [
-    "No public candidate execution evidence exists for ERGON-CHANGE-0010; any later successful public promotion remains capped at Observed / assembled_component.",
-    "The cache-confinement correction changes only the test runner and its self-tests; it does not strengthen or widen any legacy-consensus, reorganization, pruning, public-network, operator-binary, or mainnet claim.",
+    "The public report observes only the exact ERGON-CHANGE-0010 candidate and cannot promote any later code or operator binary.",
+    "The four passing scenarios establish a bounded synthetic short-chain regtest observation with cross-node synchronization, clean restart, full reindex, chainstate reindex, manual physical pruning, post-prune mining, and one default-protected valid-chain reorganization on both roles.",
+    "The reorganization oracle uses an isolated baseline generator and identical raw blocks: a three-block incumbent, a replacement parked at equal work and a one-block lead, then activation at a two-block lead. It does not exercise P2P reorganization propagation, variable depth, invalid branches or transactions, DAA boundaries, mempool conflicts, restart or crash in flight, or reorganization across pruned history.",
+    "The normalized report does not serialize raw logs, physical paths, per-role pruning measurements, or per-step reorganization measurements; those oracles are enforced by the exact signed scenario and are not independently recomputable from the report alone.",
     "Binary digests and config.ini source/build bindings do not prove build causality, and the dependency profile is not locked.",
-    "This initial record carries no execution evidence and is not an independent reproduction pack."
+    "Historical-chain replay, sustained operation, public-network peers, operator-binary equivalence, real-datadir parity, and mainnet coexistence remain untested.",
+    "This evidence has an assembled-component ceiling and is not an independent reproduction pack."
   ],
   "counterevidence": [
-    "The signed ERGON-CHANGE-0009 mixed-node scenario passed from read-only public source inputs, but the complete matrix then failed before the first inherited mining fixture could start because its implicit cachedir targeted the read-only candidate source tree; no report was emitted.",
-    "A writable-checkout diagnostic was stopped and rejected as evidence because it could mutate a governed source input and place cached datadirs outside the disposable work root.",
-    "A future pass of this confinement correction cannot establish reproducible builds, independent reproduction, sustained operation, public-network behavior, operator-binary equivalence, or mainnet coexistence."
+    "No contradiction was observed inside the four declared public oracles, including the bounded default-protected reorganization lifecycle.",
+    "The prior read-only cache-path failure is closed for this exact run: every scenario completed, both source identities remained unchanged, the disposable work root was removed, and the report was emitted only after those checks.",
+    "A bounded raw-block reorganization does not establish P2P propagation, variable-depth or adverse reorganization behavior, invalid-branch or invalid-transaction handling, DAA boundaries, mempool conflict handling, crash recovery, pruned-history recovery, public-network behavior, or mainnet coexistence.",
+    "Build causality, reproducible builds, independent reproduction, operator-binary parity, historical-chain and real-datadir parity, and sustained operation remain evidence gaps."
   ],
   "decision": {
     "status": "accepted",
     "reviewer": "Ergon Public Node GitHub Cockpit",
-    "date": "2026-09-04"
+    "date": "2026-09-04",
+    "public_commit": "889212482c964ec98dcc2ac55321cb0e04e17666"
   }
 }
