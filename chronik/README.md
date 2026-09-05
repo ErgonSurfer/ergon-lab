@@ -45,10 +45,12 @@ observer boundary; they do not revalidate or overrule the node.
 
 The observer keeps a reversible projection of at most 288 active-chain blocks,
 matching the legacy `MIN_BLOCKS_TO_KEEP` suffix. It records block identity,
-height, and transaction count. A connect must name the exact retained tip as
-its parent and advance one height. A disconnect must match the exact LIFO tip.
-Checked arithmetic and parse failures reject the observer event without
-changing its sequence or projection.
+height, transaction count, recognized SLP- and ALP-family transaction counts,
+token parser/coloring diagnostics, and the number of outputs whose serialized
+locking script begins with the CashTokens prefix byte `0xef`. A connect must
+name the exact retained tip as its parent and advance one height. A disconnect
+must match the exact LIFO tip. Checked arithmetic and block parse failures
+reject the observer event without changing its sequence or projection.
 
 At normal startup, the node reads the available active suffix into a separate
 staging observer and adopts it only after the complete reconstruction passes.
@@ -70,15 +72,25 @@ then reconstructs exactly the still-readable heights 714 through 1001.
 
 ## Native-assets boundary
 
-- Families recognized or observed in transactions and blocks: none. The
-  opt-in observer structurally deserializes accepted blocks but does not inspect
-  transaction outputs or perform SLP, ALP, or CashTokens classification.
-  Dormant SLP and ALP parsing primitives remain unreachable from node callbacks.
-- Indexed or reconstructed data: only the bounded active-chain sequence of
-  block identities, heights, and aggregate transaction counts. It is rebuilt
-  from public node block inputs and is not a durable or queryable index.
-- Authoritative token validation or token state: none.
-- Governed consensus activation: none.
+- Families recognized or observed in transactions and blocks: the explicit
+  local-regtest observer uses the inherited `bitcoinsuite-slp` parser/colorer
+  to count transactions containing recognized SLP or ALP family sections. It
+  also counts parser and coloring failures as diagnostics. Separately, it
+  counts every output whose serialized locking script starts with `0xef` as a
+  CashTokens *prefix candidate*, including malformed candidates. These are
+  observations of confirmed block bytes, not validity statements.
+- Indexed or reconstructed data: the volatile 288-block suffix stores only
+  block identity, height, transaction count, the two family counts, diagnostic
+  failure counts, and candidate-prefix output count. Per-transaction records,
+  transaction bodies, token identifiers, balances, and UTXO relationships are
+  not retained. The aggregates are reversible and rebuilt from public block
+  inputs, but they are neither durable nor queryable.
+- Authoritative token validation or token state: none. The observer does not
+  load prevouts, verify token ancestry or conservation, maintain spent token
+  state, strictly decode CashTokens, or influence node validation.
+- Governed consensus activation: none. No activation height, chain parameter,
+  testnet rule, or mainnet rule is added. Observing SLP, ALP, or an `0xef`
+  prefix does not make that asset family native or active in Ergon consensus.
 
 ## Provenance
 
@@ -128,6 +140,10 @@ Run the opt-in functional boundary only with the compiled-in build:
 
 ```sh
 python3 test/functional/feature_chronik_block_observer.py \
+  --configfile=/absolute/path/build-observer/test/config.ini \
+  --hermetic-child-env
+
+python3 test/functional/feature_chronik_asset_observer.py \
   --configfile=/absolute/path/build-observer/test/config.ini \
   --hermetic-child-env
 

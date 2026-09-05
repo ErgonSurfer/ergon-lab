@@ -13,4 +13,5 @@ crate-type = ["staticlib"]
 
 [dependencies]
 bitcoinsuite-core = { path = "../bitcoinsuite-core" }
+bitcoinsuite-slp = { path = "../bitcoinsuite-slp" }
 bytes = "1.4"
