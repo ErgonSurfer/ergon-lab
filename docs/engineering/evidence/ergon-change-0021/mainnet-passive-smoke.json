@@ -1,0 +1,75 @@
+{
+  "binaries": {
+    "baseline": {
+      "binary_to_source_provenance": "external-build-record-required",
+      "bytes": 146339616,
+      "sha256": "04bb806c801a21b1721ea7608642e6d2538ada378537fdc496dfafca471d9358"
+    },
+    "candidate": {
+      "binary_to_source_provenance": "external-build-record-required",
+      "bytes": 146339856,
+      "sha256": "70e748af03ba2e6c999390182b8f748ad28eb28ed415719543487b6dd652a7fe"
+    }
+  },
+  "claims": {
+    "bounded_mainnet_prefix_match": true,
+    "current_tip_agreement": "not_claimed",
+    "full_historical_replay": "not_claimed",
+    "independent_public_prefix_acquisition": true,
+    "mainnet_coexistence": "not_claimed",
+    "operator_binary_parity": "not_claimed",
+    "sustained_operation": "not_claimed"
+  },
+  "cleanup": {
+    "complete": true,
+    "processes_survived": false,
+    "work_root_survived": false
+  },
+  "evidence_ceiling": "assembled_runtime",
+  "knowledge_status": "Observed",
+  "limitations": [
+    "Public peers and DNS resolvers necessarily observe each role's source IP.",
+    "Passive means no authored transaction or block and no public inbound service; P2P protocol traffic still occurs.",
+    "The fixed prefix does not cover the current tip, full history, sustained operation, or operator binaries.",
+    "Shutdown may complete already in-flight blocks above the fixed checkpoint; only checkpoint 288 is compared.",
+    "Distinct public peer sets and simultaneous operation are not established."
+  ],
+  "observations": {
+    "baseline_clean_restart": true,
+    "baseline_public_prefix_acquired": true,
+    "candidate_clean_restart": true,
+    "candidate_public_prefix_acquired": true,
+    "datadirs_distinct": true,
+    "ports_distinct": true,
+    "processes_distinct": true,
+    "roles_equal": true,
+    "shared_checkpoint": {
+      "blockhash": "00000000000000be7fe8553e594968b720629945e13b2f341f3d058d0185a9af",
+      "chain": "main",
+      "chainwork": "00000000000000000000000000000000000000000000000042dd753c3f6e89e7",
+      "checkpoint_height": 288,
+      "genesis": "000000070e37bfee7e84b94f997f38155a85b22172f5ca25fd4eb3d64c5ad7c5",
+      "raw_header": "00000020c18b8c32bb0485c951a46ddb37a241f85b8ee22d0bb7965f2603000000000000955b41e879e15545dcc67736e26d25238e53aff0d64c5eb39825ff9b349d0b0b5856906072ce031a5b0a9f73"
+    }
+  },
+  "privacy": {
+    "host_specific_absolute_paths_retained": false,
+    "parent_environment_retained": false,
+    "peer_addresses_retained": false,
+    "raw_process_output_retained": false
+  },
+  "profile": "mainnet-passive-independent-prefix-smoke",
+  "reason_code": "bounded-mainnet-prefix-matched",
+  "result": "success",
+  "scenario_id": "mixed-node-coexistence",
+  "schema": "ergon-mainnet-passive-smoke/v2",
+  "scope": {
+    "complete_initial_block_download": false,
+    "maximum_accepted_exit_height": 416,
+    "network_source_by_role": {
+      "baseline": "public-mainnet",
+      "candidate": "public-mainnet"
+    },
+    "stop_trigger_height": 288
+  }
+}

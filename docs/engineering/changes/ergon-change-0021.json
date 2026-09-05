@@ -4,21 +4,21 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0021",
   "stage": "legacy-compatibility",
-  "status": "under-review",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0021.json",
   "purpose": {
-    "summary": "Bind the passive mainnet reproduction driver to the exact ERGON-CHANGE-0020 failure-diagnostic target.",
+    "summary": "Reconstruct the exact ERGON-CHANGE-0020 target from public sources and observe two independent bounded mainnet-prefix acquisitions.",
     "scope": [
-      "Pin the technical target to signed commit d228bd8720631f0bbaccc7e222cc3b409f04a635 and tree f7821808d24d7bdb7b42b58a413e2ba4c8e335c2, whose exact parent is 0f763359ee38f5ce24e5c47ad9af51ca28b73bf4 and tree 7298617b3a1a9f364072877fe5cf2d0a49492072.",
-      "Bind the exact ERGON-CHANGE-0020 record and passive-smoke runner bytes before either source is built or executed.",
-      "Enable one future explicit public dispatch to consume only the closed ERGON-CHANGE-0020 failure-role diagnostic contract.",
-      "Preserve the successful v2 report, source authentication, build, dependency, privacy, cleanup and fail-closed boundaries unchanged."
+      "Fresh-clone and build the exact Bitcoin Static baseline and signed ERGON-CHANGE-0020 candidate in distinct roots under the locked Ubuntu 22.04 ARM64 environment.",
+      "Verify public root, integration parent, technical candidate, ERGON-CHANGE-0020 record and passive-smoke runner against their exact public identities and ErgonSurfer SSH signatures.",
+      "Let baseline and candidate independently acquire the public mainnet prefix through checkpoint 288 in distinct processes, datadirs and port allocations, restart both offline and compare genesis, block hash, raw header and chainwork at the checkpoint.",
+      "Admit exactly one sanitized smoke report and one source-to-binary build receipt from successful GitHub workflow_dispatch run 33972863220 attempt 1 after archive, schema, identity, cleanup and privacy review."
     ],
     "exclusions": [
-      "No schema, validator, workflow, harness, container, dependency-lock, production-node, consensus, validation, P2P, storage, RPC, wallet, Chronik, activation, testnet or mainnet-parameter change.",
-      "No workflow dispatch, network run, rerun, incoming artifact, evidence promotion or claim that the rebound target has executed.",
+      "No code, test, workflow, schema, validator, harness, container, dependency-lock, production-node, consensus, validation, P2P, storage, RPC, wallet, Chronik, activation, testnet or mainnet-parameter change.",
+      "No modification of the accepted ERGON-CHANGE-0020 technical target, runner, checkpoint, bounds or sequential topology.",
       "No raw child output, peer address, absolute host path, parent environment, cookie, secret, port, datadir or runtime artifact enters generated evidence.",
-      "No current-tip, full-history, simultaneous-operation, peer-diversity, sustained-operation, deterministic-build, operator-binary or mainnet-coexistence claim."
+      "No complete legacy compatibility, current-tip, full-history, UTXO-state parity, simultaneous-operation, peer-diversity, sustained-operation, deterministic-build, operator or release binary, mainnet-coexistence or deployment-readiness claim."
     ]
   },
   "baseline": {
@@ -124,7 +124,7 @@
       {
         "role": "baseline",
         "commands": [
-          "On one future explicit dispatch only, fresh-clone and build exact Bitcoin Static v24.0.5 in the locked Ubuntu 22.04 ARM64 environment."
+          "Fresh-clone and build exact Bitcoin Static v24.0.5 in GitHub workflow_dispatch run 33972863220 attempt 1 under the locked Ubuntu 22.04 ARM64 environment."
         ],
         "expected_results": [
           "The clean baseline source and executable identities are recorded independently and remain unchanged through the bounded scenario."
@@ -133,7 +133,7 @@
       {
         "role": "candidate",
         "commands": [
-          "On the same future dispatch, fresh-clone and build exact signed commit d228bd8720631f0bbaccc7e222cc3b409f04a635 in a distinct root."
+          "Fresh-clone and build exact signed commit d228bd8720631f0bbaccc7e222cc3b409f04a635 in a distinct root during the same public run."
         ],
         "expected_results": [
           "Candidate commit, tree, parent, record, runner, signature and executable identities match the governed target."
@@ -143,9 +143,9 @@
     "scenarios": [
       {
         "id": "mixed-node-coexistence",
-        "command": "After ERGON-CHANGE-0021 is public, permit at most one explicit dispatch of the exact ERGON-CHANGE-0020 passive mainnet target.",
+        "command": "Run the exact ERGON-CHANGE-0020 direct-public bounded passive mainnet-prefix smoke from signed public binding commit 2f6a9b85c5c3217737ab9ba8edff6a96b3194947 in GitHub workflow_dispatch run 33972863220 attempt 1.",
         "expected_results": [
-          "Success retains the exact v2 bounded-prefix report; non-success retains no artifact and exposes only the validated closed diagnostic line."
+          "Both exact source builds independently acquire the public prefix through checkpoint 288, restart offline, match on genesis, block hash, raw header and chainwork, complete cleanup, and emit exactly two sanitized JSON artifacts."
         ],
         "failure_conditions": [
           "Any source, signature, build, report, role, reason, exit, privacy, cleanup or artifact-set mismatch fails closed."
@@ -203,7 +203,7 @@
       "locked": true,
       "platforms": [
         "Network-free Python self-tests on the review host",
-        "Future GitHub-hosted Ubuntu 22.04 ARM64 virtual machine with mutable image identity recorded but excluded from deterministic-build claims",
+        "GitHub-hosted Ubuntu 22.04 ARM64 virtual machine with mutable image identity recorded but excluded from deterministic-build claims",
         "Digest-pinned Ubuntu 22.04 linux/arm64 container with packages resolved from the signed 20260901T000000Z Ubuntu archive snapshot"
       ],
       "lock_reference": "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
@@ -235,25 +235,37 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "active",
+    "knowledge_status": "Observed",
+    "ceiling": "assembled_runtime",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0021/mainnet-passive-smoke.json",
+        "sha256": "41f62f200987a94e04e0f6ac4b69fbb9af56f40a8f6e4675f63860373a23458d"
+      },
+      {
+        "path": "docs/engineering/evidence/ergon-change-0021/build-provenance.json",
+        "sha256": "693a99ef7d5a79f724996b465eeebef2f5c1524858c4763a861c44986b04cc85"
+      }
+    ]
   },
   "limitations": [
-    "This packet only rebinds tooling; it does not execute the passive mainnet profile or classify a hosted failure.",
-    "At most one future explicit dispatch is contemplated after the signed binding is public; it is not authorized or performed by this record.",
-    "A closed failure diagnostic identifies a bounded phase, disposition and reason code, not a node defect or root cause.",
-    "The passive scenario remains sequential and bounded through checkpoint 288; current tip, full history, simultaneous operation and sustained coexistence remain open.",
-    "The mutable hosted runner image and operator binaries remain outside deterministic-build and operator-parity claims."
+    "The successful hosted dispatch covers only the historical prefix through checkpoint 288; it does not reach current tip or full history and does not compare UTXO state.",
+    "The baseline and candidate public acquisitions were sequential rather than simultaneous, so complete legacy coexistence and sustained operation remain open.",
+    "The run records role-level network source classes but does not establish public peer diversity or retain peer identities.",
+    "The fresh hosted runner image remains mutable even though the container and direct dependencies are locked and recorded.",
+    "The build receipt binds exact public sources to fresh run binaries but does not establish deterministic builds, operator or release binary parity, mainnet deployment readiness, testnet activation or any consensus evolution."
   ],
   "counterevidence": [
-    "No public dispatch of this exact rebound target exists at record-review time.",
-    "Hosted run 33969099259 remains opaque counterevidence and is not retrospectively classified by this tooling change.",
-    "ERGON-CHANGE-0020 added and self-tested the diagnostic contract but deliberately did not bind or dispatch it.",
-    "A checkpoint-288 result cannot resolve current-tip, full-history, long-duration, operator-binary, peer-diversity or simultaneous-operation questions."
+    "GitHub workflow_dispatch run 33972863220 attempt 1 completed successfully at exact signed public binding commit 2f6a9b85c5c3217737ab9ba8edff6a96b3194947 and found no contradiction inside the bounded direct-public checkpoint-288 smoke.",
+    "The GitHub artifact archive is bound as sha256:5cb23ffc4b775b173c36be94fc16147a356a5603653a62d5c51a2358563981e0 and contains exactly the two admitted JSON files; this archive identity does not upgrade the knowledge status beyond Observed.",
+    "Earlier hosted run 33969099259 failed before this diagnostic binding and produced no admitted evidence; it remains counterevidence to assuming reproducibility from the earlier target.",
+    "The successful direct-public result supersedes neither the separate legacy-mining evidence nor any future simultaneous coexistence, current-tip, full-history, UTXO-state, long-duration, peer-diversity, operator-binary or deployment-readiness test."
   ],
   "decision": {
-    "status": "pending"
+    "status": "accepted",
+    "reviewer": "Ergon Public Node GitHub Cockpit",
+    "date": "2026-09-05",
+    "public_commit": "2f6a9b85c5c3217737ab9ba8edff6a96b3194947"
   }
 }
