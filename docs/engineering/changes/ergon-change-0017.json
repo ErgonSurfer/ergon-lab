@@ -4,7 +4,7 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0017",
   "stage": "legacy-compatibility",
-  "status": "under-review",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0017.json",
   "purpose": {
     "summary": "Reconstruct the exact ERGON-CHANGE-0016 target on a fresh public runner and execute its bounded passive mainnet-prefix smoke.",
@@ -12,7 +12,7 @@
       "Fresh-clone and build the exact Bitcoin Static baseline and signed ERGON-CHANGE-0016 candidate in distinct roots under the existing locked Ubuntu 22.04 ARM64 environment.",
       "Verify the public root, integration parent and technical candidate against their exact commits, trees and ErgonSurfer SSH signature identity.",
       "Run the immutable ERGON-CHANGE-0016 passive mainnet smoke and validate its checkpoint, topology, cleanup, privacy and evidence-ceiling fields.",
-      "Emit exactly one sanitized smoke report and one source-to-binary build receipt for later independent review."
+      "Admit exactly one sanitized smoke report and one source-to-binary build receipt from successful GitHub workflow_dispatch run 33963207122 attempt 1 after independent archive, schema, identity, cleanup and privacy review."
     ],
     "exclusions": [
       "No node, consensus, validation, P2P, storage, RPC, wallet, Chronik, activation, testnet, mainnet-parameter, cockpit, roadmap, container or dependency change.",
@@ -158,9 +158,9 @@
     "scenarios": [
       {
         "id": "mixed-node-coexistence",
-        "command": "Run the exact ERGON-CHANGE-0016 bounded passive mainnet-prefix smoke with fresh baseline and candidate builds.",
+        "command": "Run the exact ERGON-CHANGE-0016 bounded passive mainnet-prefix smoke with fresh baseline and candidate builds in GitHub workflow_dispatch run 33963207122 attempt 1 at public commit b464ee11e49fa52b77627bcda3b8bbdaf70f8e5b.",
         "expected_results": [
-          "The candidate receives the same immutable checkpoint-288 prefix only from the loopback baseline, both roles restart cleanly, and two sanitized artifacts are emitted after cleanup."
+          "The candidate receives the same immutable checkpoint-288 prefix only from the loopback baseline, both roles restart cleanly, cleanup completes, and exactly two sanitized JSON artifacts bind the distinct fresh builds and observed runtime."
         ],
         "failure_conditions": [
           "Any source, signature, build, topology, checkpoint, privacy, bound, cleanup or artifact-set mismatch fails closed; incomplete public acquisition remains inconclusive."
@@ -170,36 +170,36 @@
       },
       {
         "id": "legacy-mining-baseline",
-        "command": "Rerun the unchanged accepted legacy-mining-baseline regression gate against the exact fresh baseline build.",
+        "command": "Do not rerun this scenario in ERGON-CHANGE-0017; bind the unchanged legacy-mining-baseline scenario to the accepted ERGON-CHANGE-0015 Reproduced evidence artifacts and their record-bound hashes.",
         "expected_results": [
-          "The accepted baseline mining fixture still passes without skip or source mutation."
+          "The ERGON-CHANGE-0015 evidence remains the sole Reproduced basis for this legacy schema scenario; ERGON-CHANGE-0017 makes no new execution claim for it."
         ],
         "failure_conditions": [
-          "Any skip, timeout, nonzero exit, source mutation, cache escape or cleanup failure fails closed."
+          "Any ERGON-CHANGE-0015 evidence-path, digest, scenario or claim mismatch fails the binding; absence from run 33963207122 must not be represented as a rerun."
         ],
         "fresh_process": true,
         "isolated_datadir": true
       },
       {
         "id": "legacy-mining-candidate",
-        "command": "Rerun the unchanged accepted legacy-mining-candidate regression gate against the exact fresh candidate build.",
+        "command": "Do not rerun this scenario in ERGON-CHANGE-0017; bind the unchanged legacy-mining-candidate scenario to the accepted ERGON-CHANGE-0015 Reproduced evidence artifacts and their record-bound hashes.",
         "expected_results": [
-          "The accepted candidate mining fixture still passes without skip or source mutation."
+          "The ERGON-CHANGE-0015 evidence remains the sole Reproduced basis for this legacy schema scenario; ERGON-CHANGE-0017 makes no new execution claim for it."
         ],
         "failure_conditions": [
-          "Any skip, timeout, nonzero exit, source mutation, cache escape or cleanup failure fails closed."
+          "Any ERGON-CHANGE-0015 evidence-path, digest, scenario or claim mismatch fails the binding; absence from run 33963207122 must not be represented as a rerun."
         ],
         "fresh_process": true,
         "isolated_datadir": true
       },
       {
         "id": "inherited-functional-default-launch",
-        "command": "Rerun the unchanged accepted inherited default-launch regression gate against the exact fresh candidate build.",
+        "command": "Do not rerun this scenario in ERGON-CHANGE-0017; bind the unchanged inherited-functional-default-launch scenario to the accepted ERGON-CHANGE-0015 Reproduced evidence artifacts and their record-bound hashes.",
         "expected_results": [
-          "The inherited selection still passes without skip or source mutation."
+          "The ERGON-CHANGE-0015 evidence remains the sole Reproduced basis for this legacy schema scenario; ERGON-CHANGE-0017 makes no new execution claim for it."
         ],
         "failure_conditions": [
-          "Any selection drift, skip, timeout, nonzero exit, source mutation, cache escape or cleanup failure fails closed."
+          "Any ERGON-CHANGE-0015 evidence-path, digest, scenario or claim mismatch fails the binding; absence from run 33963207122 must not be represented as a rerun."
         ],
         "fresh_process": true,
         "isolated_datadir": true
@@ -253,23 +253,39 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "active",
+    "knowledge_status": "Observed",
+    "ceiling": "assembled_runtime",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0017/mainnet-passive-smoke.json",
+        "sha256": "8be88c2852760ce4e60ae385a8def18a728814823a15deb129f1214071755b10"
+      },
+      {
+        "path": "docs/engineering/evidence/ergon-change-0017/build-provenance.json",
+        "sha256": "1858405786ce8652f9cbfc56ad6668dded3b8536c0337e0de92bbb7e87c5e8e9"
+      }
+    ]
   },
   "limitations": [
-    "A successful dispatch would cover only one bounded historical prefix through checkpoint 288 and one legacy-to-candidate loopback transfer path.",
+    "The successful hosted dispatch covers only one bounded historical prefix through checkpoint 288 and one legacy-to-candidate loopback transfer path.",
     "The smoke does not reach current tip and does not establish full history, sustained operation, public candidate peering, operator-binary parity, deterministic builds or complete mainnet coexistence.",
     "The fresh hosted runner image remains mutable even though the container and direct dependencies are locked and recorded.",
-    "This packet adds reproduction tooling only; it does not change the technical node candidate or promote evidence by itself."
+    "The three legacy schema scenarios were not rerun by workflow run 33963207122; they remain explicitly bound to the existing ERGON-CHANGE-0015 Reproduced evidence, and their schema-required fresh_process and isolated_datadir flags describe those referenced executions rather than a new ERGON-CHANGE-0017 run.",
+    "The build receipt binds the workflow checkout to public CI SHA b464ee11e49fa52b77627bcda3b8bbdaf70f8e5b but does not embed that commit's signature status; independent public-history review verified its ErgonSurfer SSH signature.",
+    "This evidence-only packet does not change the technical node candidate and does not promote the result beyond Observed at assembled_runtime."
   ],
   "counterevidence": [
-    "No hosted run of this exact public reproduction workflow exists at record-review time.",
+    "GitHub workflow_dispatch run 33963207122 attempt 1 completed successfully at exact public commit b464ee11e49fa52b77627bcda3b8bbdaf70f8e5b and found no contradiction inside its bounded checkpoint-288 passive smoke.",
+    "The GitHub artifact archive is bound as sha256:e2a0c96595dcd95774028a80a9e5142dfabaa896c89c93ea043d5a2f280e55cd and contains exactly the two admitted JSON files; this archive identity does not upgrade the knowledge status beyond Observed.",
+    "The legacy-mining-baseline, legacy-mining-candidate and inherited-functional-default-launch scenarios are not outputs of run 33963207122; their unchanged Reproduced claims remain confined to ERGON-CHANGE-0015 evidence hashes 8b6d26a1dd9af23b2d25a281d56056349c3950bb8c3279ef1adf557cd14fa5fc, 6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647 and aa2a342cbe1d18fc3336e4b471883627e3e6087798c0144d98d270cdaad7a999.",
     "The local ERGON-CHANGE-0016 run used distinct-inode copies of one legacy executable and therefore did not establish source-to-binary candidate independence.",
-    "The reproduced synthetic regtest matrix in ERGON-CHANGE-0015 does not answer passive public-network acquisition or mainnet-prefix transfer."
+    "The reproduced synthetic regtest matrix in ERGON-CHANGE-0015 and this bounded passive mainnet-prefix observation answer different questions; neither establishes full mainnet coexistence."
   ],
   "decision": {
-    "status": "pending"
+    "status": "accepted",
+    "reviewer": "Ergon Public Node GitHub Cockpit",
+    "date": "2026-09-05",
+    "public_commit": "b464ee11e49fa52b77627bcda3b8bbdaf70f8e5b"
   }
 }

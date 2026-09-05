@@ -1,0 +1,177 @@
+{
+  "builds": {
+    "baseline": {
+      "bitcoind_bytes": 146339616,
+      "bitcoind_sha256": "04bb806c801a21b1721ea7608642e6d2538ada378537fdc496dfafca471d9358",
+      "config_sha256": "fe496e825df7c78f9b1bad66c1f1ffeaf6ce6afc0c444931cd863fb2f1c093c5"
+    },
+    "candidate": {
+      "bitcoind_bytes": 146339856,
+      "bitcoind_sha256": "d82463ae9b14b87a3133f2854502aaefa2167a70fae78582d16430526eaf45a1",
+      "config_sha256": "e80ef97c37b7a529148997887c1a9f0018ced3e12afa446d7acb2d6e927758ef"
+    }
+  },
+  "claims": {
+    "bounded_mainnet_prefix_match": true,
+    "build_reproducibility": "not_claimed",
+    "full_historical_replay": "not_claimed",
+    "mainnet_coexistence": "not_claimed",
+    "operator_binary_parity": "not_claimed",
+    "sustained_operation": "not_claimed"
+  },
+  "commands": {
+    "build": [
+      "cmake",
+      "--build",
+      "${BUILD}",
+      "--target",
+      "bitcoind",
+      "--parallel",
+      "4"
+    ],
+    "configure": [
+      "cmake",
+      "-S",
+      "${SOURCE}",
+      "-B",
+      "${BUILD}",
+      "-GNinja",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DBUILD_BITCOIN_QT=OFF",
+      "-DBUILD_BITCOIN_WALLET=ON",
+      "-DBUILD_BITCOIN_ZMQ=OFF",
+      "-DENABLE_UPNP=OFF"
+    ],
+    "smoke": "exact tests/compatibility/mainnet/run_passive_smoke.py at technical_target.commit"
+  },
+  "dependencies": {
+    "direct_packages": {
+      "build-essential": "12.9ubuntu3",
+      "ca-certificates": "20260601~22.04.1",
+      "cmake": "3.22.1-1ubuntu1.22.04.2",
+      "git": "1:2.34.1-1ubuntu1.17",
+      "libboost-chrono-dev": "1.74.0.3ubuntu7",
+      "libboost-filesystem-dev": "1.74.0.3ubuntu7",
+      "libboost-test-dev": "1.74.0.3ubuntu7",
+      "libboost-thread-dev": "1.74.0.3ubuntu7",
+      "libdb++-dev": "1:5.3.21~exp1ubuntu4",
+      "libdb-dev": "1:5.3.21~exp1ubuntu4",
+      "libevent-dev": "2.1.12-stable-1build3",
+      "libssl-dev": "3.0.2-0ubuntu1.29",
+      "ninja-build": "1.10.1-1",
+      "openssh-client": "1:8.9p1-3ubuntu0.16",
+      "python3": "3.10.6-1~22.04.1"
+    },
+    "installed_direct_packages": {
+      "build-essential": "12.9ubuntu3",
+      "ca-certificates": "20260601~22.04.1",
+      "cmake": "3.22.1-1ubuntu1.22.04.2",
+      "git": "1:2.34.1-1ubuntu1.17",
+      "libboost-chrono-dev": "1.74.0.3ubuntu7",
+      "libboost-filesystem-dev": "1.74.0.3ubuntu7",
+      "libboost-test-dev": "1.74.0.3ubuntu7",
+      "libboost-thread-dev": "1.74.0.3ubuntu7",
+      "libdb++-dev": "1:5.3.21~exp1ubuntu4",
+      "libdb-dev": "1:5.3.21~exp1ubuntu4",
+      "libevent-dev": "2.1.12-stable-1build3",
+      "libssl-dev": "3.0.2-0ubuntu1.29",
+      "ninja-build": "1.10.1-1",
+      "openssh-client": "1:8.9p1-3ubuntu0.16",
+      "python3": "3.10.6-1~22.04.1"
+    },
+    "lock_sha256": "a625d09aaa97e54f5fa7487f1000b139dcdf93472bc984425a25e2bf3777eab0",
+    "locked": true,
+    "snapshot": "20260901T000000Z"
+  },
+  "environment": {
+    "architecture": "aarch64",
+    "container_image_id": "sha256:87f38967636989fecdd09d15186e6eb3960d88289fe4cc9a547c6ecb3d0ce768",
+    "container_manifest_digest": "sha256:2edbbc5dc405e9612ba3584ce95480277e3eb374407b5505fe26f17df77c7dbc",
+    "github_runner": {
+      "architecture": "ARM64",
+      "image_os": "ubuntu22-arm64",
+      "image_version": "20260831.119.1",
+      "os": "Linux"
+    },
+    "kernel_release": "6.8.0-1064-azure",
+    "os": {
+      "id": "ubuntu",
+      "version_id": "22.04"
+    }
+  },
+  "evidence_ceiling": "assembled_runtime",
+  "freshness": {
+    "actions_cache_used": false,
+    "datadir_reuse": false,
+    "fresh_github_hosted_vm_required": true,
+    "fresh_public_clones": true,
+    "preexisting_builds_used": false
+  },
+  "knowledge_status": "Observed",
+  "privacy": {
+    "host_specific_absolute_paths_retained": false,
+    "parent_environment_retained": false,
+    "peer_addresses_retained": false,
+    "raw_process_output_retained": false
+  },
+  "public_ci": {
+    "job": "reproduce",
+    "repository": "ErgonSurfer/ergon-lab",
+    "run_attempt": "1",
+    "run_id": "33963207122",
+    "sha": "b464ee11e49fa52b77627bcda3b8bbdaf70f8e5b",
+    "workflow_ref": "ErgonSurfer/ergon-lab/.github/workflows/mainnet-passive-smoke.yml@refs/heads/main"
+  },
+  "schema": "ergon-mainnet-passive-build-provenance/v1",
+  "smoke_report_sha256": "8be88c2852760ce4e60ae385a8def18a728814823a15deb129f1214071755b10",
+  "source_authentication": {
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "signatures": {
+      "candidate": {
+        "commit": "7123fb262ab7a6b0a81981d06df627d58fa3ab1b",
+        "status": "G",
+        "tree": "a2dc77a588e708cb08398f7968e2af82729f819e"
+      },
+      "integration_parent": {
+        "commit": "dfd84168d9a700e19116248b4ce9abe762a3e6cd",
+        "status": "G",
+        "tree": "fc3c727a859f23228730959eeb9f75034e60d55a"
+      },
+      "public_root": {
+        "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+        "status": "G",
+        "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca"
+      }
+    }
+  },
+  "sources": {
+    "baseline": {
+      "clean": true,
+      "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca"
+    },
+    "candidate": {
+      "clean": true,
+      "commit": "7123fb262ab7a6b0a81981d06df627d58fa3ab1b",
+      "tree": "a2dc77a588e708cb08398f7968e2af82729f819e"
+    }
+  },
+  "technical_target": {
+    "commit": "7123fb262ab7a6b0a81981d06df627d58fa3ab1b",
+    "parent_commit": "dfd84168d9a700e19116248b4ce9abe762a3e6cd",
+    "parent_tree": "fc3c727a859f23228730959eeb9f75034e60d55a",
+    "record_sha256": "e65f6392cde886b31e531500d682760675ba4f11fc6f14339797568d96471c0d",
+    "runner_sha256": "fb0562e005bf08c0a925483dc771ec977adaecf44e63f3752f4c0cf4caf3ceb9",
+    "tree": "a2dc77a588e708cb08398f7968e2af82729f819e"
+  },
+  "tools": {
+    "cmake": "cmake version 3.22.1",
+    "compiler": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+    "git": "git version 2.34.1",
+    "ninja": "1.10.1",
+    "python": "Python 3.10.12"
+  }
+}
