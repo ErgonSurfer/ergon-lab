@@ -530,6 +530,14 @@ target_link_libraries(server
 	memenv
 )
 
+if(BUILD_CHRONIK_OBSERVER)
+	target_sources(server PRIVATE ../chronik/node-observer.cpp)
+	target_include_directories(server PRIVATE "${CMAKE_SOURCE_DIR}")
+	target_compile_definitions(server PRIVATE ENABLE_CHRONIK_OBSERVER=1)
+	add_dependencies(server chronik_observer_rust_build)
+	target_link_libraries(server chronik_observer_rust)
+endif()
+
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	find_package(Event ${EVENT_MIN_VERSION} REQUIRED COMPONENTS pthreads)
 	target_link_libraries(server Event::pthreads)

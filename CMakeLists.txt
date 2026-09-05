@@ -74,6 +74,10 @@ option(BUILD_CHRONIK_BUILD_ONLY
 	"Build isolated Chronik Rust primitives without linking the node"
 	OFF
 )
+option(BUILD_CHRONIK_OBSERVER
+	"Link the optional in-memory Chronik block observer"
+	OFF
+)
 
 if(ENABLE_COVERAGE)
 	include(Coverage)
@@ -115,7 +119,7 @@ if(ENABLE_COVERAGE)
 	add_custom_target_coverage(check-upgrade-activated-extended)
 endif()
 
-if(BUILD_CHRONIK_BUILD_ONLY)
+if(BUILD_CHRONIK_BUILD_ONLY OR BUILD_CHRONIK_OBSERVER)
 	add_subdirectory(chronik)
 endif()
 

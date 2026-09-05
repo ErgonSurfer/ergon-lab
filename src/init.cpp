@@ -58,6 +58,10 @@
 #include <walletinitinterface.h>
 #include <warnings.h>
 
+#ifdef ENABLE_CHRONIK_OBSERVER
+#include <chronik/node-observer.h>
+#endif
+
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -264,6 +268,12 @@ void Shutdown(InitInterfaces &interfaces) {
     // generate CValidationInterface callbacks, flush them...
     GetMainSignals().FlushBackgroundCallbacks();
 
+#ifdef ENABLE_CHRONIK_OBSERVER
+    // The observer owns an opaque Rust handle. Destroy it only after every
+    // queued validation callback has completed.
+    chronik::StopNodeObserver();
+#endif
+
     // Any future callbacks will be dropped. This should absolutely be safe - if
     // missing a callback results in an unrecoverable situation, unclean
     // shutdown would too. The only reason to do the above flushes is to let the
@@ -412,6 +422,12 @@ void SetupServerArgs() {
                  "Execute command when the best block changes (%s in cmd is "
                  "replaced by block hash)",
                  false, OptionsCategory::OPTIONS);
+#ifdef ENABLE_CHRONIK_OBSERVER
+    gArgs.AddArg("-chronikobserver",
+                 "Enable volatile block observation on local regtest "
+                 "(default: 0)",
+                 true, OptionsCategory::DEBUG_TEST);
+#endif
     gArgs.AddArg("-blockreconstructionextratxn=<n>",
                  strprintf("Extra transactions to keep in memory for compact "
                            "block reconstructions (default: %u)",
@@ -1622,6 +1638,14 @@ bool AppInitParameterInteraction(Config &config) {
     const CChainParams &chainparams = config.GetChainParams();
     // Step 2: parameter interactions
 
+#ifdef ENABLE_CHRONIK_OBSERVER
+    if (gArgs.GetBoolArg("-chronikobserver", false) &&
+        chainparams.NetworkIDString() != CBaseChainParams::REGTEST) {
+        return InitError(
+            "-chronikobserver is restricted to the local regtest profile");
+    }
+#endif
+
     // also see: InitParameterInteraction()
 
     if (!fs::is_directory(GetBlocksDir())) {
@@ -2091,6 +2115,13 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
 
     GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
     GetMainSignals().RegisterWithMempoolSignals(g_mempool);
+
+#ifdef ENABLE_CHRONIK_OBSERVER
+    if (gArgs.GetBoolArg("-chronikobserver", false) &&
+        !chronik::StartNodeObserver()) {
+        return InitError("Unable to start the volatile Chronik observer");
+    }
+#endif
 
     // Create client interfaces for wallets that are supposed to be loaded
     // according to -wallet and -disablewallet options. This only constructs

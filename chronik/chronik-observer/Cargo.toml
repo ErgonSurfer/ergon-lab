@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 The Ergon developers
+
+[package]
+name = "chronik-observer"
+version = "0.1.0"
+edition = "2021"
+rust-version.workspace = true
+license = "MIT"
+
+[lib]
+crate-type = ["staticlib"]
