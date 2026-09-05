@@ -119,23 +119,35 @@ states must not alter node correctness.
 
 Node work advances through separately reviewed gates:
 
-1. falsify honest coexistence with the legacy node using isolated, hash-bound
-   roles and fail-closed harnesses;
-2. prove the standalone candidate can operate on the existing Ergon mainnet
-   beside legacy nodes without changing consensus, including historical-chain,
-   restart, datadir, and operator-binary evidence;
-3. verify indexing compiled out, compiled in but disabled, and explicitly
-   enabled only for local regtest, including bounded restart, reindex,
-   chainstate-reindex, pruning, and deep-reorganization behavior;
-4. only after those gates are publicly verified, review a deterministic,
-   governed, dormant-by-default experimental fork on testnet; and
-5. keep every mainnet activation path blocked until separate governance and
-   evidence are accepted.
+1. preserve and verify the exact public Bitcoin Static baseline;
+2. falsify bounded compatibility differences with the legacy node using
+   isolated, hash-bound roles and fail-closed harnesses;
+3. verify optional indexing first with the standalone configuration compiled
+   out versus compiled in but disabled, then separately review explicit local-
+   regtest opt-in, bounded restart, reindex, chainstate-reindex, pruning, and
+   deep-reorganization behavior; indexing remains default-OFF and never gains
+   node authority;
+4. prove the standalone candidate can be deployed on the existing Ergon
+   mainnet beside legacy nodes without changing consensus, including the
+   required historical-chain, restart, datadir, and operator-binary evidence;
+5. publish native-assets, reward, scaling, and DAA research as separately
+   labeled specifications, corpus work, and simulations with no implicit node
+   or consensus change;
+6. place any separately reviewed fork behind a deterministic,
+   dormant-by-default testnet activation boundary;
+7. validate that fork on testnet across activation, rollback, mixed-peer, and
+   reorganization boundaries;
+8. prepare any mainnet proposal only after prolonged testnet evidence,
+   independent reproduction, release evidence, and explicit governance; and
+9. keep future mainnet activation as a final distinct decision that is never
+   implied by preparation or testnet success.
 
 Engineering records use the ordered stages `legacy-compatibility`,
 `optional-indexing`, `testnet-activation`, and `mainnet-readiness`. Research,
 corpus work, and simulations use separate `research` records and cannot modify
-consensus behavior.
+consensus behavior. These record classes support the nine reader-facing gates;
+they do not collapse testnet implementation into validation or mainnet
+preparation into activation.
 
 ## 6. Cockpit semantics
 

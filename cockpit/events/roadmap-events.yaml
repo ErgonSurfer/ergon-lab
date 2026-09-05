@@ -102,6 +102,20 @@
       "changes": [
         "gates.validate-legacy-compatibility.delivery_state"
       ]
+    },
+    {
+      "id": "ROADMAP-0008",
+      "sequence": 8,
+      "effective_date": "2026-09-05",
+      "previous_projection_sha256": "f456423751670ea81f851e8c207cf9de6a45a5df99e0c30fc78dec2bd0ee9088",
+      "projection_sha256": "b45e8cc9c7d2203b14c7e1572e7adcfd9e758d47fd4413c8d53b1251585e56f1",
+      "reason": "Close bounded legacy compatibility on accepted public evidence, open optional indexing before mainnet-compatible deployment, and keep the inconclusive height-250000 run in its separate later phase.",
+      "changes": [
+        "gates.validate-legacy-compatibility.delivery_state",
+        "gates.prove-mainnet-legacy-coexistence.roadmap.order",
+        "gates.verify-optional-indexing.delivery_state",
+        "gates.verify-optional-indexing.roadmap.order"
+      ]
     }
   ]
 }

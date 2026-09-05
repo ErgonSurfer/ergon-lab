@@ -110,27 +110,30 @@ unknown. Delivery state and knowledge status always appear together.
 
 ## Follow the node from its public root
 
-The engineering story is deliberately sequential. The new implementation must
-first prove that it can live honestly beside the legacy node on today's Ergon
-mainnet. Only then does a separate testnet become the place to explore a future
-fork.
+The engineering story is deliberately sequential. Bounded compatibility is
+closed before optional indexing begins; indexing remains default-OFF and must
+prove that the standalone node behaves the same when it is absent or disabled.
+Mainnet-compatible deployment, a governed testnet fork, and every future
+activation retain their own later gates.
 
-**Verified public baseline** → **Legacy compatibility** → **Mainnet
-coexistence** → **Optional observation** → **Experimental fork testnet** →
-**Possible future mainnet decision**
+**Verified public baseline** → **Bounded legacy compatibility** → **Optional
+indexing** → **Mainnet-compatible deployment** → **Separate research** →
+**Activatable testnet fork** → **Testnet validation** → **Mainnet preparation**
+→ **Distinct future activation**
 
-The baseline is verified. Legacy compatibility remains `active` / `Observed`,
-with public `assembled_component` evidence for the four bounded regtest
-scenarios, including clean restart, full reindex, chainstate reindex, and
-bounded manual physical pruning on both roles in
-[ERGON-CHANGE-0007](docs/engineering/changes/ergon-change-0007.json); it remains
-incomplete. Automatic pruning, corrupt or inaccessible storage, disk
-exhaustion, interruption and crash recovery, reindex or redownload after
-pruning, reorganization across pruned history, operator-build provenance,
-historical-chain and real-datadir behavior, sustained public-network operation,
-and mainnet coexistence remain open. Optional observation, testnet activation,
-and every future consensus decision remain visibly blocked until their own
-evidence and limitations are public.
+The baseline is verified, and the bounded legacy phase is `verified` /
+`Reproduced`. [ERGON-CHANGE-0015](docs/engineering/changes/ergon-change-0015.json)
+binds the locked public reproduction of synchronization, cross-mining, clean
+restart, full reindex, chainstate reindex, physical pruning, and protected
+reorganization under unchanged consensus. Optional indexing is now `active` /
+`Open Question`; no indexing implementation bytes or evidence are accepted by
+that state change, and its first gate is compiled-out versus
+compiled-in-disabled parity. Mainnet-compatible deployment remains `blocked` /
+`Open Question`: [ERGON-CHANGE-0021](docs/engineering/changes/ergon-change-0021.json)
+records a bounded H288 `Observed` result, while workflow run `33978461669`
+reached the H250000 candidate timeout path and remains inconclusive, with no
+artifact, rerun, or divergence claim. Research, testnet work, mainnet
+preparation, and any future activation remain separately governed.
 
 [See the complete node journey&nbsp;↗](node/README.md) ·
 [Open the engineering ledger&nbsp;↗](docs/engineering/changes/README.md)

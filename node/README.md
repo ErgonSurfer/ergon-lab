@@ -33,12 +33,15 @@ before the next one can begin.
 
 | Step | Public objective | Current state |
 | ---: | --- | --- |
-| **0 · Foundation** | Preserve the exact Bitcoin Static v24.0.5 tree as the signed public root. | `verified` |
-| **1 · Compatibility** | Build the standalone candidate and falsify differences from the legacy node in mining, relay, validation, and chain following. | `active` / `Observed`; public `assembled_component` evidence covers the four bounded legacy scenarios, including clean restart, full reindex, chainstate reindex, and bounded manual physical pruning on both roles in [ERGON-CHANGE-0007](../docs/engineering/changes/ergon-change-0007.json). Automatic pruning, corrupt or inaccessible storage, disk exhaustion, interruption and crash recovery, reindex or redownload after pruning, reorganization across pruned history, operator-build provenance, historical-chain and real-datadir behavior, sustained public-network operation, and mainnet evidence remain open |
-| **2 · Mainnet coexistence** | Run the candidate on the existing Ergon mainnet beside legacy nodes, with no consensus change. | `blocked` by compatibility and real-chain evidence |
-| **3 · Optional observation** | Prove indexing can be absent, disabled, or explicitly enabled without becoming authoritative. | `blocked` by the preceding node evidence |
-| **4 · Experimental fork testnet** | Test separately reviewed consensus changes—including a possible native-assets model—on a governed testnet. | `blocked` by coexistence and an accepted specification |
-| **5 · Future mainnet decision** | Consider a mainnet fork only after prolonged testnet operation, independent reproduction, release evidence, and separate community governance. | `blocked`; no activation is proposed |
+| **1 · Public baseline** | Preserve the exact Bitcoin Static v24.0.5 tree as the signed public root. | `verified` |
+| **2 · Bounded legacy compatibility** | Falsify differences from the legacy node across synchronization, cross-mining, restart, full reindex, chainstate reindex, physical pruning, and protected reorganization. | `verified` / `Reproduced` through the accepted [ERGON-CHANGE-0015](../docs/engineering/changes/ergon-change-0015.json) public matrix; consensus is unchanged |
+| **3 · Optional indexing** | Prove the standalone node behaves the same with indexing compiled out versus compiled in but disabled before any explicit runtime opt-in is considered. | `active` / `Open Question`; indexing remains default-OFF and no implementation bytes are accepted by this transition |
+| **4 · Mainnet-compatible deployment** | Run the candidate on the existing Ergon mainnet beside legacy nodes, with no consensus change. | `blocked` / `Open Question`; H288 is an accepted bounded `Observed` result, while H250000 ended inconclusive on candidate timeout with no artifact or divergence claim |
+| **5 · Separate research** | Develop native-assets, reward, scaling, and DAA specifications, corpus work, and simulations without silently changing node behavior. | `research`; independently labeled and governed |
+| **6 · Activatable testnet fork** | Place separately reviewed consensus changes behind a deterministic, dormant-by-default testnet activation boundary. | `blocked`; no activation packet is accepted |
+| **7 · Testnet validation** | Exercise activation, rollback, mixed-peer, and reorganization boundaries over a declared evidence window. | `blocked` by the preceding gates |
+| **8 · Mainnet preparation** | Require prolonged testnet evidence, independent reproduction, release evidence, and explicit governance without activating anything. | `blocked` by testnet evidence |
+| **9 · Distinct future activation** | Consider a mainnet fork only through a final decision separate from preparation and testnet success. | `blocked`; no mainnet activation is proposed |
 
 Native-assets, reward, scaling, and difficulty research may proceed in parallel,
 but research does not silently become node behavior. A change enters this path
@@ -84,9 +87,9 @@ legible.
 | Verify the public baseline snapshot | `verified` | `Observed` |
 | Launch publication gates and cockpit | `verified` | `Explainer` |
 | Establish engineering change evidence | `verified` | `Explainer` |
-| Validate legacy compatibility | `active` | `Observed` |
+| Validate legacy compatibility | `verified` | `Reproduced` |
+| Verify optional indexing | `active` | `Open Question` |
 | Prove mainnet coexistence with the legacy node | `blocked` | `Open Question` |
-| Verify optional indexing | `blocked` | `Open Question` |
 | Validate the experimental fork on testnet | `blocked` | `Open Question` |
 | Assess a future mainnet fork | `blocked` | `Open Question` |
 | Reproduce the zero-subsidy fixture repair | `active` | `Observed` |
