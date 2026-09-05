@@ -70,6 +70,10 @@ exclude_from_source_package(
 
 option(ENABLE_COVERAGE "Enable coverage" OFF)
 option(ENABLE_BRANCH_COVERAGE "Enable branch coverage" OFF)
+option(BUILD_CHRONIK_BUILD_ONLY
+	"Build isolated Chronik Rust primitives without linking the node"
+	OFF
+)
 
 if(ENABLE_COVERAGE)
 	include(Coverage)
@@ -109,6 +113,10 @@ if(ENABLE_COVERAGE)
 	add_custom_target_coverage(check-extended)
 	add_custom_target_coverage(check-upgrade-activated)
 	add_custom_target_coverage(check-upgrade-activated-extended)
+endif()
+
+if(BUILD_CHRONIK_BUILD_ONLY)
+	add_subdirectory(chronik)
 endif()
 
 add_subdirectory(src)

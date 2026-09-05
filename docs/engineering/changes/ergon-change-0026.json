@@ -1,0 +1,1972 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0026",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0026.json",
+  "purpose": {
+    "summary": "Add a default-off, build-only Chronik Rust foundation without linking or changing the standalone node.",
+    "scope": [
+      "Ask one falsifiable question: does adding four locked Rust crates behind BUILD_CHRONIK_BUILD_ONLY=OFF leave the public node unchanged when OFF and produce only dormant Rust artifacts when explicitly ON?",
+      "Add the top-level BUILD_CHRONIK_BUILD_ONLY option with an OFF default; OFF does not enter chronik, discover Rust or Cargo, invoke Cargo, define a node macro, or add a node link dependency.",
+      "When explicitly ON, build and test offline with --locked only abc-rust-error, abc-rust-lint, bitcoinsuite-core, and bitcoinsuite-slp in an out-of-source Cargo target.",
+      "Import sixty byte-exact crate files and the exact donor MIT license from public Bitcoin ABC commit 38a7a4dc23a574f2747265fcdf33242648dd2ce1, tree 68d559f78c90ed38066283dc87f8652258a1415a.",
+      "Keep the native-assets boundary explicit: dormant SLP and ALP primitives exist, but observed, indexed, or reconstructed data, authoritative token validation or state, and governed consensus activation are all absent."
+    ],
+    "exclusions": [
+      "No C++ bridge, callback, runtime option, thread, socket, file or datadir path, HTTP or WebSocket API, protobuf service, database, served index, plugin, or production-node link is added.",
+      "No consensus, mempool validation, chain selection, chain parameter, activation, testnet, mainnet, wallet, or user-interface behavior changes.",
+      "No indexing, runtime, API-compatibility, token-validity, deterministic-build, or reproducible-build claim is made.",
+      "No binary, Cargo cache, build directory, raw command output, absolute host path, parent environment, private history, operator material, or unrelated product material enters this change."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "def30eed2a6f24c8d3f2298a268b9a93714bae08",
+      "tree": "513c83828e32773bbbe6c998fd8e1d9a7814e513"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "44510af4e228cc1cdba15e34bc99a38911195be76b2038b215e2d8a0196c2574",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 3468,
+        "git_blob": "bf5e49548e763ad52f58a6547463c8b12a412dea",
+        "sha256": "96059e90c7ca66426d7639b3c8e36c1f6e294ae9b8a4e3a6c2543508c92dab41"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3639,
+        "git_blob": "564dc1290d9262ecf80ad271586455f796c5282c",
+        "sha256": "098893d363bb6b58d5b38a867afe9a4c92424fceb4574537e9999d15520d938d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build configuration only; the default-OFF option leaves the node target graph unchanged.",
+      "test_reachability": "Configures the build-only subtree only after explicit opt-in."
+    },
+    {
+      "path": "chronik/CMakeLists.txt",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2046,
+        "git_blob": "1895b0e944d43d44bddd20fd423535d3f7675bd1",
+        "sha256": "09368177f3718f9e69c73f8cf9c462ddb5063ecbf00b3fed14d94b0bbabbc86e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/COPYING",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1146,
+        "git_blob": "d412e7ec3891bf087c1b6a1f4bf8d407796d85b8",
+        "sha256": "3299786914d097c7f1231aaa298eb6ccbfabb60798d48c6472a9629916e4e7a2"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "COPYING",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11950,
+        "git_blob": "e1b3924962ce09a1617927a4934270822efd7dad",
+        "sha256": "6d8c7e4980b1fc7481b12c11fd3f005fe0e0f6c85e92857812237a801355f84b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1-GENERATED-CARGO-1.93.0",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/Cargo.toml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 252,
+        "git_blob": "aa2ffd67d7bda1d2d7d9bda73fb063d67dac32b4",
+        "sha256": "7cfbd21477fd1b2ee5be6138f24c289e6eb5e4a5a00f87320882e7e95cd3472a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3009,
+        "git_blob": "e111f8053ebfa5e0bcdade10bd06fea5e2a2a0bf",
+        "sha256": "f2af6263324e84fa21f17f3b07d27465ff3838987b6f787b38bfad5bac731681"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/abc-rust-error/Cargo.toml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 442,
+        "git_blob": "d16ef135aa90fbe14d4578393760240b233d7827",
+        "sha256": "ff5b756daab8e16b3a1a59c077c4ad34400162ebe85abc68a2035dea60a899c6"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/abc-rust-error/Cargo.toml",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/abc-rust-error/src/http_status.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1359,
+        "git_blob": "b70ea6c85f9ace5cab274efea2425da90452359f",
+        "sha256": "946f57d5b9c95abecf49aa01dca5fe87c2f766fc366d82455b34970d69dca604"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/abc-rust-error/src/http_status.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/abc-rust-error/src/lib.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 913,
+        "git_blob": "208f656002ee27d8629c75d17e1a24abcab8157b",
+        "sha256": "8408d56817186e1f8904c841995f855963c806bcf080dea01b9b5104f5f850f9"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/abc-rust-error/src/lib.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/abc-rust-error/tests/test_error.rs",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 335,
+        "git_blob": "167208a57b2aa6ccb2a0a42bc236b9d97a45299b",
+        "sha256": "0bb2d86c23df504f0c9a3d890a4f1d59080bef2e2f22ae1b54c9b674c0a207ac"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/abc-rust-error/tests/test_error.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/abc-rust-lint/Cargo.toml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 159,
+        "git_blob": "71444398dccd2c49572c2aa8a5e61118718a0711",
+        "sha256": "b454fc50083e12925aa9fad74950c4f3413dd8dc6e402e6f325cf917cb5e49f9"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/abc-rust-lint/Cargo.toml",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/abc-rust-lint/src/lib.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1401,
+        "git_blob": "f4f0611bf58b66a05bf474a8a6b2cba138d47df1",
+        "sha256": "c35ead0d189c75891b680406ff603ca99ccd4c1fd59a4b63cf5d285a97e32fac"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/abc-rust-lint/src/lib.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/Cargo.toml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 845,
+        "git_blob": "d0b3e67c5045f4c6415e2c523e19b272ead894aa",
+        "sha256": "cbfa17480652b21f33199a556b29b00cace65441f8d0b44944d87e3365b0182c"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/Cargo.toml",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/address.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 19652,
+        "git_blob": "43958b630c8c2398b4de8e92f88cc30fee036076",
+        "sha256": "b7424b3c531aa64698f5e431507f2df959f80a6bcdc723110fecf350e4d084ff"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/address.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/block/block_hash.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4376,
+        "git_blob": "11cb897db92e7cd4f0fcfe11ce3b748620444db2",
+        "sha256": "fe0ccfb828d5d201b54a59cca7e90eced5f092edd775f783a4417e4e23dcb09a"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/block/block_hash.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/block/mod.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 292,
+        "git_blob": "18f846b54eb9a151983ae4a0b78ac41d13383def",
+        "sha256": "fbaf361809fcd9406c1019a6659036d4672d54f5028c193d482000aac6236d97"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/block/mod.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/bytes.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2137,
+        "git_blob": "8f30b45d81e5d6de9854acb0f5eab3668b4b0874",
+        "sha256": "4a5ac1c131f7eca30b6d7ea7e628ff7bf2792de965a2dec0a6b3470a788163df"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/bytes.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/error.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1161,
+        "git_blob": "e3d8475505a667a2f4bce3cc26010f01916ecba0",
+        "sha256": "a61feb8c5f12d474504c1530243a1c2f0b25ece64c5f86d58a699c3daecbadbb"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/error.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/hash.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 16125,
+        "git_blob": "2a2bf6cc5d33809893ebc9aab169c849d43cb7c7",
+        "sha256": "89359ce671dfb6fd9816a458fc90e5a55cc3b7c069548b2ff96c117047a532ba"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/hash.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/lib.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 565,
+        "git_blob": "0d8456d8a6d9bbb74679e510130e237b3e28b3d2",
+        "sha256": "7764543a1d762a972519e684c4e35a262397f7455eb58b708e908e93d4e6d5bd"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/lib.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/net.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 441,
+        "git_blob": "1e037ef5382e1c0d88ba46c12d433f539b4bd9d3",
+        "sha256": "c46d6f5041bd0fb9b92d253fb478dbdff84d3ab2313932ac43576555bfdcfe9a"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/net.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/compress.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6185,
+        "git_blob": "63aa363a863030d24bae1fe863694168da70581c",
+        "sha256": "d642e4a5012c1ec3189388b6345c8bb365abe0ae354ccbef745ac4a6601e4f96"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/compress.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/iter.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1231,
+        "git_blob": "0db1f23b3e14ff37f18b64c9f04d136f6d5a429a",
+        "sha256": "6b71136801f2dededaaecd5fe246173b373bbd8e14e7dafc4ae918e018a018c6"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/iter.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/mod.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 672,
+        "git_blob": "d9a880930a36fc8df812bc44431090181ce6bf96",
+        "sha256": "1cc90c1801d52313ed84f86c3adaaf4dc9e40316fdc6a792e32815bf13f1e369"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/mod.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/op.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2755,
+        "git_blob": "211d2b8c0e44453b4a7b8983307b148767d33e85",
+        "sha256": "aa48fbf885b957beb7d0d847f7719b53cf711b1b84e350b95efc363c2c5dc5a9"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/op.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/opcode.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12662,
+        "git_blob": "1bfe253c67b145e6f254fb1ce340e6e619789a2c",
+        "sha256": "185d68c9955c10a30be23ee996cb4b8f5ca65ed042264ea213be539ac5e8dfd0"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/opcode.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/pubkey.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2719,
+        "git_blob": "7d9b79d6be3d39f691d576d9dfc2f735e495890a",
+        "sha256": "90ebd5c74191ad4ecb67b951cb5ba7cd7bd6e2981fffe03e977cc5349cb35e9a"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/pubkey.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/pubkey_variant.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2065,
+        "git_blob": "a516769bf5c9e551ff59bf04ed0122d1af38f0be",
+        "sha256": "a8f506715ebeb636dd8f272b679d9c62fa87ec968680b5554bfcca3b6b46011b"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/pubkey_variant.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/script.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 19081,
+        "git_blob": "7f96002b7b7d794ff94cf8be8adce71eea3c32a2",
+        "sha256": "b3b943ee85325761209a3939b6336e7a3da2f8b5a32cfdc1352b16148009a71b"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/script.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/script_mut.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5313,
+        "git_blob": "919de0b660d665545ef94502094feafca11207f1",
+        "sha256": "62136d4fa2fa0693558bddfb9afad16bc9eaffbfa095fe36ca3510443dcf07ff"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/script_mut.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/uncompressed_pubkey.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3405,
+        "git_blob": "0dbfd13b6810fd0d6898166c96c01d8609169904",
+        "sha256": "74b5f1eba456a6a8890aa14ff026d36d313b4aa3f23b1852bd617694ca296de9"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/uncompressed_pubkey.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/script/variant.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8774,
+        "git_blob": "9c84e164449e432a81a6d55ff97149a3293cfe3b",
+        "sha256": "176965b8335fe4c697842f4554486ae1ae1814c9247e97a6c6feceb8104a6b9d"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/script/variant.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/ser.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8513,
+        "git_blob": "3a070852786dd9c2987bac82e7bf167f3b1c177e",
+        "sha256": "db2966c82dcfff501da15f10aec09a5aa70754fcf4e20d4823ad22a3070e1fd4"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/ser.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/tx/mod.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 337,
+        "git_blob": "3d8faa64c61e141a969dc084bc1a435da956b264",
+        "sha256": "ce7eb5c44e4bcc48b68639b5c1376232dda89f885c19aec762f02f1b5391fdfc"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/tx/mod.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/tx/tx.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9702,
+        "git_blob": "1b3393d9cbc6bcda3ca227bdf58d89ba292c7fb9",
+        "sha256": "1551604f9f373be73e418ad990146862f4297c815c2e16ef43223de9edb01978"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/tx/tx.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-core/src/tx/txid.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6406,
+        "git_blob": "2aa521ea7822ee96984e92c63982c3b4bfae010c",
+        "sha256": "9d1aec6ac46a6927cc57e3bf6c1b3c5ffb10c224dbaa29b74606ac6ee5bc085e"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-core/src/tx/txid.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/Cargo.toml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 672,
+        "git_blob": "b4b0d31b51bb17d5f286c6a26f665bf72732a8bf",
+        "sha256": "468d79e15ec0b85f41b9f39bbb40adcf69f019268ff604afad41ce00e359e173"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/Cargo.toml",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/alp/build.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3824,
+        "git_blob": "a12fe29453f758856c250b9c2d14c7a0189f30b4",
+        "sha256": "16b6708835f928c94c2438a1686c4c3fd2f29e8a18c2d00520774f56345b2b1d"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/alp/build.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/alp/consts.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 884,
+        "git_blob": "1f92dacd12fe74bb199affd445247f852e4cb4c6",
+        "sha256": "08588538d7095730ca84d07a5e5169ddb8789aebafe3f5be5ccffc6689d427e0"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/alp/consts.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/alp/mod.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 444,
+        "git_blob": "a592bacac3c6aa41ffe5c3bdd6aeaf2891be66b0",
+        "sha256": "32d59bf5556690ba0f70569f97b9f117534fb8c8f529e442c1f5995d1b8c5705"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/alp/mod.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/alp/parse.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9374,
+        "git_blob": "19f21046741fdc85d3ca8954e4f9c512fb80b6c9",
+        "sha256": "268d5163afacad6bae830411b75e9e68e22d22d2890160ea4cd418aed10f9236"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/alp/parse.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/burn_summary.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 10140,
+        "git_blob": "07f30a1235d8cdded80f2afffc63ce3920fe5b69",
+        "sha256": "a802115728db027a72758f2c311da7498182058a96d57f9e11cb40cc98c49bdf"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/burn_summary.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/color.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 20021,
+        "git_blob": "bba1436520cab3530f322986404dcc69d6d15f54",
+        "sha256": "ec3dbaae5de2e39d05429aed797b959ffb46583ce97d0239f9e9b009697cc6ad"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/color.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/consts.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 584,
+        "git_blob": "889d89a800d371e151921bac2c7d15e1067e58b2",
+        "sha256": "daf6935528967b69ce22dbdeae10bc847fffa2ad7dbc51e0c0d7d1a639c4b93c"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/consts.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/empp/mod.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1982,
+        "git_blob": "912be4e06584f964611f49e032a892832e519e1c",
+        "sha256": "77f9373fb0a725a7ee285998bd0c2813a9121ca6e1f1446aa74a7f274b0fdf6f"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/empp/mod.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/empp/parse.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8447,
+        "git_blob": "fbe25874a1fd5d6351e64eaaeb16281b8aa5aa4c",
+        "sha256": "8202f02aa267a4eccdd0b61abdf52990a594945f0b5e6b959ebc6a8ed51c026f"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/empp/parse.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/lib.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 500,
+        "git_blob": "49212af3f1be836dea01e014d6c28020acee3e9f",
+        "sha256": "6c0b0f8f3744473a8f1b22413bf956045a9a572693a3dafbb8dc46501e790117"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/lib.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/lokad_id.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 10572,
+        "git_blob": "3939c058e83eb2242a5b51ddf870471650a19d16",
+        "sha256": "e36a1a47958dbcf3b6d5c574911fa4ea28c3451ead8c3c871d42310efb3a6d9a"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/lokad_id.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/parsed.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2621,
+        "git_blob": "5cc1f40193c27d0d8a468a522e1eace9d3ff94a4",
+        "sha256": "89956765003a2cb964cb6508d5538ed3568e593eba4afe65bce8ea6d58fd29c8"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/parsed.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/build.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4715,
+        "git_blob": "6b33ecc69abf2beb1d79e68f1623114fa0dee6da",
+        "sha256": "f5ab79064a9f88ddd4c28dc890370cee4ea5921a33146c442fa4d5165744fa18"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/build.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/burn.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1366,
+        "git_blob": "e321fa8535bf93610127677f0bf28eecdd60b73c",
+        "sha256": "1f7ad13d359843d9a9d8716186855ebc619d80ada14fa419147ba33340daee3e"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/burn.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/common.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1061,
+        "git_blob": "1041343d9844c7c769d66878fb567c2afeebdbcc",
+        "sha256": "915eb2fa3eeeef3dd293a9dca6d7ccb6372e4e98d6c1a103af5208a7d46cdfb6"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/common.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/consts.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 870,
+        "git_blob": "702d914ec464a61a7d447de33edbc730ebb29521",
+        "sha256": "37935e82d1d10ed2115a76ed32aab543252ab8a70d80f2b88f430a81e97ef879"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/consts.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/error.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4497,
+        "git_blob": "31b396c10a93d65c729a3b21607275090e77d085",
+        "sha256": "6f75b6a50afc408ec61962ba12ac0a8ac685511d064ee6254d88b394f1dcbeb1"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/error.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/genesis.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5234,
+        "git_blob": "27ed84faa96074cb11e20a4f0ef956feedbf2546",
+        "sha256": "3f11f2f5089dc59a5dc5127075d2d1d62a62a01667d72f31309e80872aaf8c9a"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/genesis.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/mint.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2465,
+        "git_blob": "55066c07ba3e0aaf449ba6b930e4266c02573347",
+        "sha256": "c3a17eba507d50071ad8a32165aa75bf98c2eb222a555d670d1aeba2baf05629"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/mint.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/mint_vault.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2399,
+        "git_blob": "907a46fc11590d9e4e0ba378d7306cd256c0fdd5",
+        "sha256": "907a5ea31cd153315574d99f270d71be1bff0228da8b468bcdf8f1fdca7d7037"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/mint_vault.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/mod.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 545,
+        "git_blob": "816b31c6340f834116db3fd536ead63e657ebecf",
+        "sha256": "1eb7848fa32950c0743a29633c84c5b391fac40308f3af97414b7b778dd670c8"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/mod.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/parse.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6206,
+        "git_blob": "3f39e0dab3af8f9fabc19281e90a28ac74c94480",
+        "sha256": "1a8bdd0d784d792ee19ad7c599f890d36a1c47860021aa91286ee86c8053b8a2"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/parse.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/slp/send.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2369,
+        "git_blob": "e4c919bfbdd30facff2d434d7688b87df76707bf",
+        "sha256": "72c8fa1f23716341ab77ff8bd479f9ecf0a7a588acb011cf9ad6138b9cd686c4"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/slp/send.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/structs.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6007,
+        "git_blob": "4de6b9141ffe033aaff4f40c99593d5bc1befa30",
+        "sha256": "30c6268acc3a12f80b2e31a9106fcccd9863cd30d5b74310c3834deca02b41c0"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/structs.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/test_helpers.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5627,
+        "git_blob": "2fb21f1ba671c1cc1008fd23b9e267dc1954e55b",
+        "sha256": "bba52f80b3c18a8cf385be88a5a95a85e4b05772a760decde38158119f1b8c8d"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/test_helpers.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/token_id.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1993,
+        "git_blob": "3059f3e693e22d5ef909e2b3e4b0a21bfcbaf389",
+        "sha256": "7ec0a30995caaca589c53ffa837a20b043fe22c085a3375e083bbd1b7ecbb3ec"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/token_id.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/token_tx.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3900,
+        "git_blob": "a0ba664272d55d7d23d2bb3b9fcc29ae7485184b",
+        "sha256": "23c18ecced06859f044f59615fcec6655dc3115ae329cc5735d1f4b54a024a94"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/token_tx.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/token_type.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5842,
+        "git_blob": "81a015b89511a7ba695e03c5ab379e1b5ac0fc99",
+        "sha256": "0c2d74847bca414b42dab409f5951b7bc50ed514d9399c1aae5c839c271c1e05"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/token_type.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    },
+    {
+      "path": "chronik/bitcoinsuite-slp/src/verify.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 16072,
+        "git_blob": "6e5aa82eaa00df6071d3c4adfe437034b978abe8",
+        "sha256": "0df014c19dc559377b8021de39cc0534aaa7c43f94c01f0e14bcffa38769c424"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "PUBLIC-DONOR-EXACT",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "38a7a4dc23a574f2747265fcdf33242648dd2ce1",
+          "path": "chronik/bitcoinsuite-slp/src/verify.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in this change; reachable only from the explicit build-only target and never linked into the node.",
+      "test_reachability": "Compiled by chronik_build_only and exercised where applicable by check-chronik-build-only."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Fresh-configure and build bitcoind, bitcoin-cli, and bitcoin-tx with BUILD_CHRONIK_BUILD_ONLY=OFF, including one configure where Rust and Cargo are absent from PATH."
+        ],
+        "expected_results": [
+          "CMake does not enter chronik or discover Rust/Cargo, no Chronik target exists, and the node compile and link graph remains unchanged."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Deferred in ERGON-CHANGE-0026: do not alias BUILD_CHRONIK_BUILD_ONLY=ON to compiled-in-disabled because no observer is linked into the node."
+        ],
+        "expected_results": [
+          "No compiled-in-disabled pass or runtime claim is emitted by this change."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Deferred in ERGON-CHANGE-0026: no runtime observer, opt-in flag, index, or local-regtest indexing mode exists."
+        ],
+        "expected_results": [
+          "No local-regtest indexing pass or runtime claim is emitted by this change."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Deferred in ERGON-CHANGE-0026: do not execute index-local-regtest-opt-in because no runtime observer exists.",
+        "expected_results": [
+          "The scenario remains an explicit Open Question for a later runtime packet."
+        ],
+        "failure_conditions": [
+          "Any pass, runtime artifact, or evidence promotion attributed to ERGON-CHANGE-0026 violates this build-only scope."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Deferred in ERGON-CHANGE-0026: do not execute index-restart-288 because no runtime observer exists.",
+        "expected_results": [
+          "The scenario remains an explicit Open Question for a later runtime packet."
+        ],
+        "failure_conditions": [
+          "Any pass, runtime artifact, or evidence promotion attributed to ERGON-CHANGE-0026 violates this build-only scope."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Deferred in ERGON-CHANGE-0026: do not execute index-full-reindex-288 because no runtime observer exists.",
+        "expected_results": [
+          "The scenario remains an explicit Open Question for a later runtime packet."
+        ],
+        "failure_conditions": [
+          "Any pass, runtime artifact, or evidence promotion attributed to ERGON-CHANGE-0026 violates this build-only scope."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Deferred in ERGON-CHANGE-0026: do not execute index-chainstate-reindex-288 because no runtime observer exists.",
+        "expected_results": [
+          "The scenario remains an explicit Open Question for a later runtime packet."
+        ],
+        "failure_conditions": [
+          "Any pass, runtime artifact, or evidence promotion attributed to ERGON-CHANGE-0026 violates this build-only scope."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Deferred in ERGON-CHANGE-0026: do not execute index-pruned-datadir-288 because no runtime observer exists.",
+        "expected_results": [
+          "The scenario remains an explicit Open Question for a later runtime packet."
+        ],
+        "failure_conditions": [
+          "Any pass, runtime artifact, or evidence promotion attributed to ERGON-CHANGE-0026 violates this build-only scope."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Deferred in ERGON-CHANGE-0026: do not execute index-deep-reorg-fail-closed because no runtime observer exists.",
+        "expected_results": [
+          "The scenario remains an explicit Open Question for a later runtime packet."
+        ],
+        "failure_conditions": [
+          "Any pass, runtime artifact, or evidence promotion attributed to ERGON-CHANGE-0026 violates this build-only scope."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "macOS arm64 local contradiction testing",
+        "Ubuntu 22.04 ARM64 public verification after technical acceptance"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 6d8c7e4980b1fc7481b12c11fd3f005fe0e0f6c85e92857812237a801355f84b"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "BUILD_CHRONIK_BUILD_ONLY=ON is not the compiled-in-disabled role: no observer is linked into or started by the node.",
+    "The runtime opt-in, restart, full reindex, chainstate reindex, pruning, and deep-reorganization scenarios are not implemented by this change.",
+    "The committed lockfile fixes registry versions and checksums but does not lock the compiler, operating-system image, native toolchain, or final binaries.",
+    "A fresh Cargo cache requires one online population step before the governed build can run offline.",
+    "Thirty donor SLP integration-test files and chronik-util are deliberately deferred until they become reachable from a later bounded slice.",
+    "Local Rust 1.80.0 tests passed, but no result is public reproduction evidence at record-review time.",
+    "The local macOS node builds stopped symmetrically in unchanged legacy code because Boost 1.90 removed boost::filesystem::basename; node byte and link equality remain for a supported public build environment."
+  ],
+  "counterevidence": [
+    "No public build or test of the exact candidate exists at record-review time.",
+    "Compiling token parsers does not demonstrate transaction observation, indexing, reconstruction, authoritative token validity, token state, or activation.",
+    "No compiled-in-disabled node or local-regtest-indexing runtime exists in this change, so every optional-indexing runtime scenario remains an Open Question."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
