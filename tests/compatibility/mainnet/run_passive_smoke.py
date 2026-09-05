@@ -23,18 +23,23 @@ from typing import Any
 
 
 SCENARIO_ID = "mixed-node-coexistence"
-PROFILE = "mainnet-passive-independent-prefix-smoke"
-SCHEMA = "ergon-mainnet-passive-smoke/v2"
+PROFILE = "mainnet-passive-joint-ready-current-era-smoke"
+SCHEMA = "ergon-mainnet-passive-smoke/v3"
 ROLES = ("baseline", "candidate")
 FAILURE_ROLES = frozenset((*ROLES, "comparison", "harness"))
-STOP_HEIGHT = 288
+STOP_HEIGHT = 250000
 MAX_OBSERVED_HEIGHT = STOP_HEIGHT + 128
 EXPECTED_GENESIS = (
     "000000070e37bfee7e84b94f997f38155a85b22172f5ca25fd4eb3d64c5ad7c5"
 )
-PHASE_TIMEOUT_SECONDS = 900
+EXPECTED_CHECKPOINT_HASH = (
+    "00000000000000403f540557916c604251d03e9816da37a605036c6a6a0acc9a"
+)
+EXPECTED_MEDIAN_TIME = 1763660224
+LAST_LEGACY_ACTIVATION_EMA_TIME = 1659182400
+PHASE_TIMEOUT_SECONDS = 1800
 SHUTDOWN_TIMEOUT_SECONDS = 60
-POLL_SECONDS = 0.1
+POLL_SECONDS = 1.0
 DISK_LIMIT_BYTES = 2 * 1024 * 1024 * 1024
 RPC_METHODS = frozenset({
     "getblockchaininfo",
@@ -50,10 +55,11 @@ RESULT_EXIT_CODES = {
     "contradiction": 3,
 }
 RESULT_BY_REASON = {
-    "bounded-mainnet-prefix-matched": "success",
+    "current-era-mainnet-checkpoint-matched": "success",
     "binary-input-invalid": "harness-error",
     "binary-identity-changed": "harness-error",
     "cleanup-failed": "harness-error",
+    "checkpoint-before-legacy-activation": "harness-error",
     "datadir-alias": "harness-error",
     "datadir-identity-changed": "harness-error",
     "network-surface-open": "harness-error",
@@ -68,6 +74,8 @@ RESULT_BY_REASON = {
     "node-exited-nonzero": "inconclusive",
     "timeout": "inconclusive",
     "genesis-mismatch": "contradiction",
+    "checkpoint-hash-mismatch": "contradiction",
+    "checkpoint-median-time-mismatch": "contradiction",
     "mainnet-chain-mismatch": "contradiction",
     "snapshot-mismatch": "contradiction",
 }
@@ -327,29 +335,63 @@ def wait_for_rpc(node: NodeProcess, deadline: float) -> None:
     fail("inconclusive", "timeout")
 
 
-def wait_for_bounded_exit(node: NodeProcess, work_root: Path) -> None:
-    deadline = time.monotonic() + PHASE_TIMEOUT_SECONDS
+def validated_network(node: NodeProcess) -> bool:
+    try:
+        network = rpc(node.spec, "getnetworkinfo")
+    except SmokeFailure as error:
+        if error.reason_code == "rpc-contract-invalid":
+            return False
+        raise
+    if not isinstance(network, dict):
+        fail("harness-error", "rpc-contract-invalid", node.spec.role)
+    if network.get("networkactive") is not True \
+            or network.get("localrelay") is not False \
+            or network.get("localaddresses") != []:
+        fail("harness-error", "network-surface-open", node.spec.role)
+    return True
+
+
+def wait_for_joint_ready(nodes: tuple[NodeProcess, NodeProcess],
+                         work_root: Path, deadline: float) -> None:
     while time.monotonic() < deadline:
-        returncode = node.process.poll()
-        if returncode is not None:
-            if returncode != 0:
-                fail("inconclusive", "node-exited-nonzero")
-            return
         if directory_bytes(work_root) > DISK_LIMIT_BYTES:
             fail("inconclusive", "disk-limit-exceeded")
-        try:
-            network = rpc(node.spec, "getnetworkinfo")
-            if not isinstance(network, dict):
-                fail("harness-error", "rpc-contract-invalid")
-            if network.get("networkactive") is not True \
-                    or network.get("localrelay") is not False \
-                    or network.get("localaddresses") != []:
-                fail("harness-error", "network-surface-open")
-        except SmokeFailure as error:
-            if error.reason_code != "rpc-contract-invalid":
-                raise
+        for node in nodes:
+            returncode = node.process.poll()
+            if returncode is not None:
+                reason = "node-exited-before-rpc" if returncode == 0 \
+                    else "node-exited-nonzero"
+                fail("inconclusive", reason, node.spec.role)
+        if all(validated_network(node) for node in nodes):
+            for node in nodes:
+                if node.process.poll() is not None:
+                    fail(
+                        "inconclusive", "node-exited-before-rpc",
+                        node.spec.role,
+                    )
+            return
         time.sleep(POLL_SECONDS)
     fail("inconclusive", "timeout")
+
+
+def wait_for_bounded_exits(nodes: tuple[NodeProcess, NodeProcess],
+                           work_root: Path, deadline: float) -> None:
+    pending = list(nodes)
+    while time.monotonic() < deadline:
+        if directory_bytes(work_root) > DISK_LIMIT_BYTES:
+            fail("inconclusive", "disk-limit-exceeded")
+        for node in tuple(pending):
+            returncode = node.process.poll()
+            if returncode is None:
+                validated_network(node)
+            elif returncode == 0:
+                pending.remove(node)
+            else:
+                fail("inconclusive", "node-exited-nonzero", node.spec.role)
+        if not pending:
+            return
+        time.sleep(POLL_SECONDS)
+    fail("inconclusive", "timeout", pending[0].spec.role)
 
 
 def stop_node(node: NodeProcess, *, graceful_required: bool) -> bool:
@@ -376,6 +418,8 @@ def stop_node(node: NodeProcess, *, graceful_required: bool) -> bool:
 
 
 def snapshot(spec: NodeSpec) -> dict[str, Any]:
+    if EXPECTED_MEDIAN_TIME <= LAST_LEGACY_ACTIVATION_EMA_TIME:
+        fail("harness-error", "checkpoint-before-legacy-activation")
     chain = rpc(spec, "getblockchaininfo")
     if not isinstance(chain, dict):
         fail("harness-error", "rpc-contract-invalid")
@@ -388,6 +432,8 @@ def snapshot(spec: NodeSpec) -> dict[str, Any]:
     if genesis != EXPECTED_GENESIS:
         fail("contradiction", "genesis-mismatch")
     block_hash = rpc(spec, "getblockhash", [STOP_HEIGHT])
+    if block_hash != EXPECTED_CHECKPOINT_HASH:
+        fail("contradiction", "checkpoint-hash-mismatch")
     raw_header = rpc(spec, "getblockheader", [block_hash, False])
     header = rpc(spec, "getblockheader", [block_hash, True])
     if not isinstance(block_hash, str) or len(block_hash) != 64 \
@@ -399,11 +445,14 @@ def snapshot(spec: NodeSpec) -> dict[str, Any]:
             or not isinstance(header, dict) \
             or header.get("height") != STOP_HEIGHT \
             or header.get("hash") != block_hash \
+            or not isinstance(header.get("mediantime"), int) \
             or not isinstance(header.get("chainwork"), str) \
             or len(header["chainwork"]) != 64 \
             or not all(character in "0123456789abcdef"
                        for character in header["chainwork"]):
         fail("harness-error", "rpc-contract-invalid")
+    if header["mediantime"] != EXPECTED_MEDIAN_TIME:
+        fail("contradiction", "checkpoint-median-time-mismatch")
     result = {
         "chain": "main",
         "checkpoint_height": STOP_HEIGHT,
@@ -411,6 +460,7 @@ def snapshot(spec: NodeSpec) -> dict[str, Any]:
         "blockhash": block_hash,
         "raw_header": raw_header,
         "chainwork": header["chainwork"],
+        "median_time": header["mediantime"],
     }
     return result
 
@@ -430,10 +480,14 @@ class SystemBackend:
         self.nodes.append(node)
         return node
 
-    def fetch_public(self, spec: NodeSpec) -> int:
-        node = self._record(start_node(spec, "public"))
-        wait_for_bounded_exit(node, self.work_root)
-        return node.process.pid
+    def fetch_public_pair(self, specs: tuple[NodeSpec, NodeSpec]) -> tuple[int, int]:
+        deadline = time.monotonic() + PHASE_TIMEOUT_SECONDS
+        nodes = tuple(
+            self._record(start_node(spec, "public")) for spec in specs
+        )
+        wait_for_joint_ready(nodes, self.work_root, deadline)
+        wait_for_bounded_exits(nodes, self.work_root, deadline)
+        return nodes[0].process.pid, nodes[1].process.pid
 
     def inspect(self, spec: NodeSpec) -> tuple[dict[str, Any], int]:
         node = self._record(start_node(spec, "offline"))
@@ -500,11 +554,10 @@ def execute_scenario(work_root: Path, baseline_binary: Path,
         runtime / "candidate-inspect", ports[6], ports[7]
     )
 
-    run_role_phase("baseline", backend.fetch_public, baseline_public)
+    backend.fetch_public_pair((baseline_public, candidate_public))
     baseline_snapshot, _ = run_role_phase(
         "baseline", backend.inspect, baseline_inspect
     )
-    run_role_phase("candidate", backend.fetch_public, candidate_public)
     candidate_snapshot, _ = run_role_phase(
         "candidate", backend.inspect, candidate_inspect
     )
@@ -541,6 +594,9 @@ def report_document(result: str, reason_code: str,
         "scope": {
             "maximum_accepted_exit_height": MAX_OBSERVED_HEIGHT,
             "stop_trigger_height": STOP_HEIGHT,
+            "expected_checkpoint_hash": EXPECTED_CHECKPOINT_HASH,
+            "expected_checkpoint_median_time": EXPECTED_MEDIAN_TIME,
+            "last_legacy_activation_ema_time": LAST_LEGACY_ACTIVATION_EMA_TIME,
             "complete_initial_block_download": False,
             "network_source_by_role": {
                 "baseline": "public-mainnet",
@@ -561,12 +617,15 @@ def report_document(result: str, reason_code: str,
             "work_root_survived": False,
         },
         "claims": {
-            "bounded_mainnet_prefix_match": result == "success",
+            "complete_validation_through_fixed_checkpoint": result == "success",
             "independent_public_prefix_acquisition": result == "success",
+            "simultaneous_public_readiness_observed": result == "success",
             "current_tip_agreement": "not_claimed",
+            "deterministic_build": "not_claimed",
             "full_historical_replay": "not_claimed",
             "mainnet_coexistence": "not_claimed",
             "operator_binary_parity": "not_claimed",
+            "peer_diversity": "not_claimed",
             "sustained_operation": "not_claimed",
         },
         "privacy": {
@@ -578,9 +637,10 @@ def report_document(result: str, reason_code: str,
         "limitations": [
             "Public peers and DNS resolvers necessarily observe each role's source IP.",
             "Passive means no authored transaction or block and no public inbound service; P2P protocol traffic still occurs.",
-            "The fixed prefix does not cover the current tip, full history, sustained operation, or operator binaries.",
-            "Shutdown may complete already in-flight blocks above the fixed checkpoint; only checkpoint 288 is compared.",
-            "Distinct public peer sets and simultaneous operation are not established.",
+            "The fixed current-era checkpoint does not cover the current tip, full history, sustained operation, or operator binaries.",
+            "Shutdown may complete already in-flight blocks above the fixed checkpoint; only checkpoint 250000 is compared.",
+            "Distinct public peer sets, distinct hosts, and network-path independence are not established.",
+            "Concurrent peer connections, concurrent public traffic, and any minimum overlap duration are not established.",
         ],
     }
     if result == "success":
@@ -596,6 +656,7 @@ def report_document(result: str, reason_code: str,
             "processes_distinct": True,
             "roles_equal": True,
             "shared_checkpoint": shared_snapshot,
+            "simultaneous_public_readiness_observed": True,
         }
     else:
         if shared_snapshot is not None or failure_role not in FAILURE_ROLES:
@@ -645,7 +706,7 @@ def run(args: argparse.Namespace, backend_factory: Any = SystemBackend) -> int:
                 work_root, baseline_binary, candidate_binary, backend
             )
             result = "success"
-            reason_code = "bounded-mainnet-prefix-matched"
+            reason_code = "current-era-mainnet-checkpoint-matched"
         except SmokeFailure as error:
             result, reason_code = error.result, error.reason_code
             failure_role = error.failure_role
