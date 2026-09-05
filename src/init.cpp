@@ -2116,13 +2116,6 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
     GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
     GetMainSignals().RegisterWithMempoolSignals(g_mempool);
 
-#ifdef ENABLE_CHRONIK_OBSERVER
-    if (gArgs.GetBoolArg("-chronikobserver", false) &&
-        !chronik::StartNodeObserver()) {
-        return InitError("Unable to start the volatile Chronik observer");
-    }
-#endif
-
     // Create client interfaces for wallets that are supposed to be loaded
     // according to -wallet and -disablewallet options. This only constructs
     // the interfaces, it doesn't load wallet data. Wallets actually get loaded
@@ -2571,6 +2564,16 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
     // Encoded addresses using cashaddr instead of base58.
     // We do this by default to avoid confusion with BTC addresses.
     config.SetCashAddrEncoding(gArgs.GetBoolArg("-usecashaddr", DEFAULT_USE_CASHADDR));
+
+    // The active chain is readable here, while block import and networking
+    // have not started. A full reindex deliberately starts from an empty chain
+    // and reconstructs the same bounded projection through later callbacks.
+#ifdef ENABLE_CHRONIK_OBSERVER
+    if (gArgs.GetBoolArg("-chronikobserver", false) &&
+        !chronik::StartNodeObserver()) {
+        return InitError("Unable to start the volatile Chronik observer");
+    }
+#endif
 
     // Step 8: load indexers
     if (gArgs.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {

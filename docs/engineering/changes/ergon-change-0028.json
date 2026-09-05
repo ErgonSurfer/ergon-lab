@@ -1,0 +1,486 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0028",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0028.json",
+  "purpose": {
+    "summary": "Turn the default-off local-regtest Chronik block observer into a bounded, restart- and full-reindex-reconstructible active-chain projection without adding persistence or consensus authority.",
+    "scope": [
+      "Ask one falsifiable question: can public canonical block inputs reconstruct and reverse an exact 288-block active-chain suffix across normal restart, full reindex, and deep reorganization while the observer remains optional and non-authoritative?",
+      "Pass canonical CBlock serialization through the existing synchronous C ABI, own the bytes in Rust, and independently verify callback identity, exact deserialization, non-empty transactions, and the header Merkle root.",
+      "Track only block identity, height, and transaction count with exact parent-plus-height connects, exact LIFO disconnects, checked arithmetic, and a hard MIN_BLOCKS_TO_KEEP bound of 288.",
+      "At normal startup, reconstruct the readable active suffix in a distinct staging observer and atomically adopt it only after every block passes; during full -reindex, rebuild from ordered validation callbacks starting at genesis.",
+      "When a reorganization disconnects the retained anchor, enter one explicit observer-only rebuild-required state, reject subsequent observer events, and recover through a normal restart bootstrap.",
+      "Prove disabled legacy mining, enabled local-regtest behavior, an actual height-288 full reindex, the retention bound, deep-reorganization failure, restart recovery, exact non-regtest rejection, and no Chronik file or socket."
+    ],
+    "exclusions": [
+      "No persistent index, database, migration, resume marker, file, socket, API, service, Rust thread, or query surface is added.",
+      "No mempool event or transaction-output classification is added; SLP, ALP, and CashTokens families remain unrecognized by the node observer.",
+      "No authoritative token validation, token state, or governed native-asset activation is implemented.",
+      "No callback result can accept, reject, reorder, or select a block, transaction, or chain; observer failure affects only explicit local-regtest observer startup or projection state.",
+      "No consensus, chain parameter, activation, testnet, mainnet, P2P, RPC, wallet, or user-interface behavior changes.",
+      "No local binary, build cache, raw output, absolute host path, parent environment, operator material, private history, or unrelated product material enters this change."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "a8dcedfc38029dcf66fb69aa290be062c5dd71c0",
+      "tree": "3c6d39f687e78b9c6825444b2483af9f4673eaa6"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "0dcf7386bf6a52653a77dcf83796ca636cd2cd5157ae0550aa220ae7fcfd427e",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "chronik/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 4042,
+        "git_blob": "52fda96cad46a02ff0d6ad1343e6948f18157262",
+        "sha256": "d1573214b09830f2ee76cbd036adda64d4dfe3ed52d7a71b255d62379b7bfee6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3706,
+        "git_blob": "d12bbebdeb31205932d216b743614ae41e55f5fa",
+        "sha256": "28472911a891822570e72d4d9960c72a7dd9452de6eb10d7e38528a99d50d5ab"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the explicit BUILD_CHRONIK_OBSERVER=ON graph runs the locked offline Cargo observer target. Cargo is reinvoked on every requested node build so transitive local Rust changes cannot leave a stale archive.",
+      "test_reachability": "Build and incremental-build checks exercise the observer target; Cargo itself retains incremental compilation."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 12007,
+        "git_blob": "c7906f18119065d0bf414b7663b36678b8b9f830",
+        "sha256": "7846fb20483799c22d189583ea822821f4e61ec0a75b132ae2d184eb78985c87"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12058,
+        "git_blob": "24f19abd28af2b092ae704e0eb7b5e7fff41825d",
+        "sha256": "e5c49b9a7f290bbb129f988195c34be1b00fe6a617a03c85fa6b6c11c3ed20c3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1-GENERATED-CARGO-1.93.0",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Locks the existing public Rust workspace after the observer begins using bitcoinsuite-core and bytes; it reaches bitcoind only through explicit observer compilation.",
+      "test_reachability": "Locked offline Rust builds and unit tests consume this exact dependency graph."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 4514,
+        "git_blob": "277ab7acb071f6afb48ae8918f0714704bbf9540",
+        "sha256": "11bfb81b1acd6515b20ad4145a4c53c6fd93b362c823f6803c88b8b9640e92aa"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5993,
+        "git_blob": "0fddc9f2bf82fccab56fcc4ffe25226ece0a5747",
+        "sha256": "bbb05ba23fda7eebf26be30e989def875a59888d3ba1f569d3305a3a0405f926"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public operator, reconstruction, native-assets, and authority-boundary documentation only.",
+      "test_reachability": "Documents the exact build profiles, test entry point, 288-block bound, and deferred canaries."
+    },
+    {
+      "path": "chronik/chronik-observer/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 225,
+        "git_blob": "0f55b5a79428ffc4a71ff95a52cdf3fb099c36a1",
+        "sha256": "2f0baa1f90922d7c500633a30187c811b944b2a0c403c74ee70068120baa2b7b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 309,
+        "git_blob": "6cdae244fb0489dbedc4df798b270b86f9822c85",
+        "sha256": "3aed303a43593e4a38f13cfad6073873686e05d57568804a2092713a22343611"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Adds only already-public workspace crates needed to parse canonical node block bytes inside the compiled-in observer.",
+      "test_reachability": "Selects bitcoinsuite-core and bytes for the observer's focused Rust tests."
+    },
+    {
+      "path": "chronik/chronik-observer/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 4491,
+        "git_blob": "0c63c811daf6442a336f59f8d23dc953fa860aad",
+        "sha256": "c5b04bceb5fb348f4640394cdbd060f54ce4db370d61fcc144cafa5d8a847ea9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 26387,
+        "git_blob": "a282496a5e0db544785f3f4fcf3afacadb64937f",
+        "sha256": "dfe28a55e6f26526abdbb70fb1c476edc1c9c9ed55d7b0d6b56e06a8c6a62aeb"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Compiled only with BUILD_CHRONIK_OBSERVER=ON; owns a volatile bounded projection and returns no decision to node validation or chain selection.",
+      "test_reachability": "Seven Rust tests cover exact parsing, independent header and Merkle checks, continuity, LIFO reversal, bounds, fail-closed behavior, and atomic staging adoption."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3397,
+        "git_blob": "437a45504ac0953225d8edc0d5824a9281e881c2",
+        "sha256": "b6d83c13cd2169ef31373d53519f37b841606a538dab06e79cef6696469699fe"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8989,
+        "git_blob": "c536065f34b2ed2f6e6deff4fd684fd596c55b21",
+        "sha256": "e48b30c7d2efb65d2d0762c63784e60e526a7edf7a14391f52755838a8513eaf"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Compiled only with BUILD_CHRONIK_OBSERVER=ON; serializes accepted blocks, bootstraps an isolated 288-block staging projection from active-chain block inputs, and logs observer-only diagnostics.",
+      "test_reachability": "The functional test exercises bootstrap, callbacks, bounded totals, full reindex, deep-reorganization failure, restart recovery, and clean shutdown."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 115052,
+        "git_blob": "a0c4422fd1a49f59b26f9a4a75f5f398ad31d139",
+        "sha256": "cd82e34859a277e6e1dc96b3f21c404fe9d22ef4b38916e55daa150c32d4e3ef"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 115285,
+        "git_blob": "b4d6b0c451f7e68741e2cc696d042a73650f572c",
+        "sha256": "14c4f34060287e75323c85783218339332a9e05c5326c0cb8a4af3a2c892c75d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Moves the already default-off local-regtest observer start to the first phase where active-chain blocks are readable, before import and network producers begin.",
+      "test_reachability": "Startup, disabled legacy mining, normal restart, full reindex, rejection profiles, and shutdown all traverse this lifecycle boundary."
+    },
+    {
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 6035,
+        "git_blob": "dea41a1f34895ca1d34183c45392f4568466ccf5",
+        "sha256": "9d19ec0db4b5a8e928f49f9c61944a1b68bbb48de808777eb9818aab31410805"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 12507,
+        "git_blob": "9744972c26a692778ededb99b6420bb37155defb",
+        "sha256": "e55c6fcf13d6c50d0dbc8b016aab991fb2c6d0a1c7dac24555100e777abcfda3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Proves disabled behavior, enabled reconstruction, a real height-288 full reindex, the 288-block retention bound, deep-reorg fail-closed behavior, restart recovery, network rejection, and absence of Chronik files or sockets."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Fresh-configure and build bitcoind with BUILD_CHRONIK_BUILD_ONLY=OFF and BUILD_CHRONIK_OBSERVER=OFF, then run symbol, option, and mining_basic checks."
+        ],
+        "expected_results": [
+          "CMake does not enter Chronik, no observer symbol or option exists, -chronikobserver is rejected as unknown, and legacy mining passes."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Fresh-configure and build bitcoind with BUILD_CHRONIK_OBSERVER=ON, inspect the final executable, launch without -chronikobserver, and run mining_basic."
+        ],
+        "expected_results": [
+          "The executable contains all six governed Rust C-ABI symbols; runtime launches register no observer or Chronik state by default; legacy mining passes."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Run feature_chronik_block_observer.py --hermetic-child-env against the compiled-in build on a fresh isolated regtest datadir."
+        ],
+        "expected_results": [
+          "The bounded volatile active-chain projection passes opt-in, restart, height-288 full-reindex, retention, and deep-reorganization scenarios without creating an authoritative or durable index."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run feature_chronik_block_observer.py: first runtime disabled, then explicit local-regtest opt-in with bootstrap, connect, disconnect, reconsider, and exact non-regtest rejection probes.",
+        "expected_results": [
+          "Disabled execution emits no Chronik state; enabled local regtest reconstructs its initial suffix, emits the exact six-event reversible sequence and payload-derived totals, creates no Chronik path or socket, and main, testnet, testnet4, and scalenet reject opt-in."
+        ],
+        "failure_conditions": [
+          "Any enabled non-regtest launch, callback or payload mismatch, state while disabled, Chronik path/socket, validation decision, or activation claim fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "After reaching height 288 and forcing the bounded projection into rebuild-required state, start a fresh opt-in process on the unchanged datadir and then mine height 289.",
+        "expected_results": [
+          "Startup atomically reconstructs exactly heights 1 through 288 with 288 blocks and 288 transactions; the next block advances to height 289 while retaining exactly 288 entries."
+        ],
+        "failure_conditions": [
+          "Failure to reconstruct the exact available suffix, totals other than 288, stale rebuild-required state, non-atomic partial adoption, or growth beyond 288 fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "With an existing active chain at height 288, launch a fresh opt-in process with -reindex=1 and wait for the validation-interface queue to drain.",
+        "expected_results": [
+          "Bootstrap reports an empty active chain, full reindex emits exact ordered connects for genesis through height 288, and the projection remains bounded to the most recent 288 blocks and transactions."
+        ],
+        "failure_conditions": [
+          "Missing, duplicated, reordered, or rejected reindex callbacks; an incorrect block identity, height, payload, Merkle root, total, or bound; or use of prior volatile state fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Deferred in ERGON-CHANGE-0028: do not claim -reindex-chainstate coverage from the full -reindex scenario.",
+        "expected_results": [
+          "This distinct startup path remains an explicit Open Question for a later focused canary."
+        ],
+        "failure_conditions": [
+          "Any pass or evidence promotion for index-chainstate-reindex-288 attributed to ERGON-CHANGE-0028 fails the declared evidence ceiling."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Deferred in ERGON-CHANGE-0028: do not claim actually pruned-datadir coverage from the MIN_BLOCKS_TO_KEEP design bound.",
+        "expected_results": [
+          "A real pruning-and-restart canary remains an explicit Open Question for a later focused packet."
+        ],
+        "failure_conditions": [
+          "Any pass or evidence promotion for index-pruned-datadir-288 without a fresh actually pruned datadir fails the declared evidence ceiling."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "After full reindex at height 288, invalidate the retained height-1 anchor, drain callbacks, reconsider it while failed closed, then restart normally.",
+        "expected_results": [
+          "Exactly 288 LIFO disconnects end at sequence 577, one retained-anchor-disconnected diagnostic requires restart, reconsidered connects are rejected by the observer, and normal restart reconstructs the active suffix."
+        ],
+        "failure_conditions": [
+          "Mutation after rebuild-required, more than one transition diagnostic, acceptance of a non-LIFO disconnect, silent continuation past the anchor, node consensus influence, or failure to recover on restart fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "macOS arm64 local contradiction testing",
+        "Ubuntu 22.04 ARM64 public verification after technical acceptance"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 e5c49b9a7f290bbb129f988195c34be1b00fe6a617a03c85fa6b6c11c3ed20c3"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "The projection is volatile and non-queryable; it stores no durable index, transaction body, output classification, or API state.",
+    "Normal startup reconstruction is synchronous and fails the explicit local-regtest observer startup if any selected retained block cannot be read or parsed.",
+    "Peak parsing memory includes C++ serialization, one Rust-owned block buffer, and parsed transaction structures; only compact metadata for at most 288 blocks is retained.",
+    "Dedicated -reindex-chainstate and actually pruned-datadir canaries are not implemented in this change.",
+    "The local macOS final binaries required an untracked Boost 1.90 compatibility include because unchanged legacy code calls removed boost::filesystem::basename; those binaries are diagnostic only and never evidence artifacts.",
+    "The committed lockfile fixes registry versions and checksums but does not lock the compiler, operating-system image, native toolchain, or final binaries.",
+    "A fresh Cargo cache requires one online population step before governed offline builds.",
+    "Local tests are contradiction checks only; no result is public reproduction evidence at record-review time."
+  ],
+  "counterevidence": [
+    "No public build or functional execution of the exact candidate exists at record-review time.",
+    "A bounded volatile projection does not demonstrate durable indexing, crash recovery, API compatibility, mempool reconstruction, native-asset parsing, token validity, or consensus behavior.",
+    "The distinct index-chainstate-reindex-288 and index-pruned-datadir-288 scenarios remain deliberately unimplemented and Open Question.",
+    "Local success on macOS does not establish Ubuntu, cross-platform, or independently reproduced behavior."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

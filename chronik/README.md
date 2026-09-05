@@ -29,33 +29,50 @@ The observer crate is explicitly excluded from this target. No C++ bridge,
 callback, thread, socket, database, data path, HTTP or WebSocket server,
 protobuf API, or plugin is built or linked.
 
-## Volatile block observer
+## Bounded block projection
 
 When `BUILD_CHRONIK_OBSERVER=ON`, `bitcoind` contains an in-memory observer and
 exposes the debug-only `-chronikobserver` flag. Launching without that flag
 registers no callback and creates no Chronik state. Launching with it is
 fail-closed outside the exact local `regtest` profile.
 
-The enabled observer receives only serialized block-connected and
-block-disconnected callbacks. It records a volatile sequence number and a
-deterministic diagnostic fingerprint, then writes normalized event lines to
-the existing node log. It returns no decision to validation. Shutdown drains
-the validation callback queue before unregistering the observer and destroying
-its Rust handle.
+For each accepted block-connected callback, C++ serializes the immutable
+`CBlock` once with the canonical network serializer. Rust owns one copy, checks
+that the 80-byte header hashes to the callback block identity, deserializes the
+non-empty transaction vector without trailing bytes, and independently checks
+its Merkle root against header bytes 36 through 68. These checks protect the
+observer boundary; they do not revalidate or overrule the node.
 
-This boundary creates no file, database, socket, API, service, or Rust thread.
-Its state is deliberately lost at shutdown. It is observation, not an index,
-and it does not prove restart, reindex, pruning, or deep-reorganization
-reconstruction.
+The observer keeps a reversible projection of at most 288 active-chain blocks,
+matching the legacy `MIN_BLOCKS_TO_KEEP` suffix. It records block identity,
+height, and transaction count. A connect must name the exact retained tip as
+its parent and advance one height. A disconnect must match the exact LIFO tip.
+Checked arithmetic and parse failures reject the observer event without
+changing its sequence or projection.
+
+At normal startup, the node reads the available active suffix into a separate
+staging observer and adopts it only after the complete reconstruction passes.
+During `-reindex`, the observer starts from the empty active chain and rebuilds
+through accepted ordered callbacks. Disconnecting beyond the retained anchor
+enters a fail-closed `rebuild-required` state; further events are rejected by
+the observer until a normal restart reconstructs the new active suffix.
+
+The state remains volatile: there is no persistent index to trust or migrate.
+This boundary creates no Chronik file, database, socket, API, service, or Rust
+thread, and it returns no decision to validation. Shutdown drains the
+validation callback queue before unregistering the observer and destroying its
+Rust handle. Dedicated `-reindex-chainstate` and actually pruned-datadir
+canaries remain deferred.
 
 ## Native-assets boundary
 
 - Families recognized or observed in transactions and blocks: none. The
-  opt-in observer receives block hash, height, and connection direction only;
-  it receives no transaction bytes and performs no SLP, ALP, or CashTokens
-  classification. Dormant SLP and ALP parsing primitives remain unreachable
-  from node callbacks.
-- Indexed or reconstructed data: none.
+  opt-in observer structurally deserializes accepted blocks but does not inspect
+  transaction outputs or perform SLP, ALP, or CashTokens classification.
+  Dormant SLP and ALP parsing primitives remain unreachable from node callbacks.
+- Indexed or reconstructed data: only the bounded active-chain sequence of
+  block identities, heights, and aggregate transaction counts. It is rebuilt
+  from public node block inputs and is not a durable or queryable index.
 - Authoritative token validation or token state: none.
 - Governed consensus activation: none.
 
@@ -107,9 +124,13 @@ Run the opt-in functional boundary only with the compiled-in build:
 
 ```sh
 python3 test/functional/feature_chronik_block_observer.py \
-  --configfile=/absolute/path/build-observer/test/config.ini
+  --configfile=/absolute/path/build-observer/test/config.ini \
+  --hermetic-child-env
 ```
 
 Build directories, Cargo caches, and test datadirs belong outside the source
-tree. Compiling or enabling this observer is not evidence of runtime indexing,
-API compatibility, native-asset validation, or consensus behavior.
+tree. Peak parsing memory includes the C++ serialization, one Rust-owned block
+buffer, and parsed transaction structures; startup reconstruction is currently
+synchronous. Compiling or enabling this observer is not evidence of a durable
+production index, API compatibility, native-asset validation, or consensus
+behavior.

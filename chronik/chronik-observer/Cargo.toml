@@ -10,3 +10,7 @@ license = "MIT"
 
 [lib]
 crate-type = ["staticlib"]
+
+[dependencies]
+bitcoinsuite-core = { path = "../bitcoinsuite-core" }
+bytes = "1.4"

@@ -75,8 +75,7 @@ if(BUILD_CHRONIK_OBSERVER)
     set(CHRONIK_OBSERVER_STATICLIB
         "${CHRONIK_BUILD_ONLY_TARGET_DIR}/release/${CMAKE_STATIC_LIBRARY_PREFIX}chronik_observer${CMAKE_STATIC_LIBRARY_SUFFIX}"
     )
-    add_custom_command(
-        OUTPUT "${CHRONIK_OBSERVER_STATICLIB}"
+    add_custom_target(chronik_observer_rust_build
         COMMAND
             "${CMAKE_COMMAND}" -E env
             ${CHRONIK_CARGO_ENV}
@@ -87,17 +86,10 @@ if(BUILD_CHRONIK_OBSERVER)
             --release
             --locked
             --offline
-        DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml"
-            "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock"
-            "${CMAKE_CURRENT_SOURCE_DIR}/chronik-observer/Cargo.toml"
-            "${CMAKE_CURRENT_SOURCE_DIR}/chronik-observer/src/lib.rs"
+        BYPRODUCTS "${CHRONIK_OBSERVER_STATICLIB}"
         COMMENT "Building the in-memory Chronik observer"
         USES_TERMINAL
         VERBATIM
-    )
-    add_custom_target(chronik_observer_rust_build
-        DEPENDS "${CHRONIK_OBSERVER_STATICLIB}"
     )
     add_library(chronik_observer_rust STATIC IMPORTED GLOBAL)
     set_target_properties(chronik_observer_rust PROPERTIES

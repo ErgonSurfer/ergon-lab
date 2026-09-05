@@ -4,34 +4,64 @@
 #include <chronik/node-observer.h>
 
 #include <chain.h>
+#include <chainparams.h>
 #include <logging.h>
 #include <primitives/block.h>
+#include <streams.h>
 #include <uint256.h>
+#include <validation.h>
 #include <validationinterface.h>
+#include <version.h>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace {
 
-struct ChronikObservation {
+struct ChronikBlockObservation {
     uint64_t sequence;
     uint64_t fingerprint;
+    uint64_t payload_size;
+    uint64_t payload_fingerprint;
+    uint64_t transaction_count;
+    uint64_t projection_blocks;
+    uint64_t projection_transactions;
 };
 
+static_assert(sizeof(ChronikBlockObservation) == 7 * sizeof(uint64_t));
+
+struct ChronikProjectionObservation {
+    uint64_t success;
+    uint64_t blocks;
+    uint64_t transactions;
+};
+
+static_assert(sizeof(ChronikProjectionObservation) == 3 * sizeof(uint64_t));
+
+// Match the active-chain suffix that the legacy node guarantees to retain.
+constexpr int32_t CHRONIK_OBSERVER_RETAINED_BLOCKS = MIN_BLOCKS_TO_KEEP;
+
 extern "C" {
-void *chronik_observer_create();
+void *chronik_observer_create_bounded(uint64_t max_blocks);
 uint64_t chronik_observer_destroy(void *observer);
-ChronikObservation chronik_observer_block_connected(void *observer,
-                                                     const uint8_t *hash,
-                                                     int32_t height);
-ChronikObservation chronik_observer_block_disconnected(void *observer,
-                                                        const uint8_t *hash);
+uint64_t chronik_observer_requires_rebuild(const void *observer);
+ChronikProjectionObservation chronik_observer_adopt_projection(
+    void *observer, void *rebuilt);
+ChronikBlockObservation chronik_observer_block_connected(
+    void *observer, const uint8_t *hash, int32_t height,
+    const uint8_t *raw_block, size_t raw_block_size);
+ChronikBlockObservation chronik_observer_block_disconnected(
+    void *observer, const uint8_t *hash);
 }
 
 class ChronikNodeObserver final : public CValidationInterface {
 public:
-    ChronikNodeObserver() : m_observer(chronik_observer_create()) {}
+    ChronikNodeObserver()
+        : m_observer(chronik_observer_create_bounded(
+              CHRONIK_OBSERVER_RETAINED_BLOCKS)) {}
 
     ~ChronikNodeObserver() {
         const uint64_t observations = chronik_observer_destroy(m_observer);
@@ -40,42 +70,145 @@ public:
 
     bool IsReady() const { return m_observer != nullptr; }
 
+    bool Bootstrap() {
+        std::vector<const CBlockIndex *> indexes;
+        {
+            LOCK(cs_main);
+            const CBlockIndex *tip = ::ChainActive().Tip();
+            if (tip == nullptr) {
+                LogPrintf("Chronik observer bootstrap active_chain=empty "
+                          "retained_blocks=0\n");
+                return true;
+            }
+            const int32_t start_height = std::max<int32_t>(
+                0, tip->nHeight - CHRONIK_OBSERVER_RETAINED_BLOCKS + 1);
+            indexes.reserve(tip->nHeight - start_height + 1);
+            for (int32_t height = start_height; height <= tip->nHeight;
+                 ++height) {
+                indexes.push_back(::ChainActive()[height]);
+            }
+        }
+
+        void *rebuilt = chronik_observer_create_bounded(
+            CHRONIK_OBSERVER_RETAINED_BLOCKS);
+        if (rebuilt == nullptr) {
+            return false;
+        }
+        for (const CBlockIndex *index : indexes) {
+            CBlock block;
+            if (!ReadBlockFromDisk(block, index, Params().GetConsensus())) {
+                chronik_observer_destroy(rebuilt);
+                LogPrintf("Chronik observer rejected kind=bootstrap-read "
+                          "hash=%s height=%d\n",
+                          index->GetBlockHash().GetHex(), index->nHeight);
+                return false;
+            }
+            CDataStream serialized_block(SER_NETWORK, PROTOCOL_VERSION);
+            serialized_block << block;
+            const uint256 hash = index->GetBlockHash();
+            const ChronikBlockObservation observation =
+                chronik_observer_block_connected(
+                    rebuilt, hash.begin(), index->nHeight,
+                    reinterpret_cast<const uint8_t *>(serialized_block.data()),
+                    serialized_block.size());
+            if (observation.sequence == 0) {
+                chronik_observer_destroy(rebuilt);
+                LogPrintf("Chronik observer rejected kind=bootstrap-parse "
+                          "hash=%s height=%d\n",
+                          hash.GetHex(), index->nHeight);
+                return false;
+            }
+        }
+
+        const ChronikProjectionObservation projection =
+            chronik_observer_adopt_projection(m_observer, rebuilt);
+        if (projection.success == 0) {
+            LogPrintf("Chronik observer rejected kind=bootstrap-adopt\n");
+            return false;
+        }
+        LogPrintf("Chronik observer bootstrap start_height=%d tip_height=%d "
+                  "retained_blocks=%u transactions=%u\n",
+                  indexes.front()->nHeight, indexes.back()->nHeight,
+                  projection.blocks, projection.transactions);
+        return true;
+    }
+
 protected:
     void BlockConnected(
         const std::shared_ptr<const CBlock> &block,
         const CBlockIndex *index,
         const std::vector<CTransactionRef> &transactions_conflicted) override {
-        (void)block;
         (void)transactions_conflicted;
         const uint256 hash = index->GetBlockHash();
-        LogObservation("connected", hash, index->nHeight,
-                       chronik_observer_block_connected(
-                           m_observer, hash.begin(), index->nHeight));
+        CDataStream serialized_block(SER_NETWORK, PROTOCOL_VERSION);
+        serialized_block << *block;
+        const ChronikBlockObservation observation =
+            chronik_observer_block_connected(
+                m_observer, hash.begin(), index->nHeight,
+                reinterpret_cast<const uint8_t *>(serialized_block.data()),
+                serialized_block.size());
+        LogConnectedObservation(hash, index->nHeight, observation);
+        LogRebuildRequired(hash);
     }
 
     void BlockDisconnected(
         const std::shared_ptr<const CBlock> &block) override {
         const uint256 hash = block->GetHash();
-        LogObservation("disconnected", hash, -1,
-                       chronik_observer_block_disconnected(m_observer,
-                                                           hash.begin()));
+        const ChronikBlockObservation observation =
+            chronik_observer_block_disconnected(m_observer, hash.begin());
+        LogDisconnectedObservation(hash, observation);
+        LogRebuildRequired(hash);
     }
 
 private:
-    void LogObservation(const char *kind, const uint256 &hash, int32_t height,
-                        const ChronikObservation &observation) const {
+    void LogConnectedObservation(
+        const uint256 &hash, int32_t height,
+        const ChronikBlockObservation &observation) const {
         if (observation.sequence == 0) {
-            LogPrintf("Chronik observer rejected kind=%s hash=%s\n", kind,
+            LogPrintf("Chronik observer rejected kind=connected hash=%s\n",
                       hash.GetHex());
             return;
         }
-        LogPrintf("Chronik observer event sequence=%u kind=%s hash=%s "
-                  "height=%d fingerprint=%u\n",
-                  observation.sequence, kind, hash.GetHex(), height,
-                  observation.fingerprint);
+        LogPrintf("Chronik observer event sequence=%u kind=connected hash=%s "
+                  "height=%d fingerprint=%u bytes=%u "
+                  "payload_fingerprint=%u transactions=%u "
+                  "projection_blocks=%u projection_transactions=%u\n",
+                  observation.sequence, hash.GetHex(), height,
+                  observation.fingerprint, observation.payload_size,
+                  observation.payload_fingerprint,
+                  observation.transaction_count, observation.projection_blocks,
+                  observation.projection_transactions);
+    }
+
+    void LogDisconnectedObservation(
+        const uint256 &hash,
+        const ChronikBlockObservation &observation) const {
+        if (observation.sequence == 0) {
+            LogPrintf("Chronik observer rejected kind=disconnected hash=%s\n",
+                      hash.GetHex());
+            return;
+        }
+        LogPrintf("Chronik observer event sequence=%u kind=disconnected "
+                  "hash=%s height=-1 fingerprint=%u transactions=%u "
+                  "projection_blocks=%u projection_transactions=%u\n",
+                  observation.sequence, hash.GetHex(), observation.fingerprint,
+                  observation.transaction_count, observation.projection_blocks,
+                  observation.projection_transactions);
+    }
+
+    void LogRebuildRequired(const uint256 &hash) {
+        if (m_rebuild_required_logged ||
+            chronik_observer_requires_rebuild(m_observer) == 0) {
+            return;
+        }
+        m_rebuild_required_logged = true;
+        LogPrintf("Chronik observer state=rebuild-required hash=%s "
+                  "reason=retained-anchor-disconnected recovery=restart\n",
+                  hash.GetHex());
     }
 
     void *m_observer;
+    bool m_rebuild_required_logged{false};
 };
 
 std::unique_ptr<ChronikNodeObserver> g_chronik_node_observer;
@@ -89,12 +222,14 @@ bool StartNodeObserver() {
         return false;
     }
     auto observer = std::make_unique<ChronikNodeObserver>();
-    if (!observer->IsReady()) {
+    if (!observer->IsReady() || !observer->Bootstrap()) {
         return false;
     }
     RegisterValidationInterface(observer.get());
     g_chronik_node_observer = std::move(observer);
-    LogPrintf("Chronik observer started mode=in-memory events=blocks\n");
+    LogPrintf("Chronik observer started mode=in-memory events=blocks "
+              "retained_blocks=%d\n",
+              CHRONIK_OBSERVER_RETAINED_BLOCKS);
     return true;
 }
 
