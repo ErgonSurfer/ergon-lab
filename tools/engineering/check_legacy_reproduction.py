@@ -23,13 +23,53 @@ BASELINE_URL = "https://github.com/Ergon-moe/Bitcoin-Static.git"
 BASELINE_COMMIT = "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"
 BASELINE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 CANDIDATE_URL = "https://github.com/ErgonSurfer/ergon-lab.git"
-CANDIDATE_COMMIT = "889212482c964ec98dcc2ac55321cb0e04e17666"
-CANDIDATE_TREE = "2f55a7d6c972d4100a2913f015aac91cdeacaf53"
-INTEGRATION_PARENT_COMMIT = "681a801e9694aedf4ef6a8e95605459bad673dd0"
-INTEGRATION_PARENT_TREE = "c2c33c6385ab034f0b904eac6ce260f324345eca"
+CANDIDATE_COMMIT = "8a7f630333a8481b095c0fa82b25f18e929b0171"
+CANDIDATE_TREE = "0793adbc50d051cdbf6cea602f92176c45748740"
+INTEGRATION_PARENT_COMMIT = "0e9da9e91bda4777fd6b980d8e1f67132ced170a"
+INTEGRATION_PARENT_TREE = "b1eff94179fbe4f7503163eafdddf06c579f3c04"
 ACCEPTED_RECORD_SHA256 = (
-    "0f9848a6c3d8fb48ec09547255fe4abd1adcf81cd05783788bf8a114d64c6ec5"
+    "754ec74063f146db58900f2ac5f45abedbe49b677001aaa6c2f881a0b99c298c"
 )
+REFERENCE_TARGET = {
+    "candidate_commit": "889212482c964ec98dcc2ac55321cb0e04e17666",
+    "candidate_tree": "2f55a7d6c972d4100a2913f015aac91cdeacaf53",
+    "integration_parent_commit": "681a801e9694aedf4ef6a8e95605459bad673dd0",
+    "integration_parent_tree": "c2c33c6385ab034f0b904eac6ce260f324345eca",
+    "record_path": "docs/engineering/changes/ergon-change-0010.json",
+    "record_sha256": "0f9848a6c3d8fb48ec09547255fe4abd1adcf81cd05783788bf8a114d64c6ec5",
+    "diff_entries": [
+        {"operation": "A", "path": "docs/engineering/changes/ergon-change-0010.json"},
+        {"operation": "M", "path": "tests/compatibility/legacy/run_matrix.py"},
+        {"operation": "M", "path": "tests/compatibility/legacy/self_test.py"},
+    ],
+}
+CANDIDATE_TARGET = {
+    "candidate_commit": CANDIDATE_COMMIT,
+    "candidate_tree": CANDIDATE_TREE,
+    "integration_parent_commit": INTEGRATION_PARENT_COMMIT,
+    "integration_parent_tree": INTEGRATION_PARENT_TREE,
+    "record_path": "docs/engineering/changes/ergon-change-0014.json",
+    "record_sha256": ACCEPTED_RECORD_SHA256,
+    "diff_entries": [
+        {"operation": "A", "path": "docs/engineering/changes/ergon-change-0014.json"},
+        {"operation": "M", "path": "tests/compatibility/legacy/feature_ergon_legacy_compatibility.py"},
+        {"operation": "M", "path": "tests/compatibility/legacy/run_matrix.py"},
+        {"operation": "M", "path": "tests/compatibility/legacy/self_test.py"},
+    ],
+}
+TARGET_DIFFERENCE_POINTERS = [
+    "/identity/candidate/commit",
+    "/identity/candidate/tree",
+    "/identity/diff_entries",
+    "/identity/integration_parent/commit",
+    "/identity/integration_parent/tree",
+    "/identity/record/path",
+    "/identity/record/sha256",
+    "/signatures/candidate/commit",
+    "/signatures/candidate/tree",
+    "/signatures/integration_parent/commit",
+    "/signatures/integration_parent/tree",
+]
 REVIEWER_IDENTITY = "Ergon Public Node GitHub Cockpit"
 DECISION_DATE = "2026-09-04"
 OBSERVED_REPORT_SHA256 = (
@@ -215,7 +255,7 @@ def require_identity(value: Any, commit: str, tree: str, context: str) -> None:
             f"{context} differs from the governed identity")
 
 
-def validate_report(report: dict[str, Any]) -> None:
+def validate_report(report: dict[str, Any], target: dict[str, Any]) -> None:
     strict_object(
         report,
         {
@@ -240,8 +280,8 @@ def validate_report(report: dict[str, Any]) -> None:
     ):
         require(report[key] is False, f"privacy flag {key} must be false")
 
-    require_identity(report["candidate_source"], CANDIDATE_COMMIT,
-                     CANDIDATE_TREE, "candidate_source")
+    require_identity(report["candidate_source"], target["candidate_commit"],
+                     target["candidate_tree"], "candidate_source")
 
     builds = strict_object(report["builds"], set(BUILD_ROLES), "builds")
     for role in BUILD_ROLES:
@@ -278,8 +318,8 @@ def validate_report(report: dict[str, Any]) -> None:
     )
     require_identity(change["baseline"], BASELINE_COMMIT, BASELINE_TREE,
                      "change_identity.baseline")
-    require_identity(change["candidate"], CANDIDATE_COMMIT, CANDIDATE_TREE,
-                     "change_identity.candidate")
+    require_identity(change["candidate"], target["candidate_commit"],
+                     target["candidate_tree"], "change_identity.candidate")
     require(change["candidate"] == report["candidate_source"],
             "candidate identity copies differ")
     require(change["public_root"] == {
@@ -288,16 +328,12 @@ def validate_report(report: dict[str, Any]) -> None:
     }, "public-root identity differs")
     require(change["candidate_direct_parent_is_integration_parent"] is True,
             "candidate direct-parent binding is false")
-    require(change["record_path"] ==
-            "docs/engineering/changes/ergon-change-0010.json",
+    require(change["record_path"] == target["record_path"],
             "accepted record path differs")
-    require(change["record_sha256"] == ACCEPTED_RECORD_SHA256,
+    require(change["record_sha256"] == target["record_sha256"],
             "accepted record digest differs")
-    require(change["diff_entries"] == [
-        {"operation": "A", "path": "docs/engineering/changes/ergon-change-0010.json"},
-        {"operation": "M", "path": "tests/compatibility/legacy/run_matrix.py"},
-        {"operation": "M", "path": "tests/compatibility/legacy/self_test.py"},
-    ], "technical change inventory differs")
+    require(change["diff_entries"] == target["diff_entries"],
+            "technical change inventory differs")
 
     public_git = strict_object(
         report["public_git"],
@@ -318,7 +354,7 @@ def validate_report(report: dict[str, Any]) -> None:
     require(accepted == {
         "decision_date": DECISION_DATE,
         "reviewer_identity": REVIEWER_IDENTITY,
-        "sha256": ACCEPTED_RECORD_SHA256,
+        "sha256": target["record_sha256"],
     }, "accepted review identity differs")
     require(public_git["integration_parent"] == change["integration_parent"],
             "integration-parent copies differ")
@@ -333,13 +369,13 @@ def validate_report(report: dict[str, Any]) -> None:
     )
     require(parent == {
         "candidate_direct_parent": True,
-        "commit": INTEGRATION_PARENT_COMMIT,
+        "commit": target["integration_parent_commit"],
         "controlled_paths_unchanged": True,
         "explicit_reviewed_cli": True,
         "preimages_verified": True,
         "record_match": True,
         "remote_ancestor": True,
-        "tree": INTEGRATION_PARENT_TREE,
+        "tree": target["integration_parent_tree"],
     }, "integration-parent binding differs")
 
     trust = strict_object(
@@ -438,8 +474,9 @@ def validate_report(report: dict[str, Any]) -> None:
     }, "consensus or activation claims differ")
 
 
-def semantic_projection(report: dict[str, Any]) -> dict[str, Any]:
-    validate_report(report)
+def semantic_projection(report: dict[str, Any],
+                        target: dict[str, Any]) -> dict[str, Any]:
+    validate_report(report, target)
     change = report["change_identity"]
     public_git = report["public_git"]
     trust = public_git["trust_root"]
@@ -512,8 +549,9 @@ def semantic_projection(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def environment_projection(report: dict[str, Any]) -> dict[str, Any]:
-    validate_report(report)
+def environment_projection(report: dict[str, Any],
+                           target: dict[str, Any]) -> dict[str, Any]:
+    validate_report(report, target)
     return {
         "git_version": report["public_git"]["git_version"],
         "origin_main_oid": report["public_git"]["origin_main_oid"],
@@ -1136,14 +1174,17 @@ def compare_reports(observed_path: Path, reproduced_path: Path,
             "observed report digest differs")
     observed = load_json(observed_path)
     reproduced = load_json(reproduced_path)
-    observed_projection = semantic_projection(observed)
-    reproduced_projection = semantic_projection(reproduced)
+    observed_projection = semantic_projection(observed, REFERENCE_TARGET)
+    reproduced_projection = semantic_projection(reproduced, CANDIDATE_TARGET)
     observed_projection_sha = sha256_bytes(canonical_bytes(observed_projection))
     require(observed_projection_sha == OBSERVED_PROJECTION_SHA256,
             "observed semantic projection implementation drifted")
     reproduced_projection_sha = sha256_bytes(canonical_bytes(reproduced_projection))
-    require(observed_projection == reproduced_projection,
-            "semantic projections differ")
+    target_differences = differing_pointers(
+        observed_projection, reproduced_projection
+    )
+    require(target_differences == TARGET_DIFFERENCE_POINTERS,
+            "semantic projections differ outside governed target identity")
     receipt = load_json(receipt_path)
     hosted_main_run = validate_build_receipt(receipt)
     require(receipt.get("matrix_report_sha256") == sha256_file(reproduced_path),
@@ -1152,14 +1193,17 @@ def compare_reports(observed_path: Path, reproduced_path: Path,
         "baseline": reproduced["change_identity"]["baseline"],
         "candidate": reproduced["change_identity"]["candidate"],
     }, "build receipt source identities differ")
-    require(receipt.get("builds") == environment_projection(reproduced)["builds"],
+    require(receipt.get("builds") == environment_projection(
+        reproduced, CANDIDATE_TARGET
+    )["builds"],
             "build receipt does not bind reproduced binaries")
     differences = differing_pointers(
-        environment_projection(observed), environment_projection(reproduced)
+        environment_projection(observed, REFERENCE_TARGET),
+        environment_projection(reproduced, CANDIDATE_TARGET),
     )
     return {
         "schema": "ergon-legacy-reproduction-comparison/v1",
-        "comparison_result": "semantic-match",
+        "comparison_result": "behavioral-match-with-governed-target-differences",
         "proposed_knowledge_status":
             "Reproduced" if hosted_main_run else "Observed",
         "promotion_authority": "external-review-required",
@@ -1182,7 +1226,9 @@ def compare_reports(observed_path: Path, reproduced_path: Path,
             "projection_sha256": reproduced_projection_sha,
             "build_receipt_sha256": sha256_file(receipt_path),
         },
-        "semantic_equal": True,
+        "semantic_equal": False,
+        "behavioral_equal": True,
+        "allowed_semantic_target_difference_pointers": target_differences,
         "allowed_environmental_difference_pointers": differences,
         "claims": {
             "behavioral_matrix_reproduced": hosted_main_run,
@@ -1293,18 +1339,52 @@ def self_test(repository_root: Path) -> None:
     require(sha256_file(observed_path) == OBSERVED_REPORT_SHA256,
             "self-test observed report digest differs")
     observed = load_json(observed_path)
-    projection = semantic_projection(observed)
+    projection = semantic_projection(observed, REFERENCE_TARGET)
     require(sha256_bytes(canonical_bytes(projection)) ==
             OBSERVED_PROJECTION_SHA256,
             "self-test projection digest differs")
 
+    candidate_report = copy.deepcopy(observed)
+    candidate_identity = {
+        "clean": True,
+        "commit": CANDIDATE_COMMIT,
+        "tree": CANDIDATE_TREE,
+    }
+    candidate_report["candidate_source"] = candidate_identity
+    candidate_change = candidate_report["change_identity"]
+    candidate_change["candidate"] = candidate_identity
+    candidate_change["integration_parent"]["commit"] = \
+        INTEGRATION_PARENT_COMMIT
+    candidate_change["integration_parent"]["tree"] = INTEGRATION_PARENT_TREE
+    candidate_change["record_path"] = CANDIDATE_TARGET["record_path"]
+    candidate_change["record_sha256"] = ACCEPTED_RECORD_SHA256
+    candidate_change["diff_entries"] = CANDIDATE_TARGET["diff_entries"]
+    candidate_git = candidate_report["public_git"]
+    candidate_git["accepted_record"]["sha256"] = ACCEPTED_RECORD_SHA256
+    candidate_git["integration_parent"] = \
+        candidate_change["integration_parent"]
+    candidate_git["signatures"]["candidate"]["commit"] = CANDIDATE_COMMIT
+    candidate_git["signatures"]["candidate"]["tree"] = CANDIDATE_TREE
+    candidate_git["signatures"]["integration_parent"]["commit"] = \
+        INTEGRATION_PARENT_COMMIT
+    candidate_git["signatures"]["integration_parent"]["tree"] = \
+        INTEGRATION_PARENT_TREE
+    candidate_projection = semantic_projection(
+        candidate_report, CANDIDATE_TARGET
+    )
+    require(differing_pointers(projection, candidate_projection) ==
+            TARGET_DIFFERENCE_POINTERS,
+            "self-test target difference allowlist drifted")
+
     environment_only = copy.deepcopy(observed)
     environment_only["public_git"]["git_version"] = "git version 99.0"
     environment_only["builds"]["baseline"]["bitcoind_sha256"] = "f" * 64
-    require(semantic_projection(environment_only) == projection,
+    require(semantic_projection(environment_only, REFERENCE_TARGET) == projection,
             "environment-only mutation changed semantic projection")
-    require(differing_pointers(environment_projection(observed),
-                               environment_projection(environment_only)) == [
+    require(differing_pointers(
+        environment_projection(observed, REFERENCE_TARGET),
+        environment_projection(environment_only, REFERENCE_TARGET),
+    ) == [
         "/builds/baseline/bitcoind_sha256", "/git_version"
     ], "environment difference allowlist drifted")
 
@@ -1323,7 +1403,7 @@ def self_test(repository_root: Path) -> None:
     mutations.append(changed_claim)
     for index, mutation in enumerate(mutations):
         try:
-            semantic_projection(mutation)
+            semantic_projection(mutation, REFERENCE_TARGET)
         except ReproductionError:
             continue
         raise ReproductionError(f"self-test accepted forbidden mutation {index}")
@@ -1398,9 +1478,13 @@ def self_test(repository_root: Path) -> None:
         },
         "sources": {
             "baseline": observed["change_identity"]["baseline"],
-            "candidate": observed["change_identity"]["candidate"],
+            "candidate": {
+                "clean": True,
+                "commit": CANDIDATE_COMMIT,
+                "tree": CANDIDATE_TREE,
+            },
         },
-        "builds": environment_projection(observed)["builds"],
+        "builds": environment_projection(observed, REFERENCE_TARGET)["builds"],
         "matrix_report_sha256": OBSERVED_REPORT_SHA256,
         "claims": {
             "build_reproducibility": "not_claimed",
