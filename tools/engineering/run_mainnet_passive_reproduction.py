@@ -24,18 +24,18 @@ BASELINE_URL = "https://github.com/Ergon-moe/Bitcoin-Static.git"
 BASELINE_COMMIT = "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"
 BASELINE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 CANDIDATE_URL = "https://github.com/ErgonSurfer/ergon-lab.git"
-CANDIDATE_COMMIT = "d228bd8720631f0bbaccc7e222cc3b409f04a635"
-CANDIDATE_TREE = "f7821808d24d7bdb7b42b58a413e2ba4c8e335c2"
-PARENT_COMMIT = "0f763359ee38f5ce24e5c47ad9af51ca28b73bf4"
-PARENT_TREE = "7298617b3a1a9f364072877fe5cf2d0a49492072"
+CANDIDATE_COMMIT = "1b702c957e7f56cc69ab01add5c0f99fb1bc3f1f"
+CANDIDATE_TREE = "d2a7a01007552e2f0e2600f2d57a5c318784260e"
+PARENT_COMMIT = "c7246dfd9b37c6511495f14e765cf1b2443b5ed7"
+PARENT_TREE = "1bd307ee53a1ff37be66f0041e8b73b3c2c9c281"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 SIGNER_PRINCIPAL = "153525861+ErgonSurfer@users.noreply.github.com"
 SIGNER_FINGERPRINT = "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q"
 SIGNER_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI"
-RECORD_PATH = Path("docs/engineering/changes/ergon-change-0020.json")
-RECORD_SHA256 = "b9ecfcda83959feed82c0add77412174d8eb6fecc32ee8c00255ca59b4226b86"
+RECORD_PATH = Path("docs/engineering/changes/ergon-change-0023.json")
+RECORD_SHA256 = "f281d913a078275fda0d847ac8b05356b8f67635bfbcb9501241e9adcf779b24"
 RUNNER_PATH = Path("tests/compatibility/mainnet/run_passive_smoke.py")
-RUNNER_SHA256 = "ac021360fd55b12f3629e093e7d80fe5ae8ab86b2433aec0f7b8cce6f80586db"
+RUNNER_SHA256 = "5bc925d153d99ea6d513f3ca7989c69299bcae8d71b1f9ad3b20a7caa3f1f9c3"
 LOCK_PATH = Path("contrib/reproducibility/legacy-ubuntu22-arm64.lock.json")
 LOCK_SHA256 = "a625d09aaa97e54f5fa7487f1000b139dcdf93472bc984425a25e2bf3777eab0"
 CONTAINERFILE_PATH = Path(
@@ -47,16 +47,24 @@ CONTAINER_MANIFEST = (
 )
 APT_SNAPSHOT = "20260901T000000Z"
 SCENARIO_ID = "mixed-node-coexistence"
-PROFILE = "mainnet-passive-independent-prefix-smoke"
+PROFILE = "mainnet-passive-joint-ready-current-era-smoke"
 EXPECTED_GENESIS = (
     "000000070e37bfee7e84b94f997f38155a85b22172f5ca25fd4eb3d64c5ad7c5"
 )
+STOP_HEIGHT = 250000
+MAX_OBSERVED_HEIGHT = 250128
+EXPECTED_CHECKPOINT_HASH = (
+    "00000000000000403f540557916c604251d03e9816da37a605036c6a6a0acc9a"
+)
+EXPECTED_MEDIAN_TIME = 1763660224
+LAST_LEGACY_ACTIVATION_EMA_TIME = 1659182400
 ROLES = ("baseline", "candidate")
 FAILURE_ROLES = frozenset((*ROLES, "comparison", "harness"))
 FAILURE_RESULT_BY_REASON = {
     "binary-input-invalid": "harness-error",
     "binary-identity-changed": "harness-error",
     "cleanup-failed": "harness-error",
+    "checkpoint-before-legacy-activation": "harness-error",
     "datadir-alias": "harness-error",
     "datadir-identity-changed": "harness-error",
     "network-surface-open": "harness-error",
@@ -71,6 +79,8 @@ FAILURE_RESULT_BY_REASON = {
     "node-exited-nonzero": "inconclusive",
     "timeout": "inconclusive",
     "genesis-mismatch": "contradiction",
+    "checkpoint-hash-mismatch": "contradiction",
+    "checkpoint-median-time-mismatch": "contradiction",
     "mainnet-chain-mismatch": "contradiction",
     "snapshot-mismatch": "contradiction",
 }
@@ -79,6 +89,28 @@ FAILURE_RESULT_BY_EXIT = {
     2: "inconclusive",
     3: "contradiction",
 }
+RECEIPT_SCHEMA = "ergon-mainnet-passive-build-provenance/v2"
+RECEIPT_CLAIMS = {
+    "build_reproducibility": "not_claimed",
+    "complete_validation_through_fixed_checkpoint": True,
+    "current_tip_agreement": "not_claimed",
+    "deterministic_build": "not_claimed",
+    "full_historical_replay": "not_claimed",
+    "independent_public_prefix_acquisition": True,
+    "mainnet_coexistence": "not_claimed",
+    "operator_binary_parity": "not_claimed",
+    "peer_diversity": "not_claimed",
+    "simultaneous_public_readiness_observed": True,
+    "sustained_operation": "not_claimed",
+}
+SMOKE_LIMITATIONS = (
+    "Public peers and DNS resolvers necessarily observe each role's source IP.",
+    "Passive means no authored transaction or block and no public inbound service; P2P protocol traffic still occurs.",
+    "The fixed current-era checkpoint does not cover the current tip, full history, sustained operation, or operator binaries.",
+    "Shutdown may complete already in-flight blocks above the fixed checkpoint; only checkpoint 250000 is compared.",
+    "Distinct public peer sets, distinct hosts, and network-path independence are not established.",
+    "Concurrent peer connections, concurrent public traffic, and any minimum overlap duration are not established.",
+)
 DIAGNOSTIC_UNAVAILABLE = (
     "ERGON_MAINNET_SMOKE_FAILURE role=harness disposition=harness-error "
     "reason_code=diagnostic-unavailable"
@@ -339,17 +371,20 @@ def validate_smoke_report(report: dict[str, Any],
         "knowledge_status", "evidence_ceiling", "scope", "binaries",
         "cleanup", "claims", "privacy", "limitations", "observations",
     }, "smoke report")
-    require(report["schema"] == "ergon-mainnet-passive-smoke/v2" and
+    require(report["schema"] == "ergon-mainnet-passive-smoke/v3" and
             report["scenario_id"] == SCENARIO_ID and report["profile"] == PROFILE,
             "smoke identity differs")
     require(report["result"] == "success" and
-            report["reason_code"] == "bounded-mainnet-prefix-matched" and
+            report["reason_code"] == "current-era-mainnet-checkpoint-matched" and
             report["knowledge_status"] == "Observed" and
             report["evidence_ceiling"] == "assembled_runtime",
             "smoke result is not promotable")
     require(report["scope"] == {
-        "maximum_accepted_exit_height": 416,
-        "stop_trigger_height": 288,
+        "maximum_accepted_exit_height": MAX_OBSERVED_HEIGHT,
+        "stop_trigger_height": STOP_HEIGHT,
+        "expected_checkpoint_hash": EXPECTED_CHECKPOINT_HASH,
+        "expected_checkpoint_median_time": EXPECTED_MEDIAN_TIME,
+        "last_legacy_activation_ema_time": LAST_LEGACY_ACTIVATION_EMA_TIME,
         "complete_initial_block_download": False,
         "network_source_by_role": {
             "baseline": "public-mainnet",
@@ -368,12 +403,15 @@ def validate_smoke_report(report: dict[str, Any],
         "work_root_survived": False,
     }, "smoke cleanup differs")
     require(report["claims"] == {
-        "bounded_mainnet_prefix_match": True,
+        "complete_validation_through_fixed_checkpoint": True,
         "independent_public_prefix_acquisition": True,
+        "simultaneous_public_readiness_observed": True,
         "current_tip_agreement": "not_claimed",
+        "deterministic_build": "not_claimed",
         "full_historical_replay": "not_claimed",
         "mainnet_coexistence": "not_claimed",
         "operator_binary_parity": "not_claimed",
+        "peer_diversity": "not_claimed",
         "sustained_operation": "not_claimed",
     }, "smoke claims differ")
     require(report["privacy"] == {
@@ -387,16 +425,19 @@ def validate_smoke_report(report: dict[str, Any],
         "candidate_clean_restart", "candidate_public_prefix_acquired",
         "datadirs_distinct", "ports_distinct", "processes_distinct",
         "roles_equal", "shared_checkpoint",
+        "simultaneous_public_readiness_observed",
     }, "smoke observations")
     require(all(observations[key] is True for key in observations
                 if key != "shared_checkpoint"), "smoke observation differs")
     checkpoint = strict_object(observations["shared_checkpoint"], {
         "chain", "checkpoint_height", "genesis", "blockhash", "raw_header",
-        "chainwork",
+        "chainwork", "median_time",
     }, "shared checkpoint")
     require(checkpoint["chain"] == "main" and
-            checkpoint["checkpoint_height"] == 288 and
-            checkpoint["genesis"] == EXPECTED_GENESIS,
+            checkpoint["checkpoint_height"] == STOP_HEIGHT and
+            checkpoint["genesis"] == EXPECTED_GENESIS and
+            checkpoint["blockhash"] == EXPECTED_CHECKPOINT_HASH and
+            checkpoint["median_time"] == EXPECTED_MEDIAN_TIME,
             "shared checkpoint identity differs")
     for key, pattern in (("blockhash", HEX64), ("chainwork", HEX64)):
         require(isinstance(checkpoint[key], str) and
@@ -405,9 +446,7 @@ def validate_smoke_report(report: dict[str, Any],
     require(isinstance(checkpoint["raw_header"], str) and
             re.fullmatch(r"[0-9a-f]{160}", checkpoint["raw_header"]) is not None,
             "shared checkpoint header differs")
-    require(isinstance(report["limitations"], list) and
-            len(report["limitations"]) == 5 and
-            all(isinstance(item, str) and item for item in report["limitations"]),
+    require(report["limitations"] == list(SMOKE_LIMITATIONS),
             "smoke limitations differ")
 
 
@@ -430,14 +469,11 @@ def validate_failure_report(report: dict[str, Any],
             "failure comparison attribution differs")
     require(FAILURE_RESULT_BY_EXIT.get(exit_code) == result,
             "failure exit differs")
-    limitations = report.get("limitations")
-    require(isinstance(limitations, list) and len(limitations) == 5 and
-            all(isinstance(item, str) and item for item in limitations),
+    require(report.get("limitations") == list(SMOKE_LIMITATIONS),
             "failure limitations differ")
     expected = sample_failure_report(
         builds, failure_role, result, reason_code
     )
-    expected["limitations"] = limitations
     require(report == expected, "failure report contract differs")
     return failure_role, result, reason_code
 
@@ -527,7 +563,7 @@ def make_receipt(lock: dict[str, Any], sources: dict[str, Path],
         "candidate": {"clean": True, "commit": CANDIDATE_COMMIT, "tree": CANDIDATE_TREE},
     }, "post-run source identity differs")
     return {
-        "schema": "ergon-mainnet-passive-build-provenance/v1",
+        "schema": RECEIPT_SCHEMA,
         "knowledge_status": "Observed",
         "evidence_ceiling": "assembled_runtime",
         "technical_target": {
@@ -574,15 +610,7 @@ def make_receipt(lock: dict[str, Any], sources: dict[str, Path],
         "source_authentication": authentication,
         "builds": builds,
         "smoke_report_sha256": sha256_file(report_path),
-        "claims": {
-            "bounded_mainnet_prefix_match": True,
-            "independent_public_prefix_acquisition": True,
-            "build_reproducibility": "not_claimed",
-            "full_historical_replay": "not_claimed",
-            "mainnet_coexistence": "not_claimed",
-            "operator_binary_parity": "not_claimed",
-            "sustained_operation": "not_claimed",
-        },
+        "claims": dict(RECEIPT_CLAIMS),
         "privacy": {
             "host_specific_absolute_paths_retained": False,
             "parent_environment_retained": False,
@@ -677,12 +705,16 @@ def sample_builds() -> dict[str, dict[str, Any]]:
 
 def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return {
-        "schema": "ergon-mainnet-passive-smoke/v2",
+        "schema": "ergon-mainnet-passive-smoke/v3",
         "scenario_id": SCENARIO_ID, "profile": PROFILE, "result": "success",
-        "reason_code": "bounded-mainnet-prefix-matched",
+        "reason_code": "current-era-mainnet-checkpoint-matched",
         "knowledge_status": "Observed", "evidence_ceiling": "assembled_runtime",
         "scope": {
-            "maximum_accepted_exit_height": 416, "stop_trigger_height": 288,
+            "maximum_accepted_exit_height": MAX_OBSERVED_HEIGHT,
+            "stop_trigger_height": STOP_HEIGHT,
+            "expected_checkpoint_hash": EXPECTED_CHECKPOINT_HASH,
+            "expected_checkpoint_median_time": EXPECTED_MEDIAN_TIME,
+            "last_legacy_activation_ema_time": LAST_LEGACY_ACTIVATION_EMA_TIME,
             "complete_initial_block_download": False,
             "network_source_by_role": {
                 "baseline": "public-mainnet",
@@ -697,12 +729,15 @@ def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "cleanup": {"complete": True, "processes_survived": False,
                     "work_root_survived": False},
         "claims": {
-            "bounded_mainnet_prefix_match": True,
+            "complete_validation_through_fixed_checkpoint": True,
             "independent_public_prefix_acquisition": True,
+            "simultaneous_public_readiness_observed": True,
             "current_tip_agreement": "not_claimed",
+            "deterministic_build": "not_claimed",
             "full_historical_replay": "not_claimed",
             "mainnet_coexistence": "not_claimed",
             "operator_binary_parity": "not_claimed",
+            "peer_diversity": "not_claimed",
             "sustained_operation": "not_claimed",
         },
         "privacy": {
@@ -711,7 +746,7 @@ def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
             "peer_addresses_retained": False,
             "raw_process_output_retained": False,
         },
-        "limitations": ["bounded"] * 5,
+        "limitations": list(SMOKE_LIMITATIONS),
         "observations": {
             "baseline_clean_restart": True,
             "baseline_public_prefix_acquired": True,
@@ -719,10 +754,13 @@ def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
             "candidate_public_prefix_acquired": True,
             "datadirs_distinct": True, "ports_distinct": True,
             "processes_distinct": True, "roles_equal": True,
+            "simultaneous_public_readiness_observed": True,
             "shared_checkpoint": {
-                "chain": "main", "checkpoint_height": 288,
-                "genesis": EXPECTED_GENESIS, "blockhash": "a" * 64,
+                "chain": "main", "checkpoint_height": STOP_HEIGHT,
+                "genesis": EXPECTED_GENESIS,
+                "blockhash": EXPECTED_CHECKPOINT_HASH,
                 "raw_header": "b" * 160, "chainwork": "c" * 64,
+                "median_time": EXPECTED_MEDIAN_TIME,
             },
         },
     }
@@ -737,8 +775,9 @@ def sample_failure_report(builds: dict[str, dict[str, Any]], role: str,
     report["failure_role"] = role
     report["knowledge_status"] = "Open Question"
     report["evidence_ceiling"] = "component"
-    report["claims"]["bounded_mainnet_prefix_match"] = False
+    report["claims"]["complete_validation_through_fixed_checkpoint"] = False
     report["claims"]["independent_public_prefix_acquisition"] = False
+    report["claims"]["simultaneous_public_readiness_observed"] = False
     return report
 
 
@@ -746,21 +785,50 @@ def self_test(repository_root: Path) -> None:
     validate_lock(repository_root)
     require(sha256_file(repository_root / RECORD_PATH) == RECORD_SHA256,
             "self-test record bytes differ")
+    require(RECEIPT_SCHEMA == "ergon-mainnet-passive-build-provenance/v2" and
+            RECEIPT_CLAIMS == {
+                "build_reproducibility": "not_claimed",
+                "complete_validation_through_fixed_checkpoint": True,
+                "current_tip_agreement": "not_claimed",
+                "deterministic_build": "not_claimed",
+                "full_historical_replay": "not_claimed",
+                "independent_public_prefix_acquisition": True,
+                "mainnet_coexistence": "not_claimed",
+                "operator_binary_parity": "not_claimed",
+                "peer_diversity": "not_claimed",
+                "simultaneous_public_readiness_observed": True,
+                "sustained_operation": "not_claimed",
+            }, "self-test receipt contract differs")
     builds = sample_builds()
     report = sample_report(builds)
     validate_smoke_report(report, builds)
     mutations = []
     for path, value in (
+        (("schema",), "ergon-mainnet-passive-smoke/v2"),
+        (("profile",), "mainnet-passive-independent-prefix-smoke"),
+        (("reason_code",), "bounded-mainnet-prefix-matched"),
         (("result",), "inconclusive"),
-        (("scope", "stop_trigger_height"), 289),
+        (("scope", "stop_trigger_height"), STOP_HEIGHT - 1),
+        (("scope", "expected_checkpoint_hash"), "f" * 64),
+        (("scope", "expected_checkpoint_median_time"), EXPECTED_MEDIAN_TIME - 1),
+        (("scope", "last_legacy_activation_ema_time"),
+         LAST_LEGACY_ACTIVATION_EMA_TIME - 1),
         (("scope", "network_source_by_role", "candidate"), "baseline-loopback"),
         (("claims", "independent_public_prefix_acquisition"), False),
+        (("claims", "simultaneous_public_readiness_observed"), False),
+        (("claims", "complete_validation_through_fixed_checkpoint"), False),
         (("claims", "mainnet_coexistence"), True),
         (("privacy", "peer_addresses_retained"), True),
         (("cleanup", "complete"), False),
+        (("limitations", 0), "changed"),
         (("observations", "roles_equal"), False),
         (("observations", "candidate_public_prefix_acquired"), False),
-        (("observations", "shared_checkpoint", "checkpoint_height"), 289),
+        (("observations", "simultaneous_public_readiness_observed"), False),
+        (("observations", "shared_checkpoint", "checkpoint_height"),
+         STOP_HEIGHT - 1),
+        (("observations", "shared_checkpoint", "blockhash"), "f" * 64),
+        (("observations", "shared_checkpoint", "median_time"),
+         EXPECTED_MEDIAN_TIME - 1),
         (("binaries", "candidate", "sha256"), "f" * 64),
     ):
         changed = copy.deepcopy(report)

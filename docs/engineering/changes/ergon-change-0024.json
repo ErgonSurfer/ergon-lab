@@ -1,0 +1,262 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0024",
+  "stage": "legacy-compatibility",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0024.json",
+  "purpose": {
+    "summary": "Bind the passive mainnet reproduction driver to the exact ERGON-CHANGE-0023 current-era v3 harness contract.",
+    "scope": [
+      "Pin the technical target to signed commit 1b702c957e7f56cc69ab01add5c0f99fb1bc3f1f and tree d2a7a01007552e2f0e2600f2d57a5c318784260e, whose exact parent is c7246dfd9b37c6511495f14e765cf1b2443b5ed7 and tree 1bd307ee53a1ff37be66f0041e8b73b3c2c9c281.",
+      "Bind the exact ERGON-CHANGE-0023 record and passive-smoke runner bytes before either source is built or executed.",
+      "Validate only the v3 fixed-height-250000 report, including its immutable checkpoint, median time, joint-readiness observation, independent acquisition, restart, privacy and cleanup contracts.",
+      "Update the build-provenance receipt to schema v2 so its claims exactly reflect the changed v3 runtime semantics and exclusions.",
+      "Preserve closed failure-role diagnostics, suppressed raw child output, source authentication, dependency locking, binary revalidation and complete cleanup."
+    ],
+    "exclusions": [
+      "No workflow, passive-smoke runtime harness, container, dependency-lock, production-node, consensus, validation-rule, P2P, storage, RPC, wallet, Chronik, activation, testnet or mainnet-parameter change.",
+      "No workflow dispatch, network run, incoming artifact, evidence promotion or claim that the rebound target has executed.",
+      "No v2 acceptance alias, backward fallback or acceptance of an unbound runner, record, parent, candidate, report or receipt contract.",
+      "No raw child output, peer address, absolute host path, parent environment, cookie, secret, port, datadir or runtime artifact enters generated evidence.",
+      "No current-tip, full-history, global-mainnet-coexistence, sustained-operation, peer-diversity, concurrent-peer-connection, concurrent-public-traffic, minimum-overlap-duration, deterministic-build or operator-binary claim."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "1b702c957e7f56cc69ab01add5c0f99fb1bc3f1f",
+      "tree": "d2a7a01007552e2f0e2600f2d57a5c318784260e"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "2ae6f9b059d61e53e9cf074b19907ca712499044d3facddd25ba12c77bdf4d79",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [],
+  "files": [
+    {
+      "path": "tools/engineering/run_mainnet_passive_reproduction.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100755",
+        "bytes": 40130,
+        "git_blob": "9cdac456a0eb5221e60cc917748555934efc4926",
+        "sha256": "1f7f4c462f0217e448504b2de1e341a3592bd8a22acf5dbddf0f6f614c7a0398"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 44104,
+        "git_blob": "4c937d18b8d394b36d6fa155e421ed8129ef63b0",
+        "sha256": "d8f6079b1eff20cad84e2263c28ececc7ffcff2c6798bff666e3a9a66539de34"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public reproduction orchestration and deterministic self-test only.",
+      "test_reachability": "Fresh-clones, authenticates and builds the exact ERGON-CHANGE-0023 target, then accepts only its exact v3 success or closed failure report contract."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": false,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "baseline",
+        "commands": [
+          "On one future explicit workflow_dispatch only, fresh-clone and build exact Bitcoin Static v24.0.5 in the locked Ubuntu 22.04 ARM64 environment."
+        ],
+        "expected_results": [
+          "The clean baseline source and executable identities are recorded independently and remain unchanged through the bounded scenario."
+        ]
+      },
+      {
+        "role": "candidate",
+        "commands": [
+          "On the same future dispatch, fresh-clone and build exact signed commit 1b702c957e7f56cc69ab01add5c0f99fb1bc3f1f in a distinct root."
+        ],
+        "expected_results": [
+          "Candidate commit, tree, parent, record, runner, signature and executable identities match the governed ERGON-CHANGE-0023 target."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "mixed-node-coexistence",
+        "command": "After ERGON-CHANGE-0024 is signed and public, permit at most one explicit workflow_dispatch of the exact ERGON-CHANGE-0023 current-era passive-mainnet target.",
+        "expected_results": [
+          "Success produces only the exact v3 report plus v2 build-provenance receipt; non-success retains no artifact and exposes only one validated closed diagnostic line."
+        ],
+        "failure_conditions": [
+          "Any source, signature, build, v3 scope, checkpoint, claim, observation, report, receipt, role, reason, exit, privacy, cleanup or artifact-set mismatch fails closed."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-baseline",
+        "command": "Do not rerun this scenario in ERGON-CHANGE-0024; retain the accepted ERGON-CHANGE-0015 evidence binding.",
+        "expected_results": [
+          "Existing Reproduced baseline-mining evidence remains unchanged; this binding packet makes no new execution claim."
+        ],
+        "failure_conditions": [
+          "Any representation of this scenario as rerun by ERGON-CHANGE-0024 fails the record boundary."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-candidate",
+        "command": "Do not rerun this scenario in ERGON-CHANGE-0024; retain the accepted ERGON-CHANGE-0015 evidence binding.",
+        "expected_results": [
+          "Existing Reproduced candidate-mining evidence remains unchanged; this binding packet makes no new execution claim."
+        ],
+        "failure_conditions": [
+          "Any representation of this scenario as rerun by ERGON-CHANGE-0024 fails the record boundary."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "inherited-functional-default-launch",
+        "command": "Do not rerun this scenario in ERGON-CHANGE-0024; retain the accepted ERGON-CHANGE-0015 evidence binding.",
+        "expected_results": [
+          "Existing Reproduced inherited default-launch evidence remains unchanged; this binding packet makes no new execution claim."
+        ],
+        "failure_conditions": [
+          "Any representation of this scenario as rerun by ERGON-CHANGE-0024 fails the record boundary."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "Network-free Python self-tests on the review host",
+        "Future GitHub-hosted Ubuntu 22.04 ARM64 virtual machine with mutable image identity recorded but excluded from deterministic-build claims",
+        "Digest-pinned Ubuntu 22.04 linux/arm64 container with packages resolved from the signed 20260901T000000Z Ubuntu archive snapshot"
+      ],
+      "lock_reference": "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "This packet only rebinds tooling; it does not build, dispatch or execute the current-era passive-mainnet profile.",
+    "At most one future explicit workflow_dispatch is contemplated after signed publication; it is not authorized or performed by this record.",
+    "The v3 success contract reaches one fixed height-250000 checkpoint and does not cover current tip, full history or sustained operation.",
+    "A joint-readiness observation does not establish concurrent peer connections, concurrent public traffic, minimum overlap duration, peer diversity, distinct network paths or distinct hosts.",
+    "A closed failure diagnostic identifies a bounded role, disposition and reason code, not a node defect or root cause.",
+    "The mutable hosted runner image and operator binaries remain outside deterministic-build and operator-parity claims."
+  ],
+  "counterevidence": [
+    "No public dispatch, incoming report, receipt or evidence artifact exists for this exact rebound target at record-review time.",
+    "The local ERGON-CHANGE-0023 same-binary mechanics smoke has no candidate source-to-binary build binding and cannot substitute for public reconstruction.",
+    "ERGON-CHANGE-0023 changed the harness to v3 but deliberately left the prior reproduction driver bound to v2.",
+    "Exact equality at one fixed checkpoint cannot establish current-tip agreement, complete historical replay, long-duration stability or global mainnet coexistence."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
