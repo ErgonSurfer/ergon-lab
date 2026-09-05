@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 The Ergon developers
-"""Run a bounded, non-economic mainnet legacy-to-candidate smoke."""
+"""Run a bounded, non-economic mainnet public-prefix parity smoke."""
 
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ from typing import Any
 
 
 SCENARIO_ID = "mixed-node-coexistence"
-PROFILE = "mainnet-passive-legacy-bridge-smoke"
-SCHEMA = "ergon-mainnet-passive-smoke/v1"
+PROFILE = "mainnet-passive-independent-prefix-smoke"
+SCHEMA = "ergon-mainnet-passive-smoke/v2"
 ROLES = ("baseline", "candidate")
 STOP_HEIGHT = 288
 MAX_OBSERVED_HEIGHT = STOP_HEIGHT + 128
@@ -264,7 +264,7 @@ def rpc(spec: NodeSpec, method: str, params: list[Any] | None = None) -> Any:
     return value["result"]
 
 
-def node_args(spec: NodeSpec, mode: str, peer_port: int | None = None) -> list[str]:
+def node_args(spec: NodeSpec, mode: str) -> list[str]:
     args = [
         str(spec.binary),
         *COMMON_ARGS,
@@ -276,39 +276,17 @@ def node_args(spec: NodeSpec, mode: str, peer_port: int | None = None) -> list[s
         args.extend((*PUBLIC_ARGS, f"-stopatheight={STOP_HEIGHT}"))
     elif mode == "offline":
         args.extend(OFFLINE_ARGS)
-    elif mode == "legacy-server":
-        args.extend((
-            "-connect=0",
-            "-dnsseed=0",
-            "-forcednsseed=0",
-            "-discover=0",
-            "-listen=1",
-            f"-bind=127.0.0.1:{spec.p2p_port}",
-            "-maxconnections=16",
-            "-minimumchainwork=0",
-            "-maxtipage=2147483647",
-        ))
-    elif mode == "candidate-client" and peer_port is not None:
-        args.extend((
-            f"-connect=127.0.0.1:{peer_port}",
-            "-dnsseed=0",
-            "-forcednsseed=0",
-            "-listen=0",
-            "-maxconnections=1",
-            f"-stopatheight={STOP_HEIGHT}",
-        ))
     else:
         fail("harness-error", "report-contract-invalid")
     return args
 
 
-def start_node(spec: NodeSpec, mode: str,
-               peer_port: int | None = None) -> NodeProcess:
+def start_node(spec: NodeSpec, mode: str) -> NodeProcess:
     spec.runtime_root.mkdir(mode=0o700, parents=True)
     env = child_env(spec.runtime_root)
     try:
         process = subprocess.Popen(
-            node_args(spec, mode, peer_port),
+            node_args(spec, mode),
             env=env,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -454,20 +432,6 @@ class SystemBackend:
             if node.process.poll() is None:
                 stop_node(node, graceful_required=False)
 
-    def start_legacy_server(self, spec: NodeSpec) -> NodeProcess:
-        node = self._record(start_node(spec, "legacy-server"))
-        wait_for_rpc(node, time.monotonic() + SHUTDOWN_TIMEOUT_SECONDS)
-        return node
-
-    def fetch_candidate(self, spec: NodeSpec, peer_port: int) -> int:
-        node = self._record(start_node(spec, "candidate-client", peer_port))
-        wait_for_bounded_exit(node, self.work_root)
-        return node.process.pid
-
-    def stop_server(self, node: NodeProcess) -> None:
-        if not stop_node(node, graceful_required=True):
-            fail("harness-error", "cleanup-failed")
-
     def cleanup(self) -> bool:
         ok = True
         for node in reversed(self.nodes):
@@ -500,7 +464,7 @@ def execute_scenario(work_root: Path, baseline_binary: Path,
     if (baseline_inode.st_dev, baseline_inode.st_ino) == \
             (candidate_inode.st_dev, candidate_inode.st_ino):
         fail("harness-error", "datadir-alias")
-    ports = reserve_ports(10)
+    ports = reserve_ports(8)
     if len(set(ports)) != len(ports):
         fail("harness-error", "port-alias")
     runtime = work_root / "runtime"
@@ -512,26 +476,18 @@ def execute_scenario(work_root: Path, baseline_binary: Path,
         "baseline", baseline_binary, baseline_datadir,
         runtime / "baseline-inspect", ports[2], ports[3]
     )
-    baseline_server = make_spec(
-        "baseline", baseline_binary, baseline_datadir,
-        runtime / "baseline-server", ports[4], ports[5]
-    )
-    candidate_client = make_spec(
+    candidate_public = make_spec(
         "candidate", candidate_binary, candidate_datadir,
-        runtime / "candidate-client", ports[6], ports[7]
+        runtime / "candidate-public", ports[4], ports[5]
     )
     candidate_inspect = make_spec(
         "candidate", candidate_binary, candidate_datadir,
-        runtime / "candidate-inspect", ports[8], ports[9]
+        runtime / "candidate-inspect", ports[6], ports[7]
     )
 
     backend.fetch_public(baseline_public)
     baseline_snapshot, _ = backend.inspect(baseline_inspect)
-    server = backend.start_legacy_server(baseline_server)
-    try:
-        backend.fetch_candidate(candidate_client, baseline_server.p2p_port)
-    finally:
-        backend.stop_server(server)
+    backend.fetch_public(candidate_public)
     candidate_snapshot, _ = backend.inspect(candidate_inspect)
     try:
         baseline_after = baseline_datadir.stat()
@@ -565,9 +521,11 @@ def report_document(result: str, reason_code: str,
         "scope": {
             "maximum_accepted_exit_height": MAX_OBSERVED_HEIGHT,
             "stop_trigger_height": STOP_HEIGHT,
-            "candidate_network_source": "baseline-role-loopback-only",
             "complete_initial_block_download": False,
-            "public_network_source_role": "baseline",
+            "network_source_by_role": {
+                "baseline": "public-mainnet",
+                "candidate": "public-mainnet",
+            },
         },
         "binaries": {
             role: {
@@ -584,6 +542,7 @@ def report_document(result: str, reason_code: str,
         },
         "claims": {
             "bounded_mainnet_prefix_match": result == "success",
+            "independent_public_prefix_acquisition": result == "success",
             "current_tip_agreement": "not_claimed",
             "full_historical_replay": "not_claimed",
             "mainnet_coexistence": "not_claimed",
@@ -597,11 +556,11 @@ def report_document(result: str, reason_code: str,
             "raw_process_output_retained": False,
         },
         "limitations": [
-            "The baseline public peer and DNS resolvers necessarily observe the baseline source IP.",
+            "Public peers and DNS resolvers necessarily observe each role's source IP.",
             "Passive means no authored transaction or block and no public inbound service; P2P protocol traffic still occurs.",
             "The fixed prefix does not cover the current tip, full history, sustained operation, or operator binaries.",
             "Shutdown may complete already in-flight blocks above the fixed checkpoint; only checkpoint 288 is compared.",
-            "The loopback baseline server overrides IBD service gates only after validating and restarting the acquired prefix.",
+            "Distinct public peer sets and simultaneous operation are not established.",
         ],
     }
     if result == "success":
@@ -611,7 +570,7 @@ def report_document(result: str, reason_code: str,
             "baseline_clean_restart": True,
             "baseline_public_prefix_acquired": True,
             "candidate_clean_restart": True,
-            "candidate_direct_baseline_sync": True,
+            "candidate_public_prefix_acquired": True,
             "datadirs_distinct": True,
             "ports_distinct": True,
             "processes_distinct": True,

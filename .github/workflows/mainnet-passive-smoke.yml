@@ -10,8 +10,10 @@ on:
       - "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
       - "tools/engineering/run_mainnet_passive_reproduction.py"
       - "tests/compatibility/mainnet/run_passive_smoke.py"
+      - "tests/compatibility/mainnet/self_test.py"
       - "docs/engineering/changes/ergon-change-0016.json"
       - "docs/engineering/changes/ergon-change-0017.json"
+      - "docs/engineering/changes/ergon-change-0018.json"
   push:
     branches:
       - main
@@ -21,8 +23,10 @@ on:
       - "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
       - "tools/engineering/run_mainnet_passive_reproduction.py"
       - "tests/compatibility/mainnet/run_passive_smoke.py"
+      - "tests/compatibility/mainnet/self_test.py"
       - "docs/engineering/changes/ergon-change-0016.json"
       - "docs/engineering/changes/ergon-change-0017.json"
+      - "docs/engineering/changes/ergon-change-0018.json"
   workflow_dispatch:
 
 permissions:
@@ -45,8 +49,11 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Exercise fail-closed report cases
+      - name: Exercise historical reproduction fail-closed cases
         run: python3 -B tools/engineering/run_mainnet_passive_reproduction.py self-test
+
+      - name: Exercise current passive-smoke fail-closed cases
+        run: python3 -B tests/compatibility/mainnet/self_test.py
 
   reproduce:
     name: Run bounded passive mainnet smoke on fresh ARM64 builds

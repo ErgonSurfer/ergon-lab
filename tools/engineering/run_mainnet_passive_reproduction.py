@@ -603,8 +603,6 @@ def self_test(repository_root: Path) -> None:
     validate_lock(repository_root)
     require(sha256_file(repository_root / RECORD_PATH) == RECORD_SHA256,
             "self-test record bytes differ")
-    require(sha256_file(repository_root / RUNNER_PATH) == RUNNER_SHA256,
-            "self-test runner bytes differ")
     builds = sample_builds()
     report = sample_report(builds)
     validate_smoke_report(report, builds)

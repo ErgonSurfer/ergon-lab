@@ -1,0 +1,247 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0018",
+  "stage": "legacy-compatibility",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0018.json",
+  "purpose": {
+    "summary": "Make the baseline and candidate independently acquire the same bounded mainnet prefix from public peers before offline restart and comparison.",
+    "scope": [
+      "Run the exact baseline and candidate sequentially with fresh distinct datadirs, outbound public mainnet discovery, no inbound public service, no wallet, and stop-at-height 288.",
+      "Restart each role offline and compare genesis plus the immutable height-288 block hash, raw header, and chainwork.",
+      "Remove the loopback baseline server, candidate-only loopback client, and historical IBD service overrides from the prior smoke.",
+      "Retain bounded height, time, disk, process, port, privacy, report, and cleanup failure laws.",
+      "Keep the existing public reproduction target pinned to ERGON-CHANGE-0016 while decoupling its historical self-test from the evolving checkout runner, and make CI exercise the current ERGON-CHANGE-0018 harness self-test separately."
+    ],
+    "exclusions": [
+      "No production-node, consensus, validation, build recipe, dependency lock, wallet, Chronik, activation, testnet, mainnet-parameter, cockpit, roadmap, or evidence change.",
+      "No current-tip, full-history, simultaneous-operation, sustained-operation, inbound-service, peer-diversity, operator-binary, mining, mempool, fee, DAA, reorganization, or pruning claim.",
+      "No assumption that the two roles reach different public peers; independence is limited to process, binary, datadir, configuration, ports, and acquisition lifecycle.",
+      "No raw child output, peer address, absolute host path, parent environment, cookie, secret, port, datadir, or runtime artifact enters the report."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "5599c7a986d6499650912ba19b3c2715d9e1274b",
+      "tree": "23655e0f08f6e7bff7cd29f47100a4a8732d4288"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "4c8de0f352d350afdf719b8bfe8f38c2351f2f37cf48187c0fbfa2878f8303aa",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [],
+  "files": [
+    {
+      "path": ".github/workflows/mainnet-passive-smoke.yml",
+      "action": "modify",
+      "role": "harness",
+      "before": {"mode": "100644", "bytes": 5381, "git_blob": "8cdfffe464e4793ab58359ed6d961e03e2509ef8", "sha256": "fb5fde86fb7628b42d634f114d983cf51c8e56bf6125342b8582664d7c7f58f6"},
+      "after": {"mode": "100644", "bytes": 5745, "git_blob": "7a764dbfda3535ad9149dfeed74ac892977ea443", "sha256": "d88b3e1f7cc50192c1eec86f8ce6f0dd88ea26e05ecb4f52eff3393bcc3fd903"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; GitHub Actions validation and manually dispatched reproduction only.",
+      "test_reachability": "Triggers on the current runner, self-test, and record paths; exercises the historical reproduction driver and current harness self-tests as separate validation steps while retaining the manual-dispatch gate."
+    },
+    {
+      "path": "tests/compatibility/mainnet/run_passive_smoke.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {"mode": "100755", "bytes": 25066, "git_blob": "923e85aabd4a3a36eac5ff0e822fa614242b89a4", "sha256": "fb0562e005bf08c0a925483dc771ec977adaecf44e63f3752f4c0cf4caf3ceb9"},
+      "after": {"mode": "100755", "bytes": 23456, "git_blob": "634072c19ffeb52b5f9b72fdee85e7548c37bea5", "sha256": "acc294b37d8a62268f1d5796cba089c26bc0557597587a4f3ce9d7689609483a"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; manually invoked compatibility harness only.",
+      "test_reachability": "Runs two independently configured bounded public-prefix acquisitions, offline restarts, immutable checkpoint comparison, and sanitized tri-state reporting."
+    },
+    {
+      "path": "tests/compatibility/mainnet/self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100755", "bytes": 16678, "git_blob": "c8bebed984051ef2d1da90703c41d45686c8ceb5", "sha256": "1b2c3e3f8134503c0076689d174f4a4abdfe5c5ed3a19020ac318d0129e9e0db"},
+      "after": {"mode": "100755", "bytes": 17565, "git_blob": "5ebe973d31d5b2ce229c9ba5502d51e0331df41f", "sha256": "638dda34e82d52c8003764f7c487c6cdd60fac3a5678c59ecd58615ec7388f72"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; deterministic network-free harness self-tests only.",
+      "test_reachability": "Exercises exact role order, eight-port isolation, public/offline profiles, second-role failure, checkpoint contradiction, cleanup, and privacy."
+    },
+    {
+      "path": "tools/engineering/run_mainnet_passive_reproduction.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {"mode": "100755", "bytes": 29554, "git_blob": "59c6bbd89b9cc5523b34bbdb1e23c3d925d377c1", "sha256": "d669151e942bf2c1c7af5dc7eb88b7208cb9a10df5ca69bf7a94ccffd678dbaf"},
+      "after": {"mode": "100755", "bytes": 29436, "git_blob": "4b9787d1d643416794c8ef235c83398a852f6d7d", "sha256": "0e3cc21f512317febc1e76dedda3de0aafcd0242f2816c191b28e2af2aec60c6"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public reproduction orchestration and deterministic self-test only.",
+      "test_reachability": "Keeps exact validation of the cloned historical target while removing the invalid requirement that an evolving checkout retain the historical target runner bytes; the workflow exercises the current harness separately."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": true,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": false,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "baseline",
+        "commands": ["Build exact Bitcoin Static v24.0.5 in a clean dedicated root under the existing locked Ubuntu 22.04 ARM64 profile."],
+        "expected_results": ["The clean baseline source and executable identities are recorded externally and remain unchanged through the scenario."]
+      },
+      {
+        "role": "candidate",
+        "commands": ["Build the exact direct-child ERGON-CHANGE-0018 candidate in a distinct clean root under the same profile."],
+        "expected_results": ["The clean candidate source and executable identities are recorded externally and remain unchanged through the scenario."]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "mixed-node-coexistence",
+        "command": "Run tests/compatibility/mainnet/run_passive_smoke.py with exact fresh baseline and candidate executables, a new work root, and a new report path.",
+        "expected_results": ["Each role independently acquires public mainnet blocks through checkpoint 288, restarts offline, and produces the same genesis, block hash, raw header, and chainwork before complete cleanup."],
+        "failure_conditions": ["Any binary, datadir, port, process, network-surface, chain, checkpoint, restart, resource-bound, report-privacy, or cleanup violation fails closed; unavailable public acquisition remains inconclusive."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-baseline",
+        "command": "Rerun the unchanged accepted legacy-mining-baseline regression gate against the exact baseline build.",
+        "expected_results": ["The accepted baseline mining fixture still passes without skip or source mutation."],
+        "failure_conditions": ["Any skip, timeout, nonzero exit, source mutation, identity mismatch, cache escape, or cleanup failure fails closed."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "legacy-mining-candidate",
+        "command": "Rerun the unchanged accepted legacy-mining-candidate regression gate against the exact candidate build.",
+        "expected_results": ["The accepted candidate mining fixture still passes without skip or source mutation."],
+        "failure_conditions": ["Any skip, timeout, nonzero exit, source mutation, identity mismatch, cache escape, or cleanup failure fails closed."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "inherited-functional-default-launch",
+        "command": "Rerun the unchanged accepted inherited default-launch regression gate against the exact candidate build.",
+        "expected_results": ["The inherited selection still passes without skip or source mutation."],
+        "failure_conditions": ["Any selection drift, skip, timeout, nonzero exit, source mutation, cache escape, or cleanup failure fails closed."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": ["macOS arm64 contradiction testing", "future locked Ubuntu 22.04 ARM64 public reconstruction"]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "A successful run would establish two separately configured public-prefix acquisitions and offline checkpoint agreement only through height 288.",
+    "The two roles may contact the same peer; the harness does not establish peer-set, host, network-path, or operator independence.",
+    "The bounded sequential scenario does not reach current tip and does not establish full history, simultaneous or sustained coexistence, inbound service, or operator-binary parity.",
+    "The harness binds executable bytes but relies on an external reviewed build record to bind each executable to exact source.",
+    "The existing manual workflow dispatch remains bound to ERGON-CHANGE-0016 and its v1 report; a later binding commit must target the public ERGON-CHANGE-0018 SHA before any v2 reproduction run."
+  ],
+  "counterevidence": [
+    "No public reconstruction of this direct-public candidate profile exists at record-review time.",
+    "The successful ERGON-CHANGE-0017 workflow transferred candidate blocks only from a loopback baseline and therefore did not test candidate public peer discovery or direct public synchronization.",
+    "Bounded agreement at checkpoint 288 cannot resolve current-tip, full-history, long-duration, operator-binary, or simultaneous-operation questions."
+  ],
+  "decision": {"status": "pending"}
+}

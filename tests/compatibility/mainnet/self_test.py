@@ -34,32 +34,25 @@ def valid_snapshot() -> dict:
 
 class FakeBackend:
     def __init__(self, work_root: Path, snapshots: list[dict] | None = None,
-                 failure: SMOKE.SmokeFailure | None = None) -> None:
+                 failure: SMOKE.SmokeFailure | None = None,
+                 failure_role: str | None = None) -> None:
         self.work_root = work_root
         self.snapshots = list(snapshots or [valid_snapshot(), valid_snapshot()])
         self.failure = failure
+        self.failure_role = failure_role
         self.calls: list[str] = []
 
     def fetch_public(self, spec):
-        self.calls.append("fetch-public")
-        if self.failure:
+        self.calls.append(f"fetch-public-{spec.role}")
+        if self.failure and (
+            self.failure_role is None or self.failure_role == spec.role
+        ):
             raise self.failure
         return 101
 
     def inspect(self, spec):
         self.calls.append(f"inspect-{spec.role}")
         return self.snapshots.pop(0), 102 + len(self.calls)
-
-    def start_legacy_server(self, spec):
-        self.calls.append("start-legacy-server")
-        return object()
-
-    def fetch_candidate(self, spec, peer_port):
-        self.calls.append("fetch-candidate")
-        return 105
-
-    def stop_server(self, node):
-        self.calls.append("stop-legacy-server")
 
     def cleanup(self):
         self.calls.append("cleanup")
@@ -90,7 +83,10 @@ class SmokeContractTest(unittest.TestCase):
 
     def test_exact_scope_and_closed_rpc_allowlist(self):
         self.assertEqual(SMOKE.SCENARIO_ID, "mixed-node-coexistence")
-        self.assertEqual(SMOKE.PROFILE, "mainnet-passive-legacy-bridge-smoke")
+        self.assertEqual(
+            SMOKE.PROFILE, "mainnet-passive-independent-prefix-smoke"
+        )
+        self.assertEqual(SMOKE.SCHEMA, "ergon-mainnet-passive-smoke/v2")
         self.assertEqual(SMOKE.ROLES, ("baseline", "candidate"))
         self.assertEqual(SMOKE.STOP_HEIGHT, 288)
         self.assertEqual(
@@ -122,21 +118,27 @@ class SmokeContractTest(unittest.TestCase):
         self.assertNotIn("-main", common)
         self.assertIn("-listen=0", SMOKE.PUBLIC_ARGS)
         self.assertIn("-connect=0", SMOKE.OFFLINE_ARGS)
-        spec = SMOKE.NodeSpec(
-            "candidate", self.candidate, self.root / "datadir",
-            20001, 20002, self.root / "runtime"
-        )
-        candidate = SMOKE.node_args(spec, "candidate-client", 20003)
-        self.assertIn("-connect=127.0.0.1:20003", candidate)
-        self.assertIn("-dnsseed=0", candidate)
-        self.assertNotIn("-dnsseed=1", candidate)
-        self.assertNotIn("-listen=1", candidate)
-        baseline_server = SMOKE.node_args(spec, "legacy-server")
-        self.assertIn("-bind=127.0.0.1:20002", baseline_server)
-        self.assertIn("-maxconnections=16", baseline_server)
-        self.assertIn("-minimumchainwork=0", baseline_server)
-        self.assertIn("-maxtipage=2147483647", baseline_server)
-        self.assertNotIn("-minimumchainwork=0", candidate)
+        for role, binary in (
+            ("baseline", self.baseline), ("candidate", self.candidate)
+        ):
+            spec = SMOKE.NodeSpec(
+                role, binary, self.root / role, 20001, 20002,
+                self.root / f"runtime-{role}"
+            )
+            public = SMOKE.node_args(spec, "public")
+            self.assertIn("-listen=0", public)
+            self.assertIn("-dnsseed=1", public)
+            self.assertIn("-forcednsseed=1", public)
+            self.assertIn(f"-stopatheight={SMOKE.STOP_HEIGHT}", public)
+            offline = SMOKE.node_args(spec, "offline")
+            self.assertIn("-connect=0", offline)
+            self.assertIn("-dnsseed=0", offline)
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        for removed in (
+            '"legacy-server"', '"candidate-client"', "-minimumchainwork",
+            "-maxtipage", "baseline-role-loopback-only",
+        ):
+            self.assertNotIn(removed, source)
 
     def test_success_uses_exact_lifecycle_and_sanitized_report(self):
         holder = {}
@@ -145,17 +147,15 @@ class SmokeContractTest(unittest.TestCase):
             holder["backend"] = FakeBackend(root)
             return holder["backend"]
 
-        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(20000, 20010))):
+        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(20000, 20008))):
             code = SMOKE.run(self.args(), backend_factory=factory)
         self.assertEqual(code, 0)
         self.assertEqual(
             holder["backend"].calls,
             [
-                "fetch-public",
+                "fetch-public-baseline",
                 "inspect-baseline",
-                "start-legacy-server",
-                "fetch-candidate",
-                "stop-legacy-server",
+                "fetch-public-candidate",
                 "inspect-candidate",
                 "cleanup",
             ],
@@ -163,10 +163,21 @@ class SmokeContractTest(unittest.TestCase):
         report = json.loads((self.root / "report.json").read_text())
         self.assertEqual(report["result"], "success")
         self.assertEqual(report["scenario_id"], "mixed-node-coexistence")
-        self.assertEqual(report["profile"], "mainnet-passive-legacy-bridge-smoke")
+        self.assertEqual(
+            report["profile"], "mainnet-passive-independent-prefix-smoke"
+        )
         self.assertEqual(report["knowledge_status"], "Observed")
         self.assertEqual(report["evidence_ceiling"], "assembled_runtime")
+        self.assertTrue(
+            report["claims"]["independent_public_prefix_acquisition"]
+        )
         self.assertEqual(report["claims"]["full_historical_replay"], "not_claimed")
+        self.assertEqual(report["claims"]["mainnet_coexistence"], "not_claimed")
+        self.assertEqual(
+            report["scope"]["network_source_by_role"],
+            {"baseline": "public-mainnet", "candidate": "public-mainnet"},
+        )
+        self.assertTrue(report["observations"]["candidate_public_prefix_acquired"])
         encoded = json.dumps(report)
         for forbidden in (str(self.root), "127.0.0.1", "20000", "baseline-bitcoind"):
             self.assertNotIn(forbidden, encoded)
@@ -179,7 +190,7 @@ class SmokeContractTest(unittest.TestCase):
         def factory(root):
             return FakeBackend(root, [valid_snapshot(), changed])
 
-        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(21000, 21010))):
+        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(21000, 21008))):
             code = SMOKE.run(self.args(), backend_factory=factory)
         self.assertEqual(code, 3)
         report = json.loads((self.root / "report.json").read_text())
@@ -190,12 +201,24 @@ class SmokeContractTest(unittest.TestCase):
     def test_network_failure_is_inconclusive(self):
         failure = SMOKE.SmokeFailure("inconclusive", "timeout")
 
-        def factory(root):
-            return FakeBackend(root, failure=failure)
+        holder = {}
 
-        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(22000, 22010))):
+        def factory(root):
+            holder["backend"] = FakeBackend(
+                root, failure=failure, failure_role="candidate"
+            )
+            return holder["backend"]
+
+        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(22000, 22008))):
             code = SMOKE.run(self.args(), backend_factory=factory)
         self.assertEqual(code, 2)
+        self.assertEqual(
+            holder["backend"].calls,
+            [
+                "fetch-public-baseline", "inspect-baseline",
+                "fetch-public-candidate", "cleanup",
+            ],
+        )
         report = json.loads((self.root / "report.json").read_text())
         self.assertEqual(report["result"], "inconclusive")
         self.assertEqual(report["knowledge_status"], "Open Question")
@@ -205,7 +228,7 @@ class SmokeContractTest(unittest.TestCase):
             def cleanup(self):
                 return False
 
-        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(23000, 23010))):
+        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(23000, 23008))):
             code = SMOKE.run(self.args(), backend_factory=DirtyBackend)
         self.assertEqual(code, 1)
         self.assertFalse((self.root / "report.json").exists())
@@ -225,7 +248,7 @@ class SmokeContractTest(unittest.TestCase):
     def test_port_and_process_aliases_fail_closed(self):
         work = self.root / "alias-work"
         work.mkdir()
-        with mock.patch.object(SMOKE, "reserve_ports", return_value=[24000] * 10):
+        with mock.patch.object(SMOKE, "reserve_ports", return_value=[24000] * 8):
             with self.assertRaises(SMOKE.SmokeFailure) as raised:
                 SMOKE.execute_scenario(
                     work, self.baseline, self.candidate, FakeBackend(work)
