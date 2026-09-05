@@ -34,7 +34,7 @@ MIN_BLOCKS_TO_KEEP = 288
 TIMESTAMP_WINDOW = 2 * 60 * 60
 
 
-def mine_large_blocks(node, n):
+def mine_large_blocks(node, n, coinbase_value=None):
     # Make a large scriptPubKey for the coinbase transaction. This is OP_RETURN
     # followed by 950k of OP_NOP. This would be non-standard in a non-coinbase
     # transaction but is consensus valid.
@@ -56,6 +56,8 @@ def mine_large_blocks(node, n):
     for _ in range(n):
         # Build the coinbase transaction (with large scriptPubKey)
         coinbase_tx = create_coinbase(height)
+        if coinbase_value is not None:
+            coinbase_tx.vout[0].nValue = coinbase_value
         coinbase_tx.vin[0].nSequence = 2 ** 32 - 1
         coinbase_tx.vout[0].scriptPubKey = big_script
         coinbase_tx.rehash()

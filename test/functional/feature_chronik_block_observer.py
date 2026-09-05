@@ -287,15 +287,71 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
                 )
             ],
         )
+        expected_tip = node.getbestblockhash()
+        expected_utxo_hash = node.gettxoutsetinfo()["hash_serialized"]
+        self.stop_node(0)
+        assert "Chronik observer stopped observations=289" in self.read_log(
+            reindex_offset
+        )
+
+        chainstate_offset = os.path.getsize(self.log_path())
+        self.start_node(
+            0,
+            extra_args=[
+                "-connect=0",
+                "-disablewallet",
+                "-chronikobserver",
+                "-reindex-chainstate=1",
+            ],
+        )
+        node.syncwithvalidationinterfacequeue()
+        assert_equal(node.getblockcount(), 288)
+        assert_equal(node.getbestblockhash(), expected_tip)
+        assert_equal(
+            node.gettxoutsetinfo()["hash_serialized"], expected_utxo_hash
+        )
+        assert "Chronik observer bootstrap active_chain=empty retained_blocks=0" in self.read_log(
+            chainstate_offset
+        )
+        assert "Reindexing block file" not in self.read_log(chainstate_offset)
+        assert "Chronik observer rejected" not in self.read_log(chainstate_offset)
+        assert "Chronik observer state=rebuild-required" not in self.read_log(
+            chainstate_offset
+        )
+        assert_equal(
+            self.read_events(chainstate_offset),
+            [
+                self.expected_event(sequence, "connected", block_hash, height)
+                for sequence, (height, block_hash) in enumerate(
+                    enumerate(active_blocks), start=1
+                )
+            ],
+        )
+        assert_equal(
+            self.read_connected(chainstate_offset),
+            [
+                self.expected_connected(
+                    sequence,
+                    block_hash,
+                    height,
+                    min(height + 1, 288),
+                    min(height + 1, 288),
+                )
+                for sequence, (height, block_hash) in enumerate(
+                    enumerate(active_blocks), start=1
+                )
+            ],
+        )
+        assert_equal(self.read_disconnected(chainstate_offset), [])
 
         retained_anchor = node.getblockhash(1)
         node.invalidateblock(retained_anchor)
         node.syncwithvalidationinterfacequeue()
         assert_equal(node.getblockcount(), 0)
-        events_before_reconsider = self.read_events(reindex_offset)
+        events_before_reconsider = self.read_events(chainstate_offset)
         assert_equal(events_before_reconsider[-1][0], 577)
         assert_equal(
-            self.read_log(reindex_offset).count(
+            self.read_log(chainstate_offset).count(
                 "Chronik observer state=rebuild-required "
                 "hash="
             ),
@@ -303,17 +359,17 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         )
         assert (
             "reason=retained-anchor-disconnected recovery=restart"
-            in self.read_log(reindex_offset)
+            in self.read_log(chainstate_offset)
         )
 
         node.reconsiderblock(retained_anchor)
         node.syncwithvalidationinterfacequeue()
         assert_equal(node.getblockcount(), 288)
-        assert_equal(self.read_events(reindex_offset), events_before_reconsider)
+        assert_equal(self.read_events(chainstate_offset), events_before_reconsider)
         self.assert_no_chronik_paths()
         self.stop_node(0)
         assert "Chronik observer stopped observations=577" in self.read_log(
-            reindex_offset
+            chainstate_offset
         )
 
         recovery_offset = os.path.getsize(self.log_path())

@@ -62,7 +62,11 @@ This boundary creates no Chronik file, database, socket, API, service, or Rust
 thread, and it returns no decision to validation. Shutdown drains the
 validation callback queue before unregistering the observer and destroying its
 Rust handle. Dedicated `-reindex-chainstate` and actually pruned-datadir
-canaries remain deferred.
+canaries exercise the same reconstruction boundary without adding a second
+state path. The chainstate canary replays genesis through height 288 and checks
+the unchanged active tip and UTXO-set hash. The pruning canary physically
+removes an old block file at height 1001, proves the old body unavailable, and
+then reconstructs exactly the still-readable heights 714 through 1001.
 
 ## Native-assets boundary
 
@@ -126,7 +130,17 @@ Run the opt-in functional boundary only with the compiled-in build:
 python3 test/functional/feature_chronik_block_observer.py \
   --configfile=/absolute/path/build-observer/test/config.ini \
   --hermetic-child-env
+
+python3 test/functional/feature_chronik_pruned_observer.py \
+  --configfile=/absolute/path/build-observer/test/config.ini \
+  --hermetic-child-env
 ```
+
+The pruning canary uses a fresh isolated manual-pruning regtest datadir. It
+creates only enough large blocks to cross one 128 MiB block-file boundary,
+then uses small blocks to pass the legacy pruning height. Expect roughly
+250 MiB of temporary disk at most; this is separate from the much larger
+general pruning test.
 
 Build directories, Cargo caches, and test datadirs belong outside the source
 tree. Peak parsing memory includes the C++ serialization, one Rust-owned block

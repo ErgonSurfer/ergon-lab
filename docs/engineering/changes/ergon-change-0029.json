@@ -1,0 +1,380 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0029",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0029.json",
+  "purpose": {
+    "summary": "Close the two deferred reconstruction canaries for the bounded Chronik projection using only public functional tests and documentation.",
+    "scope": [
+      "Ask two falsifiable questions without changing production code: does -reindex-chainstate replay the exact height-288 active chain into the projection, and can normal startup reconstruct the exact retained suffix after old block bodies have truly been pruned?",
+      "For -reindex-chainstate, bind the pre-restart active tip and UTXO-set hash, require an empty observer bootstrap, exclude full block-file reindexing, and verify 289 exact ordered connects from genesis through height 288.",
+      "For pruning, create only enough large regtest blocks whose coinbase claims zero value to cross one 128 MiB block-file boundary, advance cheaply to height 1001, manually prune through height 713, and require physical removal of blk00000.dat.",
+      "Prove that the pruned block body at height 1 is unavailable while its header remains readable and that retained height 714 plus tip 1001 remain readable.",
+      "Restart the explicit local-regtest observer on the same pruned datadir, require atomic reconstruction of exactly heights 714 through 1001 with 288 blocks and transactions, then mine height 1002 while keeping the 288-entry bound.",
+      "Keep all existing compiled-out, compiled-in-disabled, local-regtest-only, observe/index-only, and no-consensus-authority boundaries unchanged."
+    ],
+    "exclusions": [
+      "No production, C++, Rust, CMake, consensus, chain-parameter, activation, testnet, mainnet, P2P, RPC, wallet, or user-interface code changes.",
+      "No persistent index, database, format, migration, resume marker, API, socket, service, or thread is added.",
+      "No automatic-pruning policy, multi-file pruning matrix, corrupt block file, abrupt crash, or power-loss behavior is claimed.",
+      "No mempool reconstruction, SLP, ALP, CashTokens classification, authoritative token state, native-asset validation, or governed consensus activation is added or demonstrated.",
+      "No local binary, build cache, raw output, absolute host path, parent environment, operator material, private history, or unrelated product material enters this change."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "1928f4d998159d8dee8d521bf4a4c2136da54cdd",
+      "tree": "9b6adfc184724433010b3827a938de5a2224043a"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "661f9391a46de35055ee771392e1328ae225b0e71f4d25656156aa0f06b2420d",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 5993,
+        "git_blob": "0fddc9f2bf82fccab56fcc4ffe25226ece0a5747",
+        "sha256": "bbb05ba23fda7eebf26be30e989def875a59888d3ba1f569d3305a3a0405f926"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6814,
+        "git_blob": "99ae294f9b0677d5d493389ccf98522170c315be",
+        "sha256": "afb92464c407498c21e830e75545ac2cd385638a43476c1fa953c0b9eeb58ba0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public test-boundary and operator documentation only.",
+      "test_reachability": "Documents the distinct chainstate-reindex and actually-pruned reconstruction canaries, their exact retained suffix, and bounded temporary disk cost."
+    },
+    {
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 12507,
+        "git_blob": "9744972c26a692778ededb99b6420bb37155defb",
+        "sha256": "e55c6fcf13d6c50d0dbc8b016aab991fb2c6d0a1c7dac24555100e777abcfda3"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 14632,
+        "git_blob": "d1ad988f033168cac46446893f6e1fda33924e7a",
+        "sha256": "1e03c61b0ef2db3ea6c63512dfa3dc37a4ccc286887975fe1fcfc242b0de333c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Adds a fresh -reindex-chainstate process at height 288 and compares active tip, UTXO-set hash, 289 ordered callbacks, projection totals, absence of block-file reindexing, and the inherited deep-reorg recovery path."
+    },
+    {
+      "path": "test/functional/feature_chronik_pruned_observer.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100755",
+        "bytes": 3913,
+        "git_blob": "0e743313d596acc83363a349884d64f402747bd8",
+        "sha256": "80694d3e1366ff9357cc4452404d725ba9d00cb616cdecd405f374571793912c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Creates a fresh manual-pruning regtest datadir, proves physical old-block removal, restarts the observer on exactly the readable 288-block suffix, and checks the next bounded connect."
+    },
+    {
+      "path": "test/functional/feature_pruning.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 22654,
+        "git_blob": "50b384c2baa5f79e5ad4aa95c667868fddf448c7",
+        "sha256": "f4819d605ad7d6263221578cb4ccb85bc3b3cfc3ce09f5d0e7ac9c23d3c5af44"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 22770,
+        "git_blob": "3aed9c5a584f3418271c68b4464c02cc0520c9a4",
+        "sha256": "295d1804e6e433b4f1fb326b64d2c2657eaa1d7a3cdf1b079a4743986f13b48e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; inherited functional-test helper only.",
+      "test_reachability": "Adds an optional coinbase-value input to the existing large-block helper so the new pruning canary can generate consensus-valid Ergon blocks whose coinbase claims zero value; the default behavior is unchanged."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": false,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the exact public candidate with both Chronik options OFF and run the inherited legacy mining smoke."
+        ],
+        "expected_results": [
+          "No Chronik source, option, object, symbol, or link edge enters bitcoind; legacy mining remains unchanged."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build with BUILD_CHRONIK_OBSERVER=ON, leave runtime opt-in absent, and run the inherited legacy mining smoke."
+        ],
+        "expected_results": [
+          "The observer library is linked but no observer is registered and no Chronik state, path, or socket exists; legacy mining remains unchanged."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Run feature_chronik_block_observer.py and feature_chronik_pruned_observer.py with --hermetic-child-env against the compiled-in build, each on its own fresh isolated datadir."
+        ],
+        "expected_results": [
+          "All six governed reconstruction scenarios pass without production changes, persistence, API state, native-asset behavior, or consensus authority."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the inherited disabled then explicit local-regtest observer boundary in feature_chronik_block_observer.py.",
+        "expected_results": [
+          "Disabled execution remains inert; exact local-regtest opt-in observes canonical blocks; non-regtest profiles reject the flag; no Chronik path or socket exists."
+        ],
+        "failure_conditions": [
+          "Any disabled state, enabled non-regtest launch, callback mismatch, Chronik path/socket, validation decision, or activation claim fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the inherited height-288 normal-restart recovery in feature_chronik_block_observer.py.",
+        "expected_results": [
+          "A fresh process reconstructs exactly the readable 288-block suffix and keeps the same bound after the next connect."
+        ],
+        "failure_conditions": [
+          "Partial adoption, wrong suffix or totals, stale rebuild-required state, or growth beyond 288 fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the inherited full -reindex process on the existing active chain at height 288.",
+        "expected_results": [
+          "The observer starts empty, receives exact ordered connects from genesis through height 288, and retains only the most recent 288 entries."
+        ],
+        "failure_conditions": [
+          "Missing, duplicated, reordered, or rejected callbacks; prior-state reuse; incorrect hashes, payloads, totals, or bound fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "After the full-reindex canary reaches height 288, record tip and UTXO-set hash, stop, then start a fresh observer process with -reindex-chainstate=1.",
+        "expected_results": [
+          "Bootstrap is empty; no block-file reindex occurs; tip and UTXO-set hash are unchanged; exact connects 0 through 288 rebuild the same bounded projection; no disconnect, rejection, or rebuild-required state occurs."
+        ],
+        "failure_conditions": [
+          "A non-empty bootstrap masking replay, block-file reindex, changed tip or UTXO hash, callback divergence, rejection, or incomplete projection fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "On a separate fresh manual-pruning regtest datadir, cross one block-file boundary, reach height 1001, prune through 713, prove old-body removal, then restart with explicit observer opt-in.",
+        "expected_results": [
+          "blk00000.dat is absent; height-1 block data is unavailable while its header remains; heights 714 and 1001 remain readable; bootstrap adopts exactly 714 through 1001 with 288 blocks and transactions; height 1002 keeps the bound."
+        ],
+        "failure_conditions": [
+          "No physical file removal, readable old body, unreadable retained body, bootstrap outside 714 through 1001, minted bootstrap event, incorrect totals, or bound growth fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Continue the inherited deep reorganization after the new chainstate-reindex process at height 288, then reconsider and restart.",
+        "expected_results": [
+          "Exactly 288 LIFO disconnects end at sequence 577; one rebuild-required transition rejects reconsidered events; normal restart reconstructs the active suffix."
+        ],
+        "failure_conditions": [
+          "Mutation after rebuild-required, non-LIFO acceptance, silent continuation past the anchor, node consensus influence, or restart recovery failure fails the scenario."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "macOS arm64 local contradiction testing",
+        "Ubuntu 22.04 ARM64 public verification after technical acceptance"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 e5c49b9a7f290bbb129f988195c34be1b00fe6a617a03c85fa6b6c11c3ed20c3"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "This change modifies only functional tests and documentation; it adds no production capability beyond the already-published bounded volatile projection.",
+    "The pruning canary covers one manually pruned block file on regtest; it does not cover automatic pruning, multiple removed files, corrupt files, abrupt termination, or power loss.",
+    "The large-block helper's new coinbase-value parameter is exercised with zero for Ergon; its inherited default behavior is unchanged but the full historical 4 GiB pruning suite is not rerun locally.",
+    "The new pruning canary is auto-selected in the default functional-test set when the observer component is compiled; its intended peak is below 250 MiB, but public verification must record actual duration and disk use.",
+    "The observer remains volatile and non-queryable; none of these recovery canaries demonstrates durable index state, crash-safe persistence, or API compatibility.",
+    "The local run reuses the exact published 0028 production binary because this change has no build or production source postimage; public verification must rebuild the exact candidate tree.",
+    "Functional tests are not claimed on Windows, where this inherited test system disables them by default.",
+    "Local tests are contradiction checks only; no result is public reproduction evidence at record-review time."
+  ],
+  "counterevidence": [
+    "No public build or functional execution of the exact candidate exists at record-review time.",
+    "A single manual-pruning regtest case is not evidence for automatic production pruning policy, arbitrary disk layouts, corrupted storage, or crash recovery.",
+    "Successful reconstruction from public block inputs does not demonstrate persistence, mempool reconstruction, SLP/ALP/CashTokens recognition, token validity, consensus rules, or activation behavior.",
+    "The unchanged default path remains the authority: Chronik is compiled out or runtime disabled unless explicitly enabled on local regtest."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
