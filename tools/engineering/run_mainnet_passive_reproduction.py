@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 from typing import Any
+from unittest import mock
 
 
 BASELINE_URL = "https://github.com/Ergon-moe/Bitcoin-Static.git"
@@ -51,12 +52,47 @@ EXPECTED_GENESIS = (
     "000000070e37bfee7e84b94f997f38155a85b22172f5ca25fd4eb3d64c5ad7c5"
 )
 ROLES = ("baseline", "candidate")
+FAILURE_ROLES = frozenset((*ROLES, "comparison", "harness"))
+FAILURE_RESULT_BY_REASON = {
+    "binary-input-invalid": "harness-error",
+    "binary-identity-changed": "harness-error",
+    "cleanup-failed": "harness-error",
+    "datadir-alias": "harness-error",
+    "datadir-identity-changed": "harness-error",
+    "network-surface-open": "harness-error",
+    "port-alias": "harness-error",
+    "process-alias": "harness-error",
+    "report-contract-invalid": "harness-error",
+    "rpc-contract-invalid": "harness-error",
+    "unexpected-error": "harness-error",
+    "bounded-prefix-incomplete": "inconclusive",
+    "disk-limit-exceeded": "inconclusive",
+    "node-exited-before-rpc": "inconclusive",
+    "node-exited-nonzero": "inconclusive",
+    "timeout": "inconclusive",
+    "genesis-mismatch": "contradiction",
+    "mainnet-chain-mismatch": "contradiction",
+    "snapshot-mismatch": "contradiction",
+}
+FAILURE_RESULT_BY_EXIT = {
+    1: "harness-error",
+    2: "inconclusive",
+    3: "contradiction",
+}
+DIAGNOSTIC_UNAVAILABLE = (
+    "ERGON_MAINNET_SMOKE_FAILURE role=harness disposition=harness-error "
+    "reason_code=diagnostic-unavailable"
+)
 HEX40 = re.compile(r"[0-9a-f]{40}")
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
 
 class ReproductionError(RuntimeError):
     """A fail-closed reproduction invariant failed."""
+
+
+class DiagnosedSmokeFailure(ReproductionError):
+    """The bounded child failure was already projected without raw output."""
 
 
 def require(condition: bool, message: str) -> None:
@@ -134,6 +170,18 @@ def run_checked(command: list[str], env: dict[str, str]) -> None:
         )
     except (OSError, subprocess.CalledProcessError) as error:
         raise ReproductionError(f"command failed: {Path(command[0]).name}") from error
+
+
+def run_smoke(command: list[str], env: dict[str, str]) -> int:
+    try:
+        result = subprocess.run(
+            command, check=False, env=env,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as error:
+        raise ReproductionError("command failed: python3") from error
+    return result.returncode
 
 
 def capture(command: list[str], env: dict[str, str]) -> str:
@@ -363,6 +411,63 @@ def validate_smoke_report(report: dict[str, Any],
             "smoke limitations differ")
 
 
+def validate_failure_report(report: dict[str, Any],
+                            builds: dict[str, dict[str, Any]],
+                            exit_code: int) -> tuple[str, str, str]:
+    require(isinstance(report, dict), "failure report must be an object")
+    result = report.get("result")
+    reason_code = report.get("reason_code")
+    failure_role = report.get("failure_role")
+    require(isinstance(result, str) and result in FAILURE_RESULT_BY_EXIT.values(),
+            "failure result differs")
+    require(isinstance(reason_code, str) and
+            FAILURE_RESULT_BY_REASON.get(reason_code) == result,
+            "failure reason differs")
+    require(isinstance(failure_role, str) and failure_role in FAILURE_ROLES,
+            "failure role differs")
+    require((reason_code == "snapshot-mismatch") ==
+            (failure_role == "comparison"),
+            "failure comparison attribution differs")
+    require(FAILURE_RESULT_BY_EXIT.get(exit_code) == result,
+            "failure exit differs")
+    limitations = report.get("limitations")
+    require(isinstance(limitations, list) and len(limitations) == 5 and
+            all(isinstance(item, str) and item for item in limitations),
+            "failure limitations differ")
+    expected = sample_failure_report(
+        builds, failure_role, result, reason_code
+    )
+    expected["limitations"] = limitations
+    require(report == expected, "failure report contract differs")
+    return failure_role, result, reason_code
+
+
+def consume_failure_report(report_path: Path, receipt_path: Path,
+                           builds: dict[str, dict[str, Any]],
+                           exit_code: int) -> str:
+    diagnostic = DIAGNOSTIC_UNAVAILABLE
+    try:
+        require(report_path.is_file() and not report_path.is_symlink() and
+                report_path.stat().st_size <= 64 * 1024,
+                "failure report is too large")
+        report = load_json(report_path)
+        role, result, reason_code = validate_failure_report(
+            report, builds, exit_code
+        )
+        diagnostic = (
+            f"ERGON_MAINNET_SMOKE_FAILURE role={role} "
+            f"disposition={result} reason_code={reason_code}"
+        )
+    except (OSError, UnicodeError, ReproductionError):
+        pass
+    remove_outputs((report_path, receipt_path))
+    require(not report_path.exists() and not receipt_path.exists(),
+            "failure output survived removal")
+    require(not any(report_path.parent.iterdir()),
+            "failure output directory is not empty")
+    return diagnostic
+
+
 def github_identity() -> dict[str, str]:
     fields = {
         "job": "ERGON_GITHUB_JOB", "repository": "ERGON_GITHUB_REPOSITORY",
@@ -513,6 +618,7 @@ def run_reproduction(repository_root: Path, work_root: Path,
     report_path = output_dir / "mainnet-passive-smoke.json"
     receipt_path = output_dir / "build-provenance.json"
     outputs = (report_path, receipt_path)
+    failure_diagnostic: str | None = None
     try:
         clone_exact(BASELINE_URL, BASELINE_COMMIT, BASELINE_TREE,
                     sources["baseline"], env)
@@ -524,25 +630,41 @@ def run_reproduction(repository_root: Path, work_root: Path,
         )
         for role in ROLES:
             build_role(sources[role], builds[role], lock, env)
-        run_checked([
+        pre_smoke_builds = {
+            role: binary_build(builds[role]) for role in ROLES
+        }
+        smoke_exit = run_smoke([
             "python3", "-B", str(sources["candidate"] / RUNNER_PATH),
             f"--baseline-bitcoind={builds['baseline'] / 'src' / 'bitcoind'}",
             f"--candidate-bitcoind={builds['candidate'] / 'src' / 'bitcoind'}",
             f"--work-root={work_root / 'smoke-work'}",
             f"--report={report_path}",
         ], env)
-        receipt = make_receipt(
-            lock, sources, builds, report_path, authentication, env
-        )
-        write_json_exclusive(receipt_path, receipt)
-        require(set(path.name for path in output_dir.iterdir()) == {
-            report_path.name, receipt_path.name,
-        }, "output artifact set differs")
+        post_smoke_builds = {
+            role: binary_build(builds[role]) for role in ROLES
+        }
+        require(post_smoke_builds == pre_smoke_builds,
+                "post-smoke binary identity differs")
+        if smoke_exit == 0:
+            receipt = make_receipt(
+                lock, sources, builds, report_path, authentication, env
+            )
+            write_json_exclusive(receipt_path, receipt)
+            require(set(path.name for path in output_dir.iterdir()) == {
+                report_path.name, receipt_path.name,
+            }, "output artifact set differs")
+        else:
+            failure_diagnostic = consume_failure_report(
+                report_path, receipt_path, post_smoke_builds, smoke_exit
+            )
     except BaseException:
         remove_outputs(outputs)
         raise
     finally:
         remove_work_root(work_root, outputs)
+    if failure_diagnostic is not None:
+        print(failure_diagnostic, file=sys.stderr)
+        raise DiagnosedSmokeFailure("bounded smoke did not succeed")
 
 
 def sample_builds() -> dict[str, dict[str, Any]]:
@@ -606,6 +728,20 @@ def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def sample_failure_report(builds: dict[str, dict[str, Any]], role: str,
+                          result: str, reason_code: str) -> dict[str, Any]:
+    report = sample_report(builds)
+    report.pop("observations")
+    report["result"] = result
+    report["reason_code"] = reason_code
+    report["failure_role"] = role
+    report["knowledge_status"] = "Open Question"
+    report["evidence_ceiling"] = "component"
+    report["claims"]["bounded_mainnet_prefix_match"] = False
+    report["claims"]["independent_public_prefix_acquisition"] = False
+    return report
+
+
 def self_test(repository_root: Path) -> None:
     validate_lock(repository_root)
     require(sha256_file(repository_root / RECORD_PATH) == RECORD_SHA256,
@@ -642,9 +778,119 @@ def self_test(repository_root: Path) -> None:
         except ReproductionError:
             continue
         raise ReproductionError(f"self-test accepted forbidden mutation {index}")
+
+    failure_cases = (
+        ("baseline", "inconclusive", "timeout", 2),
+        ("candidate", "inconclusive", "bounded-prefix-incomplete", 2),
+        ("comparison", "contradiction", "snapshot-mismatch", 3),
+        ("harness", "harness-error", "unexpected-error", 1),
+    )
+    for role, result, reason_code, exit_code in failure_cases:
+        failure = sample_failure_report(builds, role, result, reason_code)
+        require(validate_failure_report(failure, builds, exit_code) ==
+                (role, result, reason_code),
+                "self-test failure diagnostic differs")
+
+    base_failure = sample_failure_report(
+        builds, "candidate", "inconclusive", "timeout"
+    )
+    failure_mutations: list[tuple[dict[str, Any], int]] = []
+    for path, value, exit_code in (
+        (("failure_role",), "unknown", 2),
+        (("result",), "success", 2),
+        (("reason_code",), "snapshot-mismatch", 2),
+        (("cleanup", "complete"), False, 2),
+    ):
+        changed = copy.deepcopy(base_failure)
+        cursor = changed
+        for key in path[:-1]:
+            cursor = cursor[key]
+        cursor[path[-1]] = value
+        failure_mutations.append((changed, exit_code))
+    failure_mutations.append((copy.deepcopy(base_failure), 1))
+    wrong_comparison = copy.deepcopy(base_failure)
+    wrong_comparison["result"] = "contradiction"
+    wrong_comparison["reason_code"] = "snapshot-mismatch"
+    failure_mutations.append((wrong_comparison, 3))
+    for index, (changed, exit_code) in enumerate(failure_mutations):
+        try:
+            validate_failure_report(changed, builds, exit_code)
+        except ReproductionError:
+            continue
+        raise ReproductionError(
+            f"self-test accepted invalid failure report {index}"
+        )
+
+    process = mock.Mock(returncode=2)
+    with mock.patch.object(subprocess, "run", return_value=process) as invoked:
+        require(run_smoke(["python3", "smoke.py"], {"LANG": "C"}) == 2,
+                "self-test smoke exit differs")
+    require(invoked.call_count == 1, "self-test smoke invocation differs")
+    _, smoke_kwargs = invoked.call_args
+    require(smoke_kwargs == {
+        "check": False,
+        "env": {"LANG": "C"},
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }, "self-test smoke output contract differs")
+
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary) / "late-cleanup-root"
-        output = Path(temporary) / "output"
+        temporary_root = Path(temporary)
+        output = temporary_root / "failure-output"
+        output.mkdir()
+        failure_path = output / "mainnet-passive-smoke.json"
+        receipt_path = output / "build-provenance.json"
+        write_json_exclusive(failure_path, base_failure)
+        receipt_path.write_text("not-evidence\n", encoding="utf-8")
+        diagnostic = consume_failure_report(
+            failure_path, receipt_path, builds, 2
+        )
+        require(diagnostic ==
+                "ERGON_MAINNET_SMOKE_FAILURE role=candidate "
+                "disposition=inconclusive reason_code=timeout",
+                "self-test trusted diagnostic differs")
+        require(not any(output.iterdir()),
+                "self-test retained trusted failure output")
+
+        failure_path.write_text(
+            '{"raw":"/private/tmp/secret peer.example"', encoding="utf-8"
+        )
+        diagnostic = consume_failure_report(
+            failure_path, receipt_path, builds, 2
+        )
+        require(diagnostic == DIAGNOSTIC_UNAVAILABLE and
+                "/private/tmp" not in diagnostic and
+                "peer.example" not in diagnostic and not any(output.iterdir()),
+                "self-test malformed diagnostic leaked")
+
+        failure_path.write_bytes(b"\xff/private/tmp/secret")
+        diagnostic = consume_failure_report(
+            failure_path, receipt_path, builds, 2
+        )
+        require(diagnostic == DIAGNOSTIC_UNAVAILABLE and
+                not any(output.iterdir()),
+                "self-test invalid UTF-8 diagnostic leaked")
+
+        dirty = copy.deepcopy(base_failure)
+        dirty["cleanup"]["complete"] = False
+        write_json_exclusive(failure_path, dirty)
+        diagnostic = consume_failure_report(
+            failure_path, receipt_path, builds, 2
+        )
+        require(diagnostic == DIAGNOSTIC_UNAVAILABLE and
+                not any(output.iterdir()),
+                "self-test trusted incomplete cleanup")
+
+        diagnostic = consume_failure_report(
+            failure_path, receipt_path, builds, 2
+        )
+        require(diagnostic == DIAGNOSTIC_UNAVAILABLE and
+                not any(output.iterdir()),
+                "self-test missing failure report differs")
+
+        root = temporary_root / "late-cleanup-root"
+        output = temporary_root / "late-cleanup-output"
         root.mkdir()
         output.mkdir()
         proposed = (output / "mainnet-passive-smoke.json",
@@ -688,6 +934,8 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
+    except DiagnosedSmokeFailure:
+        raise SystemExit(1)
     except ReproductionError as error:
         print(f"mainnet reproduction failed: {error}", file=sys.stderr)
         raise SystemExit(1)

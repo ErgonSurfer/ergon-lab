@@ -88,6 +88,10 @@ class SmokeContractTest(unittest.TestCase):
         )
         self.assertEqual(SMOKE.SCHEMA, "ergon-mainnet-passive-smoke/v2")
         self.assertEqual(SMOKE.ROLES, ("baseline", "candidate"))
+        self.assertEqual(
+            SMOKE.FAILURE_ROLES,
+            {"baseline", "candidate", "comparison", "harness"},
+        )
         self.assertEqual(SMOKE.STOP_HEIGHT, 288)
         self.assertEqual(
             SMOKE.RPC_METHODS,
@@ -162,6 +166,7 @@ class SmokeContractTest(unittest.TestCase):
         )
         report = json.loads((self.root / "report.json").read_text())
         self.assertEqual(report["result"], "success")
+        self.assertNotIn("failure_role", report)
         self.assertEqual(report["scenario_id"], "mixed-node-coexistence")
         self.assertEqual(
             report["profile"], "mainnet-passive-independent-prefix-smoke"
@@ -196,6 +201,7 @@ class SmokeContractTest(unittest.TestCase):
         report = json.loads((self.root / "report.json").read_text())
         self.assertEqual(report["result"], "contradiction")
         self.assertEqual(report["reason_code"], "snapshot-mismatch")
+        self.assertEqual(report["failure_role"], "comparison")
         self.assertNotIn("observations", report)
 
     def test_network_failure_is_inconclusive(self):
@@ -222,6 +228,25 @@ class SmokeContractTest(unittest.TestCase):
         report = json.loads((self.root / "report.json").read_text())
         self.assertEqual(report["result"], "inconclusive")
         self.assertEqual(report["knowledge_status"], "Open Question")
+        self.assertEqual(report["failure_role"], "candidate")
+
+        args = self.args()
+        args.work_root = str(self.root / "work-baseline")
+        args.report = str(self.root / "report-baseline.json")
+
+        def baseline_factory(root):
+            return FakeBackend(root, failure=failure, failure_role="baseline")
+
+        with mock.patch.object(SMOKE, "reserve_ports", return_value=list(range(22100, 22108))):
+            code = SMOKE.run(args, backend_factory=baseline_factory)
+        report = json.loads(Path(args.report).read_text())
+        self.assertEqual(code, 2)
+        self.assertEqual(report["failure_role"], "baseline")
+
+        with self.assertRaises(ValueError):
+            SMOKE.SmokeFailure("inconclusive", "timeout", "unknown")
+        with self.assertRaises(ValueError):
+            SMOKE.SmokeFailure("contradiction", "timeout", "comparison")
 
     def test_cleanup_failure_emits_no_report(self):
         class DirtyBackend(FakeBackend):
@@ -239,11 +264,13 @@ class SmokeContractTest(unittest.TestCase):
         with self.assertRaises(SMOKE.SmokeFailure) as raised:
             SMOKE.run(args, backend_factory=FakeBackend)
         self.assertEqual(raised.exception.reason_code, "binary-input-invalid")
+        self.assertEqual(raised.exception.failure_role, "harness")
         args = self.args()
         args.report = str(self.root / "work" / "report.json")
         with self.assertRaises(SMOKE.SmokeFailure) as raised:
             SMOKE.run(args, backend_factory=FakeBackend)
         self.assertEqual(raised.exception.reason_code, "report-contract-invalid")
+        self.assertEqual(raised.exception.failure_role, "harness")
 
     def test_port_and_process_aliases_fail_closed(self):
         work = self.root / "alias-work"

@@ -26,6 +26,7 @@ SCENARIO_ID = "mixed-node-coexistence"
 PROFILE = "mainnet-passive-independent-prefix-smoke"
 SCHEMA = "ergon-mainnet-passive-smoke/v2"
 ROLES = ("baseline", "candidate")
+FAILURE_ROLES = frozenset((*ROLES, "comparison", "harness"))
 STOP_HEIGHT = 288
 MAX_OBSERVED_HEIGHT = STOP_HEIGHT + 128
 EXPECTED_GENESIS = (
@@ -48,28 +49,29 @@ RESULT_EXIT_CODES = {
     "inconclusive": 2,
     "contradiction": 3,
 }
-REASON_CODES = frozenset({
-    "bounded-mainnet-prefix-matched",
-    "binary-input-invalid",
-    "binary-identity-changed",
-    "cleanup-failed",
-    "datadir-alias",
-    "datadir-identity-changed",
-    "disk-limit-exceeded",
-    "genesis-mismatch",
-    "mainnet-chain-mismatch",
-    "network-surface-open",
-    "node-exited-before-rpc",
-    "node-exited-nonzero",
-    "port-alias",
-    "process-alias",
-    "report-contract-invalid",
-    "rpc-contract-invalid",
-    "snapshot-mismatch",
-    "bounded-prefix-incomplete",
-    "timeout",
-    "unexpected-error",
-})
+RESULT_BY_REASON = {
+    "bounded-mainnet-prefix-matched": "success",
+    "binary-input-invalid": "harness-error",
+    "binary-identity-changed": "harness-error",
+    "cleanup-failed": "harness-error",
+    "datadir-alias": "harness-error",
+    "datadir-identity-changed": "harness-error",
+    "network-surface-open": "harness-error",
+    "port-alias": "harness-error",
+    "process-alias": "harness-error",
+    "report-contract-invalid": "harness-error",
+    "rpc-contract-invalid": "harness-error",
+    "unexpected-error": "harness-error",
+    "bounded-prefix-incomplete": "inconclusive",
+    "disk-limit-exceeded": "inconclusive",
+    "node-exited-before-rpc": "inconclusive",
+    "node-exited-nonzero": "inconclusive",
+    "timeout": "inconclusive",
+    "genesis-mismatch": "contradiction",
+    "mainnet-chain-mismatch": "contradiction",
+    "snapshot-mismatch": "contradiction",
+}
+REASON_CODES = frozenset(RESULT_BY_REASON)
 CHILD_ENVIRONMENT = {
     "LANG": "C",
     "LC_ALL": "C",
@@ -112,12 +114,15 @@ OFFLINE_ARGS = (
 class SmokeFailure(Exception):
     """A closed, report-safe scenario disposition."""
 
-    def __init__(self, result: str, reason_code: str) -> None:
-        if result not in RESULT_EXIT_CODES or reason_code not in REASON_CODES:
+    def __init__(self, result: str, reason_code: str,
+                 failure_role: str = "harness") -> None:
+        if result == "success" or RESULT_BY_REASON.get(reason_code) != result \
+                or failure_role not in FAILURE_ROLES:
             raise ValueError("invalid smoke disposition")
         super().__init__(reason_code)
         self.result = result
         self.reason_code = reason_code
+        self.failure_role = failure_role
 
 
 @dataclass(frozen=True)
@@ -142,8 +147,18 @@ class NodeProcess:
     process: subprocess.Popen[bytes]
 
 
-def fail(result: str, reason_code: str) -> None:
-    raise SmokeFailure(result, reason_code)
+def fail(result: str, reason_code: str,
+         failure_role: str = "harness") -> None:
+    raise SmokeFailure(result, reason_code, failure_role)
+
+
+def run_role_phase(role: str, function: Any, *args: Any) -> Any:
+    if role not in ROLES:
+        fail("harness-error", "report-contract-invalid")
+    try:
+        return function(*args)
+    except SmokeFailure as error:
+        raise SmokeFailure(error.result, error.reason_code, role) from error
 
 
 def sha256_file(path: Path) -> str:
@@ -485,10 +500,14 @@ def execute_scenario(work_root: Path, baseline_binary: Path,
         runtime / "candidate-inspect", ports[6], ports[7]
     )
 
-    backend.fetch_public(baseline_public)
-    baseline_snapshot, _ = backend.inspect(baseline_inspect)
-    backend.fetch_public(candidate_public)
-    candidate_snapshot, _ = backend.inspect(candidate_inspect)
+    run_role_phase("baseline", backend.fetch_public, baseline_public)
+    baseline_snapshot, _ = run_role_phase(
+        "baseline", backend.inspect, baseline_inspect
+    )
+    run_role_phase("candidate", backend.fetch_public, candidate_public)
+    candidate_snapshot, _ = run_role_phase(
+        "candidate", backend.inspect, candidate_inspect
+    )
     try:
         baseline_after = baseline_datadir.stat()
         candidate_after = candidate_datadir.stat()
@@ -500,15 +519,16 @@ def execute_scenario(work_root: Path, baseline_binary: Path,
             (candidate_inode.st_dev, candidate_inode.st_ino):
         fail("harness-error", "datadir-identity-changed")
     if baseline_snapshot != candidate_snapshot:
-        fail("contradiction", "snapshot-mismatch")
+        fail("contradiction", "snapshot-mismatch", "comparison")
     return baseline_snapshot
 
 
 def report_document(result: str, reason_code: str,
                     identities: dict[str, BinaryIdentity],
                     shared_snapshot: dict[str, Any] | None,
-                    cleanup_complete: bool) -> dict[str, Any]:
-    if result not in RESULT_EXIT_CODES or reason_code not in REASON_CODES:
+                    cleanup_complete: bool,
+                    failure_role: str | None = None) -> dict[str, Any]:
+    if RESULT_BY_REASON.get(reason_code) != result:
         fail("harness-error", "report-contract-invalid")
     document: dict[str, Any] = {
         "schema": SCHEMA,
@@ -564,7 +584,7 @@ def report_document(result: str, reason_code: str,
         ],
     }
     if result == "success":
-        if shared_snapshot is None:
+        if shared_snapshot is None or failure_role is not None:
             fail("harness-error", "report-contract-invalid")
         document["observations"] = {
             "baseline_clean_restart": True,
@@ -577,6 +597,10 @@ def report_document(result: str, reason_code: str,
             "roles_equal": True,
             "shared_checkpoint": shared_snapshot,
         }
+    else:
+        if shared_snapshot is not None or failure_role not in FAILURE_ROLES:
+            fail("harness-error", "report-contract-invalid")
+        document["failure_role"] = failure_role
     return document
 
 
@@ -609,6 +633,7 @@ def run(args: argparse.Namespace, backend_factory: Any = SystemBackend) -> int:
 
     result = "harness-error"
     reason_code = "unexpected-error"
+    failure_role = "harness"
     shared_snapshot: dict[str, Any] | None = None
     backend: Any | None = None
     cleanup_complete = False
@@ -623,8 +648,11 @@ def run(args: argparse.Namespace, backend_factory: Any = SystemBackend) -> int:
             reason_code = "bounded-mainnet-prefix-matched"
         except SmokeFailure as error:
             result, reason_code = error.result, error.reason_code
+            failure_role = error.failure_role
         except Exception:
-            result, reason_code = "harness-error", "unexpected-error"
+            result, reason_code, failure_role = (
+                "harness-error", "unexpected-error", "harness"
+            )
     finally:
         try:
             processes_clean = backend is None or backend.cleanup()
@@ -650,7 +678,8 @@ def run(args: argparse.Namespace, backend_factory: Any = SystemBackend) -> int:
         )
         return RESULT_EXIT_CODES["harness-error"]
     document = report_document(
-        result, reason_code, identities, shared_snapshot, cleanup_complete
+        result, reason_code, identities, shared_snapshot, cleanup_complete,
+        None if result == "success" else failure_role,
     )
     write_report(report, document)
     print(f"mainnet passive smoke: {result} {reason_code}")
