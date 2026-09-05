@@ -23,18 +23,18 @@ BASELINE_URL = "https://github.com/Ergon-moe/Bitcoin-Static.git"
 BASELINE_COMMIT = "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"
 BASELINE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 CANDIDATE_URL = "https://github.com/ErgonSurfer/ergon-lab.git"
-CANDIDATE_COMMIT = "7123fb262ab7a6b0a81981d06df627d58fa3ab1b"
-CANDIDATE_TREE = "a2dc77a588e708cb08398f7968e2af82729f819e"
-PARENT_COMMIT = "dfd84168d9a700e19116248b4ce9abe762a3e6cd"
-PARENT_TREE = "fc3c727a859f23228730959eeb9f75034e60d55a"
+CANDIDATE_COMMIT = "0ca2a4f7458102ce856218161b091001732e7b94"
+CANDIDATE_TREE = "10467ddc2d4abdec8ef6d57d0182621eb1ce864f"
+PARENT_COMMIT = "5599c7a986d6499650912ba19b3c2715d9e1274b"
+PARENT_TREE = "23655e0f08f6e7bff7cd29f47100a4a8732d4288"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
 SIGNER_PRINCIPAL = "153525861+ErgonSurfer@users.noreply.github.com"
 SIGNER_FINGERPRINT = "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q"
 SIGNER_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI"
-RECORD_PATH = Path("docs/engineering/changes/ergon-change-0016.json")
-RECORD_SHA256 = "e65f6392cde886b31e531500d682760675ba4f11fc6f14339797568d96471c0d"
+RECORD_PATH = Path("docs/engineering/changes/ergon-change-0018.json")
+RECORD_SHA256 = "9117dffa62675c0593534de5e20ac4b7b94d9cbf13a2fa208e927f2763741bd2"
 RUNNER_PATH = Path("tests/compatibility/mainnet/run_passive_smoke.py")
-RUNNER_SHA256 = "fb0562e005bf08c0a925483dc771ec977adaecf44e63f3752f4c0cf4caf3ceb9"
+RUNNER_SHA256 = "acc294b37d8a62268f1d5796cba089c26bc0557597587a4f3ce9d7689609483a"
 LOCK_PATH = Path("contrib/reproducibility/legacy-ubuntu22-arm64.lock.json")
 LOCK_SHA256 = "a625d09aaa97e54f5fa7487f1000b139dcdf93472bc984425a25e2bf3777eab0"
 CONTAINERFILE_PATH = Path(
@@ -46,7 +46,7 @@ CONTAINER_MANIFEST = (
 )
 APT_SNAPSHOT = "20260901T000000Z"
 SCENARIO_ID = "mixed-node-coexistence"
-PROFILE = "mainnet-passive-legacy-bridge-smoke"
+PROFILE = "mainnet-passive-independent-prefix-smoke"
 EXPECTED_GENESIS = (
     "000000070e37bfee7e84b94f997f38155a85b22172f5ca25fd4eb3d64c5ad7c5"
 )
@@ -291,7 +291,7 @@ def validate_smoke_report(report: dict[str, Any],
         "knowledge_status", "evidence_ceiling", "scope", "binaries",
         "cleanup", "claims", "privacy", "limitations", "observations",
     }, "smoke report")
-    require(report["schema"] == "ergon-mainnet-passive-smoke/v1" and
+    require(report["schema"] == "ergon-mainnet-passive-smoke/v2" and
             report["scenario_id"] == SCENARIO_ID and report["profile"] == PROFILE,
             "smoke identity differs")
     require(report["result"] == "success" and
@@ -302,9 +302,11 @@ def validate_smoke_report(report: dict[str, Any],
     require(report["scope"] == {
         "maximum_accepted_exit_height": 416,
         "stop_trigger_height": 288,
-        "candidate_network_source": "baseline-role-loopback-only",
         "complete_initial_block_download": False,
-        "public_network_source_role": "baseline",
+        "network_source_by_role": {
+            "baseline": "public-mainnet",
+            "candidate": "public-mainnet",
+        },
     }, "smoke scope differs")
     binaries = strict_object(report["binaries"], set(ROLES), "smoke binaries")
     for role in ROLES:
@@ -319,6 +321,7 @@ def validate_smoke_report(report: dict[str, Any],
     }, "smoke cleanup differs")
     require(report["claims"] == {
         "bounded_mainnet_prefix_match": True,
+        "independent_public_prefix_acquisition": True,
         "current_tip_agreement": "not_claimed",
         "full_historical_replay": "not_claimed",
         "mainnet_coexistence": "not_claimed",
@@ -333,7 +336,7 @@ def validate_smoke_report(report: dict[str, Any],
     }, "smoke privacy differs")
     observations = strict_object(report["observations"], {
         "baseline_clean_restart", "baseline_public_prefix_acquired",
-        "candidate_clean_restart", "candidate_direct_baseline_sync",
+        "candidate_clean_restart", "candidate_public_prefix_acquired",
         "datadirs_distinct", "ports_distinct", "processes_distinct",
         "roles_equal", "shared_checkpoint",
     }, "smoke observations")
@@ -468,6 +471,7 @@ def make_receipt(lock: dict[str, Any], sources: dict[str, Path],
         "smoke_report_sha256": sha256_file(report_path),
         "claims": {
             "bounded_mainnet_prefix_match": True,
+            "independent_public_prefix_acquisition": True,
             "build_reproducibility": "not_claimed",
             "full_historical_replay": "not_claimed",
             "mainnet_coexistence": "not_claimed",
@@ -551,15 +555,17 @@ def sample_builds() -> dict[str, dict[str, Any]]:
 
 def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return {
-        "schema": "ergon-mainnet-passive-smoke/v1",
+        "schema": "ergon-mainnet-passive-smoke/v2",
         "scenario_id": SCENARIO_ID, "profile": PROFILE, "result": "success",
         "reason_code": "bounded-mainnet-prefix-matched",
         "knowledge_status": "Observed", "evidence_ceiling": "assembled_runtime",
         "scope": {
             "maximum_accepted_exit_height": 416, "stop_trigger_height": 288,
-            "candidate_network_source": "baseline-role-loopback-only",
             "complete_initial_block_download": False,
-            "public_network_source_role": "baseline",
+            "network_source_by_role": {
+                "baseline": "public-mainnet",
+                "candidate": "public-mainnet",
+            },
         },
         "binaries": {role: {
             "bytes": builds[role]["bitcoind_bytes"],
@@ -570,6 +576,7 @@ def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
                     "work_root_survived": False},
         "claims": {
             "bounded_mainnet_prefix_match": True,
+            "independent_public_prefix_acquisition": True,
             "current_tip_agreement": "not_claimed",
             "full_historical_replay": "not_claimed",
             "mainnet_coexistence": "not_claimed",
@@ -587,7 +594,7 @@ def sample_report(builds: dict[str, dict[str, Any]]) -> dict[str, Any]:
             "baseline_clean_restart": True,
             "baseline_public_prefix_acquired": True,
             "candidate_clean_restart": True,
-            "candidate_direct_baseline_sync": True,
+            "candidate_public_prefix_acquired": True,
             "datadirs_distinct": True, "ports_distinct": True,
             "processes_distinct": True, "roles_equal": True,
             "shared_checkpoint": {
@@ -610,10 +617,13 @@ def self_test(repository_root: Path) -> None:
     for path, value in (
         (("result",), "inconclusive"),
         (("scope", "stop_trigger_height"), 289),
+        (("scope", "network_source_by_role", "candidate"), "baseline-loopback"),
+        (("claims", "independent_public_prefix_acquisition"), False),
         (("claims", "mainnet_coexistence"), True),
         (("privacy", "peer_addresses_retained"), True),
         (("cleanup", "complete"), False),
         (("observations", "roles_equal"), False),
+        (("observations", "candidate_public_prefix_acquired"), False),
         (("observations", "shared_checkpoint", "checkpoint_height"), 289),
         (("binaries", "candidate", "sha256"), "f" * 64),
     ):
