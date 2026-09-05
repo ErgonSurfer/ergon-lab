@@ -1,0 +1,59 @@
+{
+  "allowed_environmental_difference_pointers": [
+    "/builds/baseline/bitcoind_bytes",
+    "/builds/baseline/bitcoind_sha256",
+    "/builds/baseline/config_sha256",
+    "/builds/candidate/bitcoind_bytes",
+    "/builds/candidate/bitcoind_sha256",
+    "/builds/candidate/config_sha256",
+    "/origin_main_oid"
+  ],
+  "allowed_semantic_target_difference_pointers": [
+    "/identity/candidate/commit",
+    "/identity/candidate/tree",
+    "/identity/diff_entries",
+    "/identity/integration_parent/commit",
+    "/identity/integration_parent/tree",
+    "/identity/record/path",
+    "/identity/record/sha256",
+    "/signatures/candidate/commit",
+    "/signatures/candidate/tree",
+    "/signatures/integration_parent/commit",
+    "/signatures/integration_parent/tree"
+  ],
+  "behavioral_equal": true,
+  "claims": {
+    "behavioral_matrix_reproduced": true,
+    "build_reproducibility": "not_claimed",
+    "historical_chain_replay": "not_claimed",
+    "mainnet_coexistence": "not_claimed",
+    "operator_binary_equivalence": "not_claimed",
+    "public_network_peering": "not_claimed"
+  },
+  "comparison_result": "behavioral-match-with-governed-target-differences",
+  "evidence_ceiling": "assembled_component",
+  "execution_context": "independent-github-hosted-main",
+  "observed": {
+    "projection_sha256": "74a8f8997745e137f5ba67111d8d06eacc1728899e84584b1b0b29989efc8a52",
+    "report_sha256": "95bc5452231deb1a6be72909910c94bea3a52ee5748ceb857b8f7ca0dda8b757"
+  },
+  "privacy": {
+    "host_specific_absolute_paths_retained": false,
+    "parent_environment_retained": false,
+    "raw_process_output_retained": false
+  },
+  "promotion_authority": "external-review-required",
+  "proposed_knowledge_status": "Reproduced",
+  "reproduced": {
+    "build_receipt_sha256": "8b6d26a1dd9af23b2d25a281d56056349c3950bb8c3279ef1adf557cd14fa5fc",
+    "projection_sha256": "19a541a37abca16403047ede0b757a43bb91fcece8d85af4cd0800f3eb5f576f",
+    "report_sha256": "aa2a342cbe1d18fc3336e4b471883627e3e6087798c0144d98d270cdaad7a999"
+  },
+  "schema": "ergon-legacy-reproduction-comparison/v1",
+  "semantic_equal": false,
+  "technical_target": {
+    "accepted_record_sha256": "754ec74063f146db58900f2ac5f45abedbe49b677001aaa6c2f881a0b99c298c",
+    "commit": "8a7f630333a8481b095c0fa82b25f18e929b0171",
+    "tree": "0793adbc50d051cdbf6cea602f92176c45748740"
+  }
+}

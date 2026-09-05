@@ -4,7 +4,7 @@
   "schema_version": "1.1",
   "change_id": "ERGON-CHANGE-0015",
   "stage": "legacy-compatibility",
-  "status": "under-review",
+  "status": "landed",
   "record_path": "docs/engineering/changes/ergon-change-0015.json",
   "purpose": {
     "summary": "Reproduce the exact ERGON-CHANGE-0014 bounded-mining target while retaining the exact ERGON-CHANGE-0010 report as an independently validated behavioral reference.",
@@ -240,24 +240,43 @@
     }
   },
   "evidence": {
-    "delivery_state": "planned",
-    "knowledge_status": "Open Question",
-    "ceiling": "record-review-only",
-    "artifacts": []
+    "delivery_state": "verified",
+    "knowledge_status": "Reproduced",
+    "ceiling": "assembled_component",
+    "artifacts": [
+      {
+        "path": "docs/engineering/evidence/ergon-change-0015/build-provenance.json",
+        "sha256": "8b6d26a1dd9af23b2d25a281d56056349c3950bb8c3279ef1adf557cd14fa5fc"
+      },
+      {
+        "path": "docs/engineering/evidence/ergon-change-0015/legacy-compatibility-comparison.json",
+        "sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647"
+      },
+      {
+        "path": "docs/engineering/evidence/ergon-change-0015/legacy-compatibility-reproduced.json",
+        "sha256": "aa2a342cbe1d18fc3336e4b471883627e3e6087798c0144d98d270cdaad7a999"
+      }
+    ]
   },
   "limitations": [
-    "Publishing this binding does not reproduce ERGON-CHANGE-0014 and does not promote evidence; only a later successful fresh execution can emit a proposed Reproduced comparison for external review.",
-    "A successful hosted comparison would establish behavioral equality only for the existing bounded four-scenario synthetic regtest matrix while preserving explicit target-lineage differences.",
-    "A successful future hosted comparison can cover only the existing bounded synthetic regtest matrix; it cannot establish deterministic builds, operator-binary equivalence, historical-chain replay, public-network peering, sustained operation or mainnet coexistence.",
-    "The ERGON-CHANGE-0014 record remains Open Question / record-review-only until successful evidence is separately reviewed and promoted."
+    "The reproduced claim covers only the exact bounded four-scenario synthetic regtest behavioral matrix for the accepted ERGON-CHANGE-0014 target against the immutable ERGON-CHANGE-0010 reference.",
+    "The comparison is intentionally semantic_equal=false because the two reports bind different accepted target, parent, record and signature identities; only the eleven closed identity pointers differ while the governed behavioral projection is equal.",
+    "The fresh GitHub-hosted Ubuntu 22.04 ARM64 execution and digest-pinned dependency environment do not establish deterministic or reproducible builds; allowed environmental pointers include binary sizes and digests.",
+    "The normalized reports retain no raw process output, parent environment or host-specific absolute path, so those details cannot be independently reconstructed from the committed evidence.",
+    "Operator-binary equivalence, historical-chain replay, real-datadir parity, sustained operation, public-network peering and mainnet coexistence remain untested.",
+    "No consensus, activation, Chronik, testnet or mainnet claim is promoted by this evidence."
   ],
   "counterevidence": [
     "Public workflow_dispatch runs 33901994571 and 33910672119 failed mixed-node-coexistence after both fresh builds and emitted no artifact.",
     "Public workflow_dispatch run 33920764559 on exact diagnostic commit 0e9da9e91bda4777fd6b980d8e1f67132ced170a failed child-nonzero after default-protected-reorg with mine_and_compare as the last allowlisted feature frame and emitted no artifact.",
-    "The ERGON-CHANGE-0014 bounded-mining target passed one full maintainer-local macOS ARM64 feature execution, but no fresh hosted execution of that exact target exists yet.",
-    "Separating reference and candidate target contracts cannot turn a failed run into evidence and cannot promote the existing ERGON-CHANGE-0010 Observed report."
+    "Public workflow_dispatch run 33933115592 completed the exact accepted target on a fresh GitHub-hosted ARM64 runner and found no contradiction inside the four declared behavioral oracles.",
+    "The earlier failed hosted runs remain counterevidence and are not erased or reclassified by the successful bounded reproduction.",
+    "Behavioral equality under the closed comparison does not establish build reproducibility, operator-binary equivalence, public-network behavior or mainnet coexistence."
   ],
   "decision": {
-    "status": "pending"
+    "status": "accepted",
+    "reviewer": "Ergon Public Node GitHub Cockpit",
+    "date": "2026-09-05",
+    "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921"
   }
 }
