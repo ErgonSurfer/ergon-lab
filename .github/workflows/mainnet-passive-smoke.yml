@@ -1,0 +1,135 @@
+# SPDX-License-Identifier: MIT
+
+name: Mainnet passive smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mainnet-passive-smoke.yml"
+      - "contrib/reproducibility/legacy-ubuntu22-arm64.Containerfile"
+      - "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
+      - "tools/engineering/run_mainnet_passive_reproduction.py"
+      - "tests/compatibility/mainnet/run_passive_smoke.py"
+      - "docs/engineering/changes/ergon-change-0016.json"
+      - "docs/engineering/changes/ergon-change-0017.json"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mainnet-passive-smoke.yml"
+      - "contrib/reproducibility/legacy-ubuntu22-arm64.Containerfile"
+      - "contrib/reproducibility/legacy-ubuntu22-arm64.lock.json"
+      - "tools/engineering/run_mainnet_passive_reproduction.py"
+      - "tests/compatibility/mainnet/run_passive_smoke.py"
+      - "docs/engineering/changes/ergon-change-0016.json"
+      - "docs/engineering/changes/ergon-change-0017.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mainnet-passive-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate passive-smoke tooling
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # actions/checkout v7.0.1, pinned to an immutable commit.
+      - name: Check out the reviewed tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Exercise fail-closed report cases
+        run: python3 -B tools/engineering/run_mainnet_passive_reproduction.py self-test
+
+  reproduce:
+    name: Run bounded passive mainnet smoke on fresh ARM64 builds
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 120
+    steps:
+      # actions/checkout v7.0.1, pinned to an immutable commit.
+      - name: Check out the reviewed tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Require bounded fresh-runner storage
+        shell: bash
+        run: |
+          set -euo pipefail
+          available_kib=$(df -Pk "$RUNNER_TEMP" | awk 'NR == 2 {print $4}')
+          test "$available_kib" -ge 10485760
+
+      - name: Build the digest-pinned ARM64 environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --no-cache --pull=false \
+            --file contrib/reproducibility/legacy-ubuntu22-arm64.Containerfile \
+            --tag ergon-mainnet-passive:0017 \
+            contrib/reproducibility
+
+      - name: Build exact sources and run the bounded smoke
+        shell: bash
+        env:
+          ERGON_RUNNER_IMAGE_OS: ${{ runner.os }}
+          ERGON_RUNNER_ARCH: ${{ runner.arch }}
+          ERGON_GITHUB_RUN_ID: ${{ github.run_id }}
+          ERGON_GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          ERGON_GITHUB_SHA: ${{ github.sha }}
+          ERGON_GITHUB_REPOSITORY: ${{ github.repository }}
+          ERGON_GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          ERGON_GITHUB_JOB: ${{ github.job }}
+        run: |
+          set -euo pipefail
+          evidence_dir="$RUNNER_TEMP/ergon-mainnet-passive-evidence"
+          work_mount="$RUNNER_TEMP/ergon-mainnet-passive-work"
+          test ! -e "$evidence_dir"
+          test ! -e "$work_mount"
+          mkdir -m 700 "$evidence_dir"
+          mkdir -m 700 "$work_mount"
+          container_id=$(docker image inspect \
+            --format '{{.Id}}' ergon-mainnet-passive:0017)
+          docker run --rm --platform linux/arm64 \
+            --network bridge \
+            --read-only \
+            --entrypoint python3 \
+            --volume "$GITHUB_WORKSPACE:/repository:ro" \
+            --volume "$work_mount:/reproduction:rw" \
+            --volume "$evidence_dir:/output:rw" \
+            --env ERGON_CONTAINER_IMAGE_ID="$container_id" \
+            --env ERGON_RUNNER_IMAGE_OS \
+            --env ERGON_RUNNER_ARCH \
+            --env ERGON_GITHUB_RUN_ID \
+            --env ERGON_GITHUB_RUN_ATTEMPT \
+            --env ERGON_GITHUB_SHA \
+            --env ERGON_GITHUB_REPOSITORY \
+            --env ERGON_GITHUB_WORKFLOW_REF \
+            --env ERGON_GITHUB_JOB \
+            --env ERGON_IMAGE_OS="${ImageOS:-unavailable}" \
+            --env ERGON_IMAGE_VERSION="${ImageVersion:-unavailable}" \
+            ergon-mainnet-passive:0017 \
+            -B /repository/tools/engineering/run_mainnet_passive_reproduction.py \
+            run --repository-root=/repository \
+            --work-root=/reproduction/work --output-dir=/output
+          test -z "$(find "$work_mount" -mindepth 1 -print -quit)"
+          rmdir "$work_mount"
+          test "$(find "$evidence_dir" -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 2
+
+      - name: Upload bounded JSON evidence
+        # actions/upload-artifact v7.0.1, pinned to an immutable commit.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ergon-mainnet-passive-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ergon-mainnet-passive-evidence/*.json
+          if-no-files-found: error
+          retention-days: 14
