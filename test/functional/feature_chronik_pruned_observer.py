@@ -74,7 +74,10 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
                 "-chronikobserver",
             ],
         )
-        assert_equal(self.read_bootstrap(restart_offset), [(714, 1001, 288, 288)])
+        assert_equal(
+            self.read_bootstrap(restart_offset),
+            [(714, 1001, 288, 288, 0, 0, 0, 0, 0)],
+        )
         assert_equal(self.read_events(restart_offset), [])
         chain_info = node.getblockchaininfo()
         assert_equal(chain_info["pruned"], True)

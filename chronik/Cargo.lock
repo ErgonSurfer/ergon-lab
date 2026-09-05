@@ -126,6 +126,7 @@ name = "chronik-observer"
 version = "0.1.0"
 dependencies = [
  "bitcoinsuite-core",
+ "bitcoinsuite-slp",
  "bytes",
 ]
 

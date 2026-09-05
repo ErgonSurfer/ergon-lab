@@ -22,17 +22,34 @@ CONNECTED_RE = re.compile(
     r"Chronik observer event sequence=(\d+) kind=connected "
     r"hash=([0-9a-f]{64}) height=(-?\d+) fingerprint=(\d+) "
     r"bytes=(\d+) payload_fingerprint=(\d+) transactions=(\d+) "
-    r"projection_blocks=(\d+) projection_transactions=(\d+)"
+    r"slp_family_transactions=(\d+) alp_family_transactions=(\d+) "
+    r"token_parse_failures=(\d+) token_color_failures=(\d+) "
+    r"cash_token_prefix_outputs=(\d+) projection_blocks=(\d+) "
+    r"projection_transactions=(\d+) projection_slp_family_transactions=(\d+) "
+    r"projection_alp_family_transactions=(\d+) "
+    r"projection_token_parse_failures=(\d+) "
+    r"projection_token_color_failures=(\d+) "
+    r"projection_cash_token_prefix_outputs=(\d+)"
 )
 DISCONNECTED_RE = re.compile(
     r"Chronik observer event sequence=(\d+) kind=disconnected "
     r"hash=([0-9a-f]{64}) height=-1 fingerprint=(\d+) "
-    r"transactions=(\d+) projection_blocks=(\d+) "
-    r"projection_transactions=(\d+)"
+    r"transactions=(\d+) slp_family_transactions=(\d+) "
+    r"alp_family_transactions=(\d+) token_parse_failures=(\d+) "
+    r"token_color_failures=(\d+) cash_token_prefix_outputs=(\d+) "
+    r"projection_blocks=(\d+) projection_transactions=(\d+) "
+    r"projection_slp_family_transactions=(\d+) "
+    r"projection_alp_family_transactions=(\d+) "
+    r"projection_token_parse_failures=(\d+) "
+    r"projection_token_color_failures=(\d+) "
+    r"projection_cash_token_prefix_outputs=(\d+)"
 )
 BOOTSTRAP_RE = re.compile(
     r"Chronik observer bootstrap start_height=(\d+) tip_height=(\d+) "
-    r"retained_blocks=(\d+) transactions=(\d+)"
+    r"retained_blocks=(\d+) transactions=(\d+) "
+    r"slp_family_transactions=(\d+) alp_family_transactions=(\d+) "
+    r"token_parse_failures=(\d+) token_color_failures=(\d+) "
+    r"cash_token_prefix_outputs=(\d+)"
 )
 FNV_OFFSET_BASIS = 0xCBF29CE484222325
 FNV_PRIME = 0x100000001B3
@@ -113,7 +130,14 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         )
 
     def expected_connected(
-        self, sequence, block_hash, height, projection_blocks, projection_transactions
+        self,
+        sequence,
+        block_hash,
+        height,
+        projection_blocks,
+        projection_transactions,
+        block_assets=(0, 0, 0, 0, 0),
+        projection_assets=(0, 0, 0, 0, 0),
     ):
         raw_block = bytes.fromhex(self.nodes[0].getblock(block_hash, 0))
         return (
@@ -124,20 +148,30 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             len(raw_block),
             fnv_fingerprint(raw_block),
             1,
+            *block_assets,
             projection_blocks,
             projection_transactions,
+            *projection_assets,
         )
 
     def expected_disconnected(
-        self, sequence, block_hash, projection_blocks, projection_transactions
+        self,
+        sequence,
+        block_hash,
+        projection_blocks,
+        projection_transactions,
+        block_assets=(0, 0, 0, 0, 0),
+        projection_assets=(0, 0, 0, 0, 0),
     ):
         return (
             sequence,
             block_hash,
             event_fingerprint("disconnected", block_hash, -1),
             1,
+            *block_assets,
             projection_blocks,
             projection_transactions,
+            *projection_assets,
         )
 
     def assert_no_chronik_paths(self):
@@ -190,7 +224,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             0,
             extra_args=["-connect=0", "-disablewallet", "-chronikobserver"],
         )
-        assert_equal(self.read_bootstrap(), [(0, 2, 3, 3)])
+        assert_equal(self.read_bootstrap(), [(0, 2, 3, 3, 0, 0, 0, 0, 0)])
         assert_equal(node.getnetworkinfo()["connections"], 0)
         self.assert_no_chronik_paths()
 
@@ -236,7 +270,9 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             0,
             extra_args=["-connect=0", "-disablewallet", "-chronikobserver"],
         )
-        assert_equal(self.read_bootstrap(restart_offset), [(0, 4, 5, 5)])
+        assert_equal(
+            self.read_bootstrap(restart_offset), [(0, 4, 5, 5, 0, 0, 0, 0, 0)]
+        )
         restart_block = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()
         assert_equal(
@@ -377,7 +413,10 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             0,
             extra_args=["-connect=0", "-disablewallet", "-chronikobserver"],
         )
-        assert_equal(self.read_bootstrap(recovery_offset), [(1, 288, 288, 288)])
+        assert_equal(
+            self.read_bootstrap(recovery_offset),
+            [(1, 288, 288, 288, 0, 0, 0, 0, 0)],
+        )
         recovery_block = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()
         assert_equal(

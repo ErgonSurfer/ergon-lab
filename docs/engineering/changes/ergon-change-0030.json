@@ -1,0 +1,325 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0030",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0030.json",
+  "purpose": {
+    "summary": "Observe reconstructible native-asset family diagnostics in confirmed blocks without assigning token validity or consensus authority.",
+    "scope": [
+      "Reuse the inherited SLP/ALP parser and colorer to count, once per confirmed transaction, recognized SLP-family and ALP-family sections.",
+      "Count parser and coloring failures as diagnostics and count every output whose serialized locking script starts with 0xef as a CashTokens prefix candidate.",
+      "Keep only reversible aggregate counts in the existing volatile 288-block projection and rebuild them from public active-chain block inputs.",
+      "Falsify exact connect, eviction, LIFO rollback, reconsider, restart, full reindex, chainstate reindex, pruning, and rebuild-required behavior.",
+      "Preserve compile-time default OFF, runtime default OFF, explicit local-regtest-only opt-in, and observe/index-only operation."
+    ],
+    "exclusions": [
+      "No consensus, validation, chain-selection, activation, chain-parameter, testnet, mainnet, P2P, RPC, wallet, or user-interface rule changes.",
+      "No token validity, ancestry, conservation, prevout, spent-state, balance, UTXO, or strict CashTokens decoding claim.",
+      "No per-transaction record, transaction body, token identifier, persistence, database, file format, API, socket, service, or thread.",
+      "No mempool observation or indexing.",
+      "No local binary, build cache, raw output, absolute host path, parent environment, operator material, private history, or unrelated product material enters this change."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "7df3f1739ed3e3b7be44c21c4a73a75ac1b075d5",
+      "tree": "081e1ad3879ba1fede7c1f14926f6a9d5db76a99"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "1e6a9a4ff3caa476375fd589f07212de4bf74988cb681b99abe6d3c0f7112844",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 12058, "git_blob": "24f19abd28af2b092ae704e0eb7b5e7fff41825d", "sha256": "e5c49b9a7f290bbb129f988195c34be1b00fe6a617a03c85fa6b6c11c3ed20c3"},
+      "after": {"mode": "100644", "bytes": 12079, "git_blob": "f6e013803c2d8f722980b10762e41b1ffef8a879", "sha256": "0e9724c13b801c1e1968f4ecd7683f6cc7833bf73522c2b0c496d57771aeb049"},
+      "provenance": {"kind": "independent-authorship", "code": "A1-GENERATED-CARGO-1.93.0", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Locks only the existing local bitcoinsuite-slp workspace dependency for the observer crate; no new package, source, URL, or Git dependency.",
+      "test_reachability": "Reproduced by Cargo 1.93.0 from the public workspace manifests and checked with --locked --offline."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {"mode": "100644", "bytes": 6814, "git_blob": "99ae294f9b0677d5d493389ccf98522170c315be", "sha256": "afb92464c407498c21e830e75545ac2cd385638a43476c1fa953c0b9eeb58ba0"},
+      "after": {"mode": "100644", "bytes": 7943, "git_blob": "01f529359a1bb6d79af48449247af23c1796ef33", "sha256": "9d3edf1488014a0371e97e37c6e052edd2eb54a13291178d9bb2d4ef2b3470cd"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public operator and boundary documentation only.",
+      "test_reachability": "Defines the exact observation, reconstructed-data, non-authoritative token-state, and no-activation boundaries and documents the new canary."
+    },
+    {
+      "path": "chronik/chronik-observer/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 309, "git_blob": "6cdae244fb0489dbedc4df798b270b86f9822c85", "sha256": "3aed303a43593e4a38f13cfad6073873686e05d57568804a2092713a22343611"},
+      "after": {"mode": "100644", "bytes": 361, "git_blob": "839d5e2d6ea1b42b6c2587e87a8d412c4782e386", "sha256": "3759a617e718dfd8469c55ff0ef9a60731c8548b067d9b4d3d95e402b93b3480"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Links the observer to the already-public local bitcoinsuite-slp crate only when the observer is compiled.",
+      "test_reachability": "Makes the inherited parser/colorer available to observer units and explicit local-regtest callbacks."
+    },
+    {
+      "path": "chronik/chronik-observer/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 26387, "git_blob": "a282496a5e0db544785f3f4fcf3afacadb64937f", "sha256": "dfe28a55e6f26526abdbb70fb1c476edc1c9c9ed55d7b0d6b56e06a8c6a62aeb"},
+      "after": {"mode": "100644", "bytes": 38854, "git_blob": "5977828e40d55fb465fcacf622fbe237d083c661", "sha256": "51e06448f1d31953114529d2fad8a5b7eac4d936f7c8b483fa13193af69eec5a"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Compiled only in the optional observer component; classifies accepted block bytes after node validation and returns no validation decision.",
+      "test_reachability": "Adds checked reversible family, diagnostic, and prefix-candidate aggregates plus positive, malformed, coloring-failure, eviction, rollback, and fail-closed units."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 8989, "git_blob": "c536065f34b2ed2f6e6deff4fd684fd596c55b21", "sha256": "e48b30c7d2efb65d2d0762c63784e60e526a7edf7a14391f52755838a8513eaf"},
+      "after": {"mode": "100644", "bytes": 12263, "git_blob": "7dbb085029039c7d4bb59622bd3cda9bd3f76515", "sha256": "d63bb28a9d4801ed0d3b0a90372535e56c72df287318e62f9e977b2ac8e59daa"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Extends the private observer ABI and logs only; callback remains post-validation, void, and local-regtest opt-in.",
+      "test_reachability": "Exposes exact block and projection counters to the public functional canaries."
+    },
+    {
+      "path": "test/functional/feature_chronik_asset_observer.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {"mode": "100755", "bytes": 7966, "git_blob": "b5982a4466b23ba0b41f0f20a7d3478ee28c9b92", "sha256": "b9f63e74d252794e41107c7c1b1cfdae1050f0839d73384f9a6d18ff2bfeb3d3"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Mines real accepted regtest blocks with SLP, ALP, parsed-but-color-failed ALP, malformed SLP, and 0xef prefix-candidate scripts, then checks rollback, reconsider, restart, and full reindex."
+    },
+    {
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100755", "bytes": 14632, "git_blob": "d1ad988f033168cac46446893f6e1fda33924e7a", "sha256": "1e03c61b0ef2db3ea6c63512dfa3dc37a4ccc286887975fe1fcfc242b0de333c"},
+      "after": {"mode": "100755", "bytes": 16064, "git_blob": "359c6ae8a89ad75b1931ef773351186e8672c533", "sha256": "e3448fbfcecba936338b31d1331b816a87c642e90cbf03746b2de9b4701cfbd6"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Extends the shared log oracle and verifies zero native-asset aggregates across ordinary restart, reindex, chainstate reindex, and deep-reorg scenarios."
+    },
+    {
+      "path": "test/functional/feature_chronik_pruned_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100755", "bytes": 3913, "git_blob": "0e743313d596acc83363a349884d64f402747bd8", "sha256": "80694d3e1366ff9357cc4452404d725ba9d00cb616cdecd405f374571793912c"},
+      "after": {"mode": "100755", "bytes": 3963, "git_blob": "8ddd2d5221fbcefce721f78f2f134bf91cb39679", "sha256": "b74e78620259104b40592d272658de096527f849641f64088107606bb25c07c1"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Verifies the expanded zero-valued aggregate schema while reconstructing the exact physically-pruned active suffix."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": ["Build with both Chronik options OFF and run mining_basic.py on a fresh isolated regtest datadir."],
+        "expected_results": ["No Chronik link edge enters bitcoind and inherited legacy mining passes unchanged."]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": ["Build with BUILD_CHRONIK_OBSERVER=ON, omit runtime opt-in, and run mining_basic.py."],
+        "expected_results": ["The library is linked but no observer starts, no Chronik path or socket exists, and inherited legacy mining passes."]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": ["Run feature_chronik_block_observer.py, feature_chronik_asset_observer.py, and feature_chronik_pruned_observer.py with --hermetic-child-env on separate fresh datadirs."],
+        "expected_results": ["All bounded reconstruction scenarios and exact non-authoritative native-asset aggregate observations pass."]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run disabled and explicit local-regtest observer boundaries, then mine the dedicated accepted native-asset marker blocks.",
+        "expected_results": ["Disabled execution is inert; explicit opt-in observes exact SLP, ALP, parse-failure, coloring-failure, and 0xef prefix-candidate counts; non-regtest profiles reject the flag; no Chronik path or socket exists."],
+        "failure_conditions": ["Any disabled activity, enabled non-regtest launch, counter mismatch, Chronik path/socket, validation decision, token-validity claim, or activation claim fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Restart a fresh process after bounded observation, including the dedicated non-zero asset aggregate chain.",
+        "expected_results": ["Startup reconstructs the exact readable suffix and adopts the exact family, diagnostic, and prefix-candidate totals without minting live events."],
+        "failure_conditions": ["Partial adoption, wrong suffix or totals, stale state, or growth beyond 288 fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run a fresh full -reindex process on both the inherited 288-block canary and the dedicated marker-block chain.",
+        "expected_results": ["Ordered callbacks rebuild the exact bounded projection and the marker chain ends with exact non-zero asset aggregates."],
+        "failure_conditions": ["Missing, duplicated, reordered, rejected, or misclassified callbacks, prior-state reuse, wrong totals, or bound failure fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the inherited fresh -reindex-chainstate=1 process at height 288.",
+        "expected_results": ["The exact active chain is replayed, the tip and UTXO-set hash remain unchanged, and all new aggregates remain zero for ordinary blocks."],
+        "failure_conditions": ["Non-empty bootstrap masking replay, block-file reindex, changed chain state, callback divergence, rejection, or non-zero asset aggregate fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Restart explicit observer opt-in on the inherited physically-pruned height-1001 datadir.",
+        "expected_results": ["The exact readable heights 714 through 1001 rebuild with 288 blocks and transactions and zero asset aggregates; height 1002 keeps the bound."],
+        "failure_conditions": ["Missing physical pruning, unreadable retained bodies, wrong suffix, event minting, non-zero asset aggregates, or bound growth fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the inherited 288-deep LIFO disconnect, rejected continuation, reconsider, and restart recovery.",
+        "expected_results": ["Every aggregate rolls back with its retained block, the observer enters rebuild-required below its anchor, rejects later events without mutation, and restart reconstructs the active suffix."],
+        "failure_conditions": ["Mutation after rebuild-required, non-LIFO acceptance, counter underflow, silent continuation, node consensus influence, or restart failure fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": ["macOS arm64 local contradiction testing", "Ubuntu 22.04 ARM64 public verification after technical acceptance"],
+      "lock_reference": "chronik/Cargo.lock SHA-256 0e9724c13b801c1e1968f4ecd7683f6cc7833bf73522c2b0c496d57771aeb049"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Family counts identify recognized transaction envelopes, not valid token transfers; parsed-but-color-failed ALP still identifies its observed family and is separately diagnosed.",
+    "A 0xef first script byte is only a CashTokens prefix candidate, including malformed candidates; no CashTokens payload is decoded.",
+    "Only volatile aggregate counts for the readable 288-block suffix are retained; no per-transaction record, historical full-chain index, persistence, or query interface exists.",
+    "The observer does not load prevouts or prove token ancestry, conservation, balances, UTXO state, or spend validity.",
+    "The dedicated marker blocks use zero-value regtest coinbases to remain valid under the unchanged Ergon consensus; they do not prove economic token behavior.",
+    "Local tests are contradiction checks only; no result is public reproduction evidence at record-review time."
+  ],
+  "counterevidence": [
+    "No public build or functional execution of the exact candidate exists at record-review time.",
+    "Successful parser/colorer observation does not make SLP, ALP, or CashTokens native, valid, authoritative, or active in Ergon consensus.",
+    "Restart and reindex reconstruction from block inputs do not demonstrate durable storage, crash recovery, mempool state, historical queries, or API compatibility.",
+    "The unchanged default path remains authoritative: Chronik is compiled out or runtime disabled unless explicitly enabled on local regtest."
+  ],
+  "decision": {"status": "pending"}
+}
