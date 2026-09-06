@@ -302,7 +302,7 @@ bool StartNodeObserver() {
     RegisterValidationInterface(observer.get());
     g_chronik_node_observer = std::move(observer);
     LogPrintf("Chronik observer started mode=in-memory events=blocks "
-              "retained_blocks=%d\n",
+              "retained_blocks=%d owner=rust-worker command_capacity=0\n",
               CHRONIK_OBSERVER_RETAINED_BLOCKS);
     return true;
 }

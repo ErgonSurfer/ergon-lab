@@ -343,6 +343,11 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             0,
             extra_args=["-connect=0", "-disablewallet", "-chronikobserver"],
         )
+        assert (
+            "Chronik observer started mode=in-memory events=blocks "
+            "retained_blocks=288 owner=rust-worker command_capacity=0"
+            in self.read_log()
+        )
         assert_equal(self.read_bootstrap(), [(0, 2, 3, 3, 0, 0, 0, 0, 0)])
         initial_blocks = [node.getblockhash(height) for height in range(3)]
         assert_equal(

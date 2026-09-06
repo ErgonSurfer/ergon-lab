@@ -1,0 +1,288 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0032",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0032.json",
+  "purpose": {
+    "summary": "Place the volatile Chronik block projection behind a synchronous Rust single-owner worker without assigning validation or consensus authority.",
+    "scope": [
+      "Move all live observer mutation, rebuild-state reads, and atomic projection adoption onto one named Rust worker thread that exclusively owns the projection.",
+      "Use zero-capacity command and response channels plus a producer mutex covering each complete round trip so commands cannot queue or overlap at the state owner.",
+      "Exercise the actual Rust worker seam with a bounded unit canary that records the mutation thread, rejects a second send while the first mutation is blocked, verifies response order, and joins the owner cleanly.",
+      "Copy each accepted C ABI block payload once into an owned Rust buffer and move it to the worker without a second full Rust-side copy.",
+      "Catch Rust unwinds around worker mutations, mark the projection rebuild-required after a post-mutation unwind, and join workers during staging adoption and shutdown.",
+      "Preserve compile-time default OFF, runtime default OFF, explicit local-regtest-only opt-in, and observe/index-only operation."
+    ],
+    "exclusions": [
+      "No consensus, validation, mempool, chain-selection, activation, chain-parameter, testnet, mainnet, P2P, RPC, wallet, or user-interface rule changes.",
+      "No persistence, database, file format, codec, query API, socket, service, asynchronous backlog, or new observed-data semantics.",
+      "No claim that rendezvous bounds caller-side buffers copied before producer-mutex acquisition or that Rust unwind handling covers process aborts or foreign exceptions.",
+      "No local binary, build cache, raw process output, absolute host path, parent environment, operator material, private history, or unrelated product material enters this change."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "c5ee0cfccde08709176a67317de0f257ac5c24cf",
+      "tree": "7ce929a256a5594b9a116c915561843c7e2aebf1"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "342e5fa235ac306e20e7cde1f6186a45550872ce95f41f4da7e28688454a61f8",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {"mode": "100644", "bytes": 8325, "git_blob": "cde4b008bc0191f164d927a580fd1b0450f42107", "sha256": "3ce7c884afc02b133c25ce530a0eb2cdedef7c501a69e95ee515062eff6df097"},
+      "after": {"mode": "100644", "bytes": 9004, "git_blob": "d42f5a191938b1b1036f2b2723d86b8b78fbae75", "sha256": "b739268f0232991506176e134f0d8da1f49485e7c1540d21dcbb12e094683538"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public boundary documentation only.",
+      "test_reachability": "Defines single-owner, rendezvous, shutdown, panic, and caller-side payload limitations for review."
+    },
+    {
+      "path": "chronik/chronik-observer/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 51928, "git_blob": "dffb1de3d3325b4a7fca2118a4f4a8587624aa67", "sha256": "f621d13603362c9fe16fb783b7a1a4562f9021fcba146a66baf0f96f72f6a3ff"},
+      "after": {"mode": "100644", "bytes": 64565, "git_blob": "54a043ddbd51abeafcaa3311be92589486f4b284", "sha256": "4e2228fd6dc1f4ee7ed97f51b60c39fefa69c2603f04a48a3037d6b73ceb5028"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Compiled only in the optional local-regtest observer; one Rust worker owns volatile state and returns no validation decision.",
+      "test_reachability": "Adds synchronous worker lifecycle, ownership transfer, injected post-mutation unwind units, and a bounded canary that records a non-caller mutation owner, observes a second raw send return Full while the first mutation is blocked, verifies exact response-event order, and joins cleanly."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 13067, "git_blob": "f480170e55df738a39ac5b2ee69739dc87d69daa", "sha256": "1a0e8ebde86515b752fe6d43d48c250314f314b3bcb7405457434a9dc5b13a4a"},
+      "after": {"mode": "100644", "bytes": 13104, "git_blob": "59716576db0947e84a4f4b103d3362dec54e4a8b", "sha256": "3b40f711b83d1788979be539d43b265c3755ad5f2b96fb1acc2a93502eefb142"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Adds a debug startup identity for the optional worker-backed observer; callback semantics and void return authority remain unchanged.",
+      "test_reachability": "Provides a functional startup wiring marker only; the literal log line does not prove mutation ownership or channel capacity."
+    },
+    {
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100755", "bytes": 22864, "git_blob": "8dc0c134931226f58d08268fd3aab4a31c5c8d5e", "sha256": "d128a87b93e607bf420cc3fe4f3519f55c71abe78d2a3c6988da85de9ac2d291"},
+      "after": {"mode": "100755", "bytes": 23062, "git_blob": "d3aae1ae9b98e80c156a79110cd7b60d440aba1a", "sha256": "83c9ec953e226b752e8b448e21c404298cf608806b4361249e0458581caf6119"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Requires the executed opt-in binary to emit the expected worker-seam wiring marker before exercising reconstruction; ownership and zero-capacity behavior are proved by the Rust unit canary."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": ["Build with both Chronik options OFF and run inherited legacy mining."],
+        "expected_results": ["No Chronik link edge enters bitcoind and legacy behavior remains unchanged."]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": ["Build with BUILD_CHRONIK_OBSERVER=ON, omit -chronikobserver, and run mining_basic.py."],
+        "expected_results": ["The optional library is linked but no observer worker starts and inherited mining passes."]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": ["Run check-chronik-observer, feature_chronik_block_observer.py, feature_chronik_asset_observer.py, and feature_chronik_pruned_observer.py with --hermetic-child-env on fresh datadirs."],
+        "expected_results": ["Focused units, including the direct ownership/rendezvous canary, and every bounded reconstruction scenario pass through the synchronous worker seam."]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Start the compiled-in observer only on isolated regtest and connect, disconnect, and reconsider confirmed blocks.",
+        "expected_results": ["The startup log confirms the expected worker-seam wiring marker, the Rust unit canary proves the distinct mutation owner and zero-capacity rendezvous behavior, and debug commitments match independent reconstruction while the node tip remains authoritative."],
+        "failure_conditions": ["Any non-regtest activation, missing wiring marker, failed ownership/rendezvous unit canary, commitment mismatch, state mutation on rejection, or validation influence fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Restart the observer after building a retained active-chain suffix.",
+        "expected_results": ["A staging worker reconstructs the exact ordered retained projection, transfers ownership atomically, and is joined without minting live events."],
+        "failure_conditions": ["Partial adoption, stale state, wrong order, wrong commitment, worker loss, or growth beyond 288 blocks fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run a fresh full reindex process at height 288.",
+        "expected_results": ["Ordered block-file callbacks synchronously rebuild the exact last-288-block projection through the single owner."],
+        "failure_conditions": ["Missing, duplicated, reordered, rejected, or mismatched reconstructed observations fail the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run a fresh chainstate reindex process at height 288.",
+        "expected_results": ["Ordered chainstate callbacks rebuild the exact last-288-block projection without changing the active tip or UTXO-set hash."],
+        "failure_conditions": ["Bootstrap masking, block-file reindex, changed chain state, callback divergence, worker loss, or mismatched records fail the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Restart explicit observer opt-in on the inherited physically pruned height-1001 datadir.",
+        "expected_results": ["The exact still-readable 288-block suffix reconstructs through staging ownership transfer, and the next connection preserves the bound."],
+        "failure_conditions": ["Unreadable retained bodies, wrong suffix, event minting, record mismatch, worker loss, or bound growth fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Disconnect through the retained anchor, reject continuation, and restart for reconstruction.",
+        "expected_results": ["Records roll back LIFO, the single owner fails closed beyond its anchor, and restart reconstructs the active suffix."],
+        "failure_conditions": ["Non-LIFO acceptance, mutation after rebuild-required, unbounded retention, worker divergence, or node consensus influence fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "macOS arm64 local contradiction testing",
+        "Ubuntu 22.04 ARM64 public verification after technical acceptance"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 0e9724c13b801c1e1968f4ecd7683f6cc7833bf73522c2b0c496d57771aeb049"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Every validation callback and startup reconstruction request is synchronous; the worker seam isolates ownership but does not reduce callback latency.",
+    "The functional startup log is a wiring marker, not proof of thread ownership or rendezvous capacity; those properties are checked directly by the bounded Rust unit canary.",
+    "The zero-capacity channel bounds queued worker commands to zero but does not bound one payload already copied by each caller waiting for the producer mutex.",
+    "Normal startup transiently creates a separate staging worker, then closes and joins it before moving its projection into the live worker.",
+    "Caught Rust unwinds fail the projection closed; process aborts, allocation aborts, and foreign exceptions are outside this mechanism.",
+    "No durable state, historical full-chain index, mempool view, query interface, or new observed-data semantics are added.",
+    "Local tests are contradiction checks only; no result is public reproduction evidence at record-review time."
+  ],
+  "counterevidence": [
+    "No public build or functional execution of the exact candidate exists at record-review time.",
+    "The literal C++ startup marker would survive an incorrect worker implementation, so it is not accepted as the ownership or zero-capacity oracle.",
+    "A zero-capacity command channel establishes no queued backlog at the worker; it does not establish globally bounded process memory or asynchronous throughput.",
+    "A caught injected unwind demonstrates the rebuild-required transition, not recovery from process termination or arbitrary foreign failures.",
+    "The unchanged default path remains authoritative: Chronik is compiled out or runtime disabled unless explicitly enabled on local regtest."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

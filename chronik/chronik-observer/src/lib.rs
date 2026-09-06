@@ -3,12 +3,22 @@
 
 //! Reconstructible, volatile block projection for the legacy node.
 //!
-//! This crate has no persistence, networking, APIs, or threads. Its C ABI
-//! observes blocks after node validation and never returns a validation
-//! decision.
+//! This crate has no persistence, networking, or APIs. One worker thread owns
+//! each observer projection. Its C ABI observes blocks after node validation
+//! and never returns a validation decision.
 
 use std::collections::VecDeque;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::{
+    mpsc::{sync_channel, Receiver, SyncSender},
+    Mutex,
+};
+use std::thread::{self, JoinHandle};
+
+#[cfg(test)]
+use std::sync::mpsc::Sender;
+#[cfg(test)]
+use std::thread::ThreadId;
 
 use bitcoinsuite_core::{
     hash::{Hashed, Sha256d},
@@ -366,7 +376,7 @@ fn projection_totals(blocks: &VecDeque<ProjectedBlock>) -> Option<ProjectionTota
         .try_fold(ProjectionTotals::default(), ProjectionTotals::checked_add)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Observer {
     sequence: u64,
     blocks: VecDeque<ProjectedBlock>,
@@ -501,6 +511,246 @@ impl Observer {
         apply_projection(&mut observation, next_projection);
         Some(observation)
     }
+
+    fn adopt_projection(&mut self, mut rebuilt: Observer) -> Option<ProjectionObservation> {
+        let rebuilt_blocks = u64::try_from(rebuilt.blocks.len()).ok()?;
+        if rebuilt_blocks == 0
+            || rebuilt.sequence != rebuilt_blocks
+            || rebuilt.projection.blocks != rebuilt_blocks
+            || projection_totals(&rebuilt.blocks) != Some(rebuilt.projection)
+            || rebuilt.max_blocks != self.max_blocks
+            || rebuilt.needs_rebuild
+        {
+            return None;
+        }
+
+        let projection = rebuilt.projection;
+        self.blocks = std::mem::take(&mut rebuilt.blocks);
+        self.projection = projection;
+        self.is_truncated = rebuilt.is_truncated;
+        self.needs_rebuild = false;
+        Some(ProjectionObservation {
+            success: 1,
+            blocks: projection.blocks,
+            transactions: projection.transactions,
+            slp_family_transactions: projection.slp_family_transactions,
+            alp_family_transactions: projection.alp_family_transactions,
+            token_parse_failures: projection.token_parse_failures,
+            token_color_failures: projection.token_color_failures,
+            cash_token_prefix_outputs: projection.cash_token_prefix_outputs,
+            transaction_record_fingerprint: projection_transaction_record_fingerprint(&self.blocks),
+        })
+    }
+}
+
+enum ObserverCommand {
+    Connect {
+        hash: [u8; 32],
+        height: i32,
+        raw_block: Vec<u8>,
+        response: SyncSender<BlockObservation>,
+    },
+    Disconnect {
+        hash: [u8; 32],
+        response: SyncSender<BlockObservation>,
+    },
+    RequiresRebuild {
+        response: SyncSender<u64>,
+    },
+    Adopt {
+        rebuilt: Observer,
+        response: SyncSender<ProjectionObservation>,
+    },
+    #[cfg(test)]
+    Snapshot {
+        response: SyncSender<Observer>,
+    },
+    #[cfg(test)]
+    PanicAfterMutation {
+        response: SyncSender<u64>,
+    },
+    #[cfg(test)]
+    OwnershipCanary {
+        sequence: u64,
+        events: Sender<OwnershipCanaryEvent>,
+        release: Option<Receiver<()>>,
+        response: SyncSender<u64>,
+    },
+}
+
+#[cfg(test)]
+#[derive(Debug, Eq, PartialEq)]
+enum OwnershipCanaryEvent {
+    Mutated { sequence: u64, owner: ThreadId },
+    Responding { sequence: u64, owner: ThreadId },
+}
+
+/// Synchronous command handle for the thread that exclusively owns observer
+/// state. The zero-capacity channel and producer mutex permit no queued command
+/// backlog and keep each request paired with its response.
+pub struct ObserverWorker {
+    sender: Mutex<Option<SyncSender<ObserverCommand>>>,
+    thread: Option<JoinHandle<Observer>>,
+}
+
+impl ObserverWorker {
+    fn new(max_blocks: usize) -> Option<Self> {
+        let (sender, receiver) = sync_channel(0);
+        let observer = Observer::new(max_blocks);
+        let thread = thread::Builder::new()
+            .name("chronik-observer".to_owned())
+            .spawn(move || observer_worker_loop(observer, receiver))
+            .ok()?;
+        Some(Self {
+            sender: Mutex::new(Some(sender)),
+            thread: Some(thread),
+        })
+    }
+
+    fn request<T>(&self, command: impl FnOnce(SyncSender<T>) -> ObserverCommand) -> Option<T> {
+        let (response, result) = sync_channel(0);
+        let sender = self.sender.lock().ok()?;
+        sender.as_ref()?.send(command(response)).ok()?;
+        result.recv().ok()
+    }
+
+    fn connect(&self, hash: [u8; 32], height: i32, raw_block: Vec<u8>) -> Option<BlockObservation> {
+        self.request(|response| ObserverCommand::Connect {
+            hash,
+            height,
+            raw_block,
+            response,
+        })
+    }
+
+    fn disconnect(&self, hash: [u8; 32]) -> Option<BlockObservation> {
+        self.request(|response| ObserverCommand::Disconnect { hash, response })
+    }
+
+    fn requires_rebuild(&self) -> Option<u64> {
+        self.request(|response| ObserverCommand::RequiresRebuild { response })
+    }
+
+    fn adopt(&self, rebuilt: Observer) -> Option<ProjectionObservation> {
+        self.request(|response| ObserverCommand::Adopt { rebuilt, response })
+    }
+
+    #[cfg(test)]
+    fn snapshot(&self) -> Option<Observer> {
+        self.request(|response| ObserverCommand::Snapshot { response })
+    }
+
+    #[cfg(test)]
+    fn panic_after_mutation(&self) -> Option<u64> {
+        self.request(|response| ObserverCommand::PanicAfterMutation { response })
+    }
+
+    #[cfg(test)]
+    fn ownership_canary(
+        &self,
+        sequence: u64,
+        events: Sender<OwnershipCanaryEvent>,
+        release: Option<Receiver<()>>,
+    ) -> Option<u64> {
+        self.request(|response| ObserverCommand::OwnershipCanary {
+            sequence,
+            events,
+            release,
+            response,
+        })
+    }
+
+    #[cfg(test)]
+    fn test_sender(&self) -> Option<SyncSender<ObserverCommand>> {
+        self.sender.lock().ok()?.as_ref().cloned()
+    }
+
+    fn shutdown(&mut self) -> Option<Observer> {
+        let sender = self.sender.get_mut().ok()?.take();
+        drop(sender);
+        self.thread.take()?.join().ok()
+    }
+}
+
+impl Drop for ObserverWorker {
+    fn drop(&mut self) {
+        let _ = self.shutdown();
+    }
+}
+
+fn fail_closed_after_panic<T: Default>(
+    observer: &mut Observer,
+    operation: impl FnOnce(&mut Observer) -> T,
+) -> T {
+    match catch_unwind(AssertUnwindSafe(|| operation(observer))) {
+        Ok(result) => result,
+        Err(_) => {
+            observer.needs_rebuild = true;
+            T::default()
+        }
+    }
+}
+
+fn observer_worker_loop(mut observer: Observer, receiver: Receiver<ObserverCommand>) -> Observer {
+    while let Ok(command) = receiver.recv() {
+        match command {
+            ObserverCommand::Connect {
+                hash,
+                height,
+                raw_block,
+                response,
+            } => {
+                let observation = fail_closed_after_panic(&mut observer, |observer| {
+                    observe_owned_block(observer, hash, height, raw_block)
+                });
+                let _ = response.send(observation);
+            }
+            ObserverCommand::Disconnect { hash, response } => {
+                let observation = fail_closed_after_panic(&mut observer, |observer| {
+                    observer.disconnect_block(&hash).unwrap_or_default()
+                });
+                let _ = response.send(observation);
+            }
+            ObserverCommand::RequiresRebuild { response } => {
+                let _ = response.send(u64::from(observer.needs_rebuild));
+            }
+            ObserverCommand::Adopt { rebuilt, response } => {
+                let observation = fail_closed_after_panic(&mut observer, |observer| {
+                    observer.adopt_projection(rebuilt).unwrap_or_default()
+                });
+                let _ = response.send(observation);
+            }
+            #[cfg(test)]
+            ObserverCommand::Snapshot { response } => {
+                let _ = response.send(observer.clone());
+            }
+            #[cfg(test)]
+            ObserverCommand::PanicAfterMutation { response } => {
+                let result = fail_closed_after_panic(&mut observer, |observer| {
+                    observer.sequence = 7;
+                    panic!("injected observer worker panic after mutation")
+                });
+                let _ = response.send(result);
+            }
+            #[cfg(test)]
+            ObserverCommand::OwnershipCanary {
+                sequence,
+                events,
+                release,
+                response,
+            } => {
+                let owner = thread::current().id();
+                observer.sequence = sequence;
+                let _ = events.send(OwnershipCanaryEvent::Mutated { sequence, owner });
+                if let Some(release) = release {
+                    let _ = release.recv_timeout(std::time::Duration::from_secs(2));
+                }
+                let _ = events.send(OwnershipCanaryEvent::Responding { sequence, owner });
+                let _ = response.send(observer.sequence);
+            }
+        }
+    }
+    observer
 }
 
 fn event_fingerprint(kind: u8, hash: &[u8; 32], height: i32) -> u64 {
@@ -550,33 +800,18 @@ fn transaction_merkle_root(transactions: &[Tx]) -> Option<[u8; 32]> {
     )
 }
 
-fn observe_block(
-    observer: *mut Observer,
-    hash: *const u8,
+fn observe_owned_block(
+    observer: &mut Observer,
+    hash: [u8; 32],
     height: i32,
-    raw_block: *const u8,
-    raw_block_size: usize,
+    owned_raw_block: Vec<u8>,
 ) -> BlockObservation {
-    if observer.is_null()
-        || hash.is_null()
-        || raw_block.is_null()
-        || raw_block_size <= 80
-        || raw_block_size > isize::MAX as usize
-    {
+    if owned_raw_block.len() <= 80 {
         return BlockObservation::default();
     }
 
-    catch_unwind(AssertUnwindSafe(|| {
-        let mut owned_hash = [0u8; 32];
-        // SAFETY: C++ keeps the hash and serialized block alive for this
-        // synchronous call; Rust copies both before parsing or mutation.
-        unsafe { std::ptr::copy_nonoverlapping(hash, owned_hash.as_mut_ptr(), 32) };
-        // SAFETY: The non-null C++ buffer contains raw_block_size initialized
-        // bytes and remains alive for this synchronous call.
-        let owned_raw_block =
-            unsafe { std::slice::from_raw_parts(raw_block, raw_block_size) }.to_vec();
-
-        if Sha256d::digest(&owned_raw_block[..80]).as_le_bytes() != &owned_hash {
+    let Some(observation) = (|| {
+        if Sha256d::digest(&owned_raw_block[..80]).as_le_bytes() != &hash {
             return None;
         }
         let mut previous_hash = [0u8; 32];
@@ -600,7 +835,7 @@ fn observe_block(
         let transaction_record_fingerprint =
             compute_transaction_record_fingerprint(transaction_count, &transaction_records);
         let block = ProjectedBlock {
-            hash: owned_hash,
+            hash,
             height,
             transactions: transaction_count,
             slp_family_transactions: token_summary.slp_family_transactions,
@@ -611,26 +846,24 @@ fn observe_block(
             transaction_record_fingerprint,
             transaction_records,
         };
-        // SAFETY: C++ exclusively owns the non-null observer handle and
-        // serializes every callback that mutates it.
-        let mut observation = unsafe { &mut *observer }.connect_block(&previous_hash, block)?;
+        let mut observation = observer.connect_block(&previous_hash, block)?;
         observation.payload_size = payload_size;
         observation.payload_fingerprint = payload_fingerprint;
         Some(observation)
-    }))
-    .ok()
-    .flatten()
-    .unwrap_or_default()
+    })() else {
+        return BlockObservation::default();
+    };
+    observation
 }
 
 #[no_mangle]
-pub extern "C" fn chronik_observer_create_bounded(max_blocks: u64) -> *mut Observer {
+pub extern "C" fn chronik_observer_create_bounded(max_blocks: u64) -> *mut ObserverWorker {
     catch_unwind(AssertUnwindSafe(|| {
         let max_blocks = usize::try_from(max_blocks).ok()?;
         if max_blocks == 0 {
             return None;
         }
-        Some(Box::into_raw(Box::new(Observer::new(max_blocks))))
+        Some(Box::into_raw(Box::new(ObserverWorker::new(max_blocks)?)))
     }))
     .ok()
     .flatten()
@@ -638,26 +871,31 @@ pub extern "C" fn chronik_observer_create_bounded(max_blocks: u64) -> *mut Obser
 }
 
 #[no_mangle]
-pub extern "C" fn chronik_observer_destroy(observer: *mut Observer) -> u64 {
+pub extern "C" fn chronik_observer_destroy(observer: *mut ObserverWorker) -> u64 {
     if observer.is_null() {
         return 0;
     }
     catch_unwind(AssertUnwindSafe(|| {
         // SAFETY: C++ returns this handle exactly once after draining and
         // unregistering the validation interface.
-        unsafe { Box::from_raw(observer) }.sequence
+        let mut worker = unsafe { Box::from_raw(observer) };
+        worker
+            .shutdown()
+            .map(|observer| observer.sequence)
+            .unwrap_or_default()
     }))
     .unwrap_or_default()
 }
 
 #[no_mangle]
-pub extern "C" fn chronik_observer_requires_rebuild(observer: *const Observer) -> u64 {
+pub extern "C" fn chronik_observer_requires_rebuild(observer: *const ObserverWorker) -> u64 {
     if observer.is_null() {
         return 0;
     }
     catch_unwind(AssertUnwindSafe(|| {
-        // SAFETY: The caller keeps this observer alive and serializes access.
-        u64::from(unsafe { &*observer }.needs_rebuild)
+        // SAFETY: The caller keeps this worker handle alive for the complete
+        // synchronous request.
+        unsafe { &*observer }.requires_rebuild().unwrap_or_default()
     }))
     .unwrap_or_default()
 }
@@ -669,8 +907,8 @@ pub extern "C" fn chronik_observer_requires_rebuild(observer: *const Observer) -
 /// consumed, including when the target or staging projection is invalid.
 #[no_mangle]
 pub extern "C" fn chronik_observer_adopt_projection(
-    observer: *mut Observer,
-    rebuilt: *mut Observer,
+    observer: *mut ObserverWorker,
+    rebuilt: *mut ObserverWorker,
 ) -> ProjectionObservation {
     if rebuilt.is_null() || observer == rebuilt {
         return ProjectionObservation::default();
@@ -678,46 +916,15 @@ pub extern "C" fn chronik_observer_adopt_projection(
 
     catch_unwind(AssertUnwindSafe(|| {
         // SAFETY: The caller transfers this distinct staging handle exactly
-        // once. The box is dropped on rejection or after its state is moved.
-        let mut rebuilt = unsafe { Box::from_raw(rebuilt) };
+        // once. Closing its channel returns the uniquely owned staging state.
+        let mut rebuilt_worker = unsafe { Box::from_raw(rebuilt) };
+        let rebuilt = rebuilt_worker.shutdown()?;
         if observer.is_null() {
             return None;
         }
-        let rebuilt_blocks = u64::try_from(rebuilt.blocks.len()).ok()?;
-        // SAFETY: The target is non-null and remains exclusively owned by C++.
-        let target = unsafe { &*observer };
-        if rebuilt_blocks == 0
-            || rebuilt.sequence != rebuilt_blocks
-            || rebuilt.projection.blocks != rebuilt_blocks
-            || projection_totals(&rebuilt.blocks) != Some(rebuilt.projection)
-            || rebuilt.max_blocks != target.max_blocks
-            || rebuilt.needs_rebuild
-        {
-            return None;
-        }
-
-        let projection = rebuilt.projection;
-        let blocks = std::mem::take(&mut rebuilt.blocks);
-        // SAFETY: All fallible validation completed before this exclusive
-        // replacement of the target projection.
-        let target = unsafe { &mut *observer };
-        target.blocks = blocks;
-        target.projection = projection;
-        target.is_truncated = rebuilt.is_truncated;
-        target.needs_rebuild = false;
-        Some(ProjectionObservation {
-            success: 1,
-            blocks: projection.blocks,
-            transactions: projection.transactions,
-            slp_family_transactions: projection.slp_family_transactions,
-            alp_family_transactions: projection.alp_family_transactions,
-            token_parse_failures: projection.token_parse_failures,
-            token_color_failures: projection.token_color_failures,
-            cash_token_prefix_outputs: projection.cash_token_prefix_outputs,
-            transaction_record_fingerprint: projection_transaction_record_fingerprint(
-                &target.blocks,
-            ),
-        })
+        // SAFETY: The caller keeps the target handle alive for the complete
+        // synchronous adoption request.
+        unsafe { &*observer }.adopt(rebuilt)
     }))
     .ok()
     .flatten()
@@ -726,18 +933,39 @@ pub extern "C" fn chronik_observer_adopt_projection(
 
 #[no_mangle]
 pub extern "C" fn chronik_observer_block_connected(
-    observer: *mut Observer,
+    observer: *mut ObserverWorker,
     hash: *const u8,
     height: i32,
     raw_block: *const u8,
     raw_block_size: usize,
 ) -> BlockObservation {
-    observe_block(observer, hash, height, raw_block, raw_block_size)
+    if observer.is_null()
+        || hash.is_null()
+        || raw_block.is_null()
+        || raw_block_size <= 80
+        || raw_block_size > isize::MAX as usize
+    {
+        return BlockObservation::default();
+    }
+
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut owned_hash = [0u8; 32];
+        // SAFETY: C++ keeps both buffers alive for this synchronous call; Rust
+        // copies them before dispatching owned bytes to the worker.
+        unsafe { std::ptr::copy_nonoverlapping(hash, owned_hash.as_mut_ptr(), 32) };
+        let owned_raw_block =
+            unsafe { std::slice::from_raw_parts(raw_block, raw_block_size) }.to_vec();
+        // SAFETY: The caller keeps the worker handle alive until the response.
+        unsafe { &*observer }
+            .connect(owned_hash, height, owned_raw_block)
+            .unwrap_or_default()
+    }))
+    .unwrap_or_default()
 }
 
 #[no_mangle]
 pub extern "C" fn chronik_observer_block_disconnected(
-    observer: *mut Observer,
+    observer: *mut ObserverWorker,
     hash: *const u8,
 ) -> BlockObservation {
     if observer.is_null() || hash.is_null() {
@@ -747,14 +975,13 @@ pub extern "C" fn chronik_observer_block_disconnected(
     catch_unwind(AssertUnwindSafe(|| {
         let mut owned_hash = [0u8; 32];
         // SAFETY: C++ keeps the hash alive for this synchronous call; Rust
-        // copies it before mutating projection state.
+        // copies it before dispatching to the worker.
         unsafe { std::ptr::copy_nonoverlapping(hash, owned_hash.as_mut_ptr(), 32) };
-        // SAFETY: C++ exclusively owns the non-null observer handle and
-        // serializes every callback that mutates it.
-        unsafe { &mut *observer }.disconnect_block(&owned_hash)
+        // SAFETY: The caller keeps the worker handle alive until the response.
+        unsafe { &*observer }
+            .disconnect(owned_hash)
+            .unwrap_or_default()
     }))
-    .ok()
-    .flatten()
     .unwrap_or_default()
 }
 
@@ -832,7 +1059,7 @@ mod tests {
     }
 
     fn observe_connected(
-        observer: *mut Observer,
+        observer: *mut ObserverWorker,
         raw_block: &[u8],
         hash: &[u8; 32],
         height: i32,
@@ -943,8 +1170,8 @@ mod tests {
         assert_ne!(observation.block_transaction_record_fingerprint, 0);
         assert_ne!(observation.projection_transaction_record_fingerprint, 0);
 
-        // SAFETY: This test exclusively owns the live observer handle.
-        let projected = unsafe { &*observer };
+        // SAFETY: This test exclusively owns the live worker handle.
+        let projected = unsafe { &*observer }.snapshot().unwrap();
         let block = projected.blocks.back().unwrap();
         assert_eq!(block.transaction_records.len(), 2);
         assert_eq!(
@@ -1066,8 +1293,8 @@ mod tests {
         assert_eq!(connected_1.slp_family_transactions, 1);
         assert_eq!(connected_1.alp_family_transactions, 0);
         assert_eq!(connected_1.projection_slp_family_transactions, 1);
-        // SAFETY: This test exclusively owns the live observer handle.
-        let projected = unsafe { &*observer };
+        // SAFETY: This test exclusively owns the live worker handle.
+        let projected = unsafe { &*observer }.snapshot().unwrap();
         let block_1 = projected.blocks.back().unwrap();
         assert_eq!(block_1.transaction_records.as_ref(), &[expected_slp_record]);
         assert_eq!(
@@ -1096,8 +1323,8 @@ mod tests {
         assert_eq!(connected_2.projection_token_parse_failures, 1);
         assert_eq!(connected_2.projection_token_color_failures, 1);
         assert_eq!(connected_2.projection_cash_token_prefix_outputs, 2);
-        // SAFETY: This test exclusively owns the live observer handle.
-        let projected = unsafe { &*observer };
+        // SAFETY: This test exclusively owns the live worker handle.
+        let projected = unsafe { &*observer }.snapshot().unwrap();
         let block_2 = projected.blocks.back().unwrap();
         assert_eq!(
             block_2.transaction_records.as_ref(),
@@ -1124,8 +1351,8 @@ mod tests {
         assert_eq!(connected_3.projection_token_parse_failures, 1);
         assert_eq!(connected_3.projection_token_color_failures, 1);
         assert_eq!(connected_3.projection_cash_token_prefix_outputs, 3);
-        // SAFETY: This test exclusively owns the live observer handle.
-        let projected = unsafe { &*observer };
+        // SAFETY: This test exclusively owns the live worker handle.
+        let projected = unsafe { &*observer }.snapshot().unwrap();
         let block_3 = projected.blocks.back().unwrap();
         assert_eq!(
             block_3.transaction_records.as_ref(),
@@ -1236,8 +1463,8 @@ mod tests {
             observe_connected(rebuilt, &raw_block_2, &hash_2, 8).sequence,
             2
         );
-        // SAFETY: This test exclusively owns the live staging handle.
-        let rebuilt_projection = unsafe { &*rebuilt };
+        // SAFETY: This test exclusively owns the live staging worker handle.
+        let rebuilt_projection = unsafe { &*rebuilt }.snapshot().unwrap();
         let rebuilt_projection_fingerprint =
             projection_transaction_record_fingerprint(&rebuilt_projection.blocks);
         assert_eq!(
@@ -1290,6 +1517,142 @@ mod tests {
         assert_eq!(disconnected.sequence, 2);
         assert_eq!(disconnected.projection_blocks, 0);
         assert_eq!(chronik_observer_destroy(observer), 2);
+    }
+
+    #[test]
+    fn worker_panic_after_mutation_fails_closed() {
+        let mut worker = ObserverWorker::new(2).unwrap();
+        assert_eq!(worker.panic_after_mutation(), Some(0));
+        assert_eq!(worker.requires_rebuild(), Some(1));
+        let observer = worker.shutdown().unwrap();
+        assert_eq!(observer.sequence, 7);
+        assert!(observer.needs_rebuild);
+    }
+
+    #[test]
+    fn worker_ownership_and_rendezvous_canary() {
+        use std::sync::mpsc::{channel, RecvTimeoutError, TrySendError};
+        use std::time::Duration;
+
+        let mut worker = ObserverWorker::new(2).unwrap();
+        let worker_ref: &ObserverWorker = &worker;
+        let raw_sender = worker.test_sender().unwrap();
+        let (events, event_results) = channel();
+        let (callers, caller_results) = channel();
+        let (release, release_result) = channel();
+        let (probe, probe_result) = sync_channel(0);
+
+        let observations = thread::scope(|scope| {
+            let first_events = events.clone();
+            let first_callers = callers.clone();
+            let first = scope.spawn(move || {
+                let _ = first_callers.send((11, thread::current().id()));
+                worker_ref.ownership_canary(11, first_events, Some(release_result))
+            });
+
+            let first_caller = caller_results.recv_timeout(Duration::from_secs(2));
+            let first_event = event_results.recv_timeout(Duration::from_secs(2));
+
+            let second_events = events.clone();
+            let second_callers = callers.clone();
+            let second = scope.spawn(move || {
+                let _ = second_callers.send((12, thread::current().id()));
+                let (response, _response_result) = sync_channel(0);
+                let queued = raw_sender.try_send(ObserverCommand::OwnershipCanary {
+                    sequence: 12,
+                    events: second_events.clone(),
+                    release: None,
+                    response,
+                });
+                let probe_was_full = matches!(&queued, Err(TrySendError::Full(_)));
+                let _ = probe.send(probe_was_full);
+                match queued {
+                    Err(TrySendError::Full(_)) => {
+                        worker_ref.ownership_canary(12, second_events, None)
+                    }
+                    Ok(()) => _response_result.recv_timeout(Duration::from_secs(2)).ok(),
+                    Err(TrySendError::Disconnected(_)) => None,
+                }
+            });
+
+            let second_caller = caller_results.recv_timeout(Duration::from_secs(2));
+            let probe_was_full = probe_result.recv_timeout(Duration::from_secs(2));
+            let event_before_release = event_results.recv_timeout(Duration::from_millis(250));
+            let release_sent = release.send(()).is_ok();
+            let first_response_event = event_results.recv_timeout(Duration::from_secs(3));
+            let second_mutation_event = event_results.recv_timeout(Duration::from_secs(3));
+            let second_response_event = event_results.recv_timeout(Duration::from_secs(3));
+            let first_response = first.join().ok().flatten();
+            let second_response = second.join().ok().flatten();
+
+            (
+                first_caller,
+                second_caller,
+                first_event,
+                probe_was_full,
+                event_before_release,
+                release_sent,
+                first_response_event,
+                second_mutation_event,
+                second_response_event,
+                first_response,
+                second_response,
+            )
+        });
+
+        let observer = worker.shutdown();
+        let (
+            first_caller,
+            second_caller,
+            first_event,
+            probe_was_full,
+            event_before_release,
+            release_sent,
+            first_response_event,
+            second_mutation_event,
+            second_response_event,
+            first_response,
+            second_response,
+        ) = observations;
+        let (_, first_caller) = first_caller.unwrap();
+        let (_, second_caller) = second_caller.unwrap();
+        let owner = match first_event.unwrap() {
+            OwnershipCanaryEvent::Mutated {
+                sequence: 11,
+                owner,
+            } => owner,
+            event => panic!("unexpected first worker event: {event:?}"),
+        };
+        assert_ne!(owner, first_caller);
+        assert_ne!(owner, second_caller);
+        assert_eq!(probe_was_full, Ok(true));
+        assert_eq!(event_before_release, Err(RecvTimeoutError::Timeout));
+        assert!(release_sent);
+        assert_eq!(
+            first_response_event.unwrap(),
+            OwnershipCanaryEvent::Responding {
+                sequence: 11,
+                owner,
+            },
+        );
+        assert_eq!(
+            second_mutation_event.unwrap(),
+            OwnershipCanaryEvent::Mutated {
+                sequence: 12,
+                owner,
+            },
+        );
+        assert_eq!(
+            second_response_event.unwrap(),
+            OwnershipCanaryEvent::Responding {
+                sequence: 12,
+                owner,
+            },
+        );
+        assert_eq!(first_response, Some(11));
+        assert_eq!(second_response, Some(12));
+        let observer = observer.unwrap();
+        assert_eq!(observer.sequence, 12);
     }
 
     #[test]

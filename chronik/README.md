@@ -37,11 +37,16 @@ registers no callback and creates no Chronik state. Launching with it is
 fail-closed outside the exact local `regtest` profile.
 
 For each accepted block-connected callback, C++ serializes the immutable
-`CBlock` once with the canonical network serializer. Rust owns one copy, checks
-that the 80-byte header hashes to the callback block identity, deserializes the
-non-empty transaction vector without trailing bytes, and independently checks
-its Merkle root against header bytes 36 through 68. These checks protect the
-observer boundary; they do not revalidate or overrule the node.
+`CBlock` once with the canonical network serializer. The C ABI copies those
+bytes once into an owned Rust buffer and moves that buffer through a synchronous
+zero-capacity command rendezvous. A single Rust worker thread exclusively owns
+the live observer state. Its producer mutex covers each complete command and
+response, so commands cannot queue or overlap at the state owner. The worker
+checks that the 80-byte header hashes to the callback block identity,
+deserializes the non-empty transaction vector without trailing bytes, and
+independently checks its Merkle root against header bytes 36 through 68. These
+checks protect the observer boundary; they do not revalidate or overrule the
+node.
 
 The observer keeps a reversible projection of at most 288 active-chain blocks,
 matching the legacy `MIN_BLOCKS_TO_KEEP` suffix. Each retained block owns one
@@ -58,23 +63,28 @@ retained tip as its parent and advance one height. A disconnect must match the
 exact LIFO tip. Checked arithmetic and block parse failures reject the observer
 event without changing its sequence or projection.
 
-At normal startup, the node reads the available active suffix into a separate
-staging observer and adopts it only after the complete reconstruction passes.
-During `-reindex`, the observer starts from the empty active chain and rebuilds
-through accepted ordered callbacks. Disconnecting beyond the retained anchor
-enters a fail-closed `rebuild-required` state; further events are rejected by
-the observer until a normal restart reconstructs the new active suffix.
+At normal startup, the node reads the available active suffix through a
+separate staging worker and adopts its state only after the complete
+reconstruction passes. The staging worker is then closed and joined. During
+`-reindex`, the live worker starts from the empty active chain and rebuilds
+through accepted ordered callbacks. Disconnecting beyond the retained anchor,
+or an unwind caught after worker mutation, enters a fail-closed
+`rebuild-required` state; further events are rejected by the observer until a
+normal restart reconstructs the new active suffix.
 
 The state remains volatile: there is no persistent index to trust or migrate.
-This boundary creates no Chronik file, database, socket, API, service, or Rust
-thread, and it returns no decision to validation. Shutdown drains the
-validation callback queue before unregistering the observer and destroying its
-Rust handle. Dedicated `-reindex-chainstate` and actually pruned-datadir
-canaries exercise the same reconstruction boundary without adding a second
-state path. The chainstate canary replays genesis through height 288 and checks
-the unchanged active tip and UTXO-set hash. The pruning canary physically
-removes an old block file at height 1001, proves the old body unavailable, and
-then reconstructs exactly the still-readable heights 714 through 1001.
+This boundary creates no Chronik file, database, socket, API, or service, and
+it returns no decision to validation. The zero-capacity rendezvous bounds the
+worker command backlog to zero; it does not bound a payload already copied by
+a caller waiting for the producer mutex. Shutdown drains the validation
+callback queue before unregistering the observer, closes the command channel,
+joins the Rust worker, and destroys its handle. Dedicated
+`-reindex-chainstate` and actually pruned-datadir canaries exercise the same
+reconstruction boundary without adding a second state path. The chainstate
+canary replays genesis through height 288 and checks the unchanged active tip
+and UTXO-set hash. The pruning canary physically removes an old block file at
+height 1001, proves the old body unavailable, and then reconstructs exactly the
+still-readable heights 714 through 1001.
 
 ## Native-assets boundary
 
@@ -165,7 +175,8 @@ general pruning test.
 
 Build directories, Cargo caches, and test datadirs belong outside the source
 tree. Peak parsing memory includes the C++ serialization, one Rust-owned block
-buffer, and parsed transaction structures; startup reconstruction is currently
+buffer per caller that has crossed the C ABI, and parsed transaction structures;
+startup reconstruction and every validation callback round trip are
 synchronous. Compiling or enabling this observer is not evidence of a durable
 production index, API compatibility, native-asset validation, or consensus
 behavior.
