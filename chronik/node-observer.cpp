@@ -39,9 +39,11 @@ struct ChronikBlockObservation {
     uint64_t projection_token_parse_failures;
     uint64_t projection_token_color_failures;
     uint64_t projection_cash_token_prefix_outputs;
+    uint64_t block_transaction_record_fingerprint;
+    uint64_t projection_transaction_record_fingerprint;
 };
 
-static_assert(sizeof(ChronikBlockObservation) == 17 * sizeof(uint64_t));
+static_assert(sizeof(ChronikBlockObservation) == 19 * sizeof(uint64_t));
 
 struct ChronikProjectionObservation {
     uint64_t success;
@@ -52,9 +54,10 @@ struct ChronikProjectionObservation {
     uint64_t token_parse_failures;
     uint64_t token_color_failures;
     uint64_t cash_token_prefix_outputs;
+    uint64_t transaction_record_fingerprint;
 };
 
-static_assert(sizeof(ChronikProjectionObservation) == 8 * sizeof(uint64_t));
+static_assert(sizeof(ChronikProjectionObservation) == 9 * sizeof(uint64_t));
 
 // Match the active-chain suffix that the legacy node guarantees to retain.
 constexpr int32_t CHRONIK_OBSERVER_RETAINED_BLOCKS = MIN_BLOCKS_TO_KEEP;
@@ -145,14 +148,16 @@ public:
                   "retained_blocks=%u transactions=%u "
                   "slp_family_transactions=%u alp_family_transactions=%u "
                   "token_parse_failures=%u token_color_failures=%u "
-                  "cash_token_prefix_outputs=%u\n",
+                  "cash_token_prefix_outputs=%u "
+                  "transaction_record_fingerprint=%u\n",
                   indexes.front()->nHeight, indexes.back()->nHeight,
                   projection.blocks, projection.transactions,
                   projection.slp_family_transactions,
                   projection.alp_family_transactions,
                   projection.token_parse_failures,
                   projection.token_color_failures,
-                  projection.cash_token_prefix_outputs);
+                  projection.cash_token_prefix_outputs,
+                  projection.transaction_record_fingerprint);
         return true;
     }
 
@@ -203,7 +208,9 @@ private:
                   "projection_alp_family_transactions=%u "
                   "projection_token_parse_failures=%u "
                   "projection_token_color_failures=%u "
-                  "projection_cash_token_prefix_outputs=%u\n",
+                  "projection_cash_token_prefix_outputs=%u "
+                  "block_transaction_record_fingerprint=%u "
+                  "projection_transaction_record_fingerprint=%u\n",
                   observation.sequence, hash.GetHex(), height,
                   observation.fingerprint, observation.payload_size,
                   observation.payload_fingerprint,
@@ -219,7 +226,9 @@ private:
                   observation.projection_alp_family_transactions,
                   observation.projection_token_parse_failures,
                   observation.projection_token_color_failures,
-                  observation.projection_cash_token_prefix_outputs);
+                  observation.projection_cash_token_prefix_outputs,
+                  observation.block_transaction_record_fingerprint,
+                  observation.projection_transaction_record_fingerprint);
     }
 
     void LogDisconnectedObservation(
@@ -240,7 +249,9 @@ private:
                   "projection_alp_family_transactions=%u "
                   "projection_token_parse_failures=%u "
                   "projection_token_color_failures=%u "
-                  "projection_cash_token_prefix_outputs=%u\n",
+                  "projection_cash_token_prefix_outputs=%u "
+                  "block_transaction_record_fingerprint=%u "
+                  "projection_transaction_record_fingerprint=%u\n",
                   observation.sequence, hash.GetHex(), observation.fingerprint,
                   observation.transaction_count,
                   observation.slp_family_transactions,
@@ -254,7 +265,9 @@ private:
                   observation.projection_alp_family_transactions,
                   observation.projection_token_parse_failures,
                   observation.projection_token_color_failures,
-                  observation.projection_cash_token_prefix_outputs);
+                  observation.projection_cash_token_prefix_outputs,
+                  observation.block_transaction_record_fingerprint,
+                  observation.projection_transaction_record_fingerprint);
     }
 
     void LogRebuildRequired(const uint256 &hash) {

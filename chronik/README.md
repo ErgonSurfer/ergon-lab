@@ -44,13 +44,19 @@ its Merkle root against header bytes 36 through 68. These checks protect the
 observer boundary; they do not revalidate or overrule the node.
 
 The observer keeps a reversible projection of at most 288 active-chain blocks,
-matching the legacy `MIN_BLOCKS_TO_KEEP` suffix. It records block identity,
-height, transaction count, recognized SLP- and ALP-family transaction counts,
-token parser/coloring diagnostics, and the number of outputs whose serialized
-locking script begins with the CashTokens prefix byte `0xef`. A connect must
-name the exact retained tip as its parent and advance one height. A disconnect
-must match the exact LIFO tip. Checked arithmetic and block parse failures
-reject the observer event without changing its sequence or projection.
+matching the legacy `MIN_BLOCKS_TO_KEEP` suffix. Each retained block owns one
+fixed-size record per confirmed transaction: transaction ID, block position,
+serialized size, a non-cryptographic payload fingerprint, two observed-family
+flags, parser/coloring diagnostic counts, and a CashTokens-prefix output count.
+It does not retain transaction bodies, inputs, outputs, prevouts, or token/UTXO
+relationships. Block and projection fingerprints in debug logs commit to the
+ordered records for test comparison only; they are not stable APIs, security
+claims, or validity decisions. The record fingerprint is computed once per
+block; projection fingerprints compose at most 288 cached block fingerprints
+instead of rescanning retained transactions. A connect must name the exact
+retained tip as its parent and advance one height. A disconnect must match the
+exact LIFO tip. Checked arithmetic and block parse failures reject the observer
+event without changing its sequence or projection.
 
 At normal startup, the node reads the available active suffix into a separate
 staging observer and adopts it only after the complete reconstruction passes.
@@ -79,12 +85,11 @@ then reconstructs exactly the still-readable heights 714 through 1001.
   counts every output whose serialized locking script starts with `0xef` as a
   CashTokens *prefix candidate*, including malformed candidates. These are
   observations of confirmed block bytes, not validity statements.
-- Indexed or reconstructed data: the volatile 288-block suffix stores only
-  block identity, height, transaction count, the two family counts, diagnostic
-  failure counts, and candidate-prefix output count. Per-transaction records,
-  transaction bodies, token identifiers, balances, and UTXO relationships are
-  not retained. The aggregates are reversible and rebuilt from public block
-  inputs, but they are neither durable nor queryable.
+- Indexed or reconstructed data: the volatile 288-block suffix stores block
+  identity and height plus the fixed-size confirmed-transaction records listed
+  above. Reversible block totals are derived from those records. Transaction
+  bodies, prevouts, token identifiers, balances, and UTXO relationships are not
+  retained. Nothing is durable or queryable through an API.
 - Authoritative token validation or token state: none. The observer does not
   load prevouts, verify token ancestry or conservation, maintain spent token
   state, strictly decode CashTokens, or influence node validation.

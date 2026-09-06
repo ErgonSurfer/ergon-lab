@@ -78,6 +78,21 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
             self.read_bootstrap(restart_offset),
             [(714, 1001, 288, 288, 0, 0, 0, 0, 0)],
         )
+        retained_blocks = [
+            node.getblockhash(height) for height in range(714, 1002)
+        ]
+        assert_equal(
+            self.read_bootstrap_record_fingerprints(restart_offset),
+            [
+                (
+                    714,
+                    1001,
+                    self.projection_transaction_record_fingerprint(
+                        retained_blocks
+                    ),
+                )
+            ],
+        )
         assert_equal(self.read_events(restart_offset), [])
         chain_info = node.getblockchaininfo()
         assert_equal(chain_info["pruned"], True)
@@ -94,6 +109,12 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
         assert_equal(
             self.read_connected(restart_offset),
             [self.expected_connected(1, next_hash, 1002, 288, 288)],
+        )
+        assert_equal(
+            self.read_record_fingerprints(restart_offset),
+            self.expected_record_fingerprints(
+                retained_blocks, self.read_events(restart_offset)
+            ),
         )
         self.assert_no_chronik_paths()
         self.stop_node(0)

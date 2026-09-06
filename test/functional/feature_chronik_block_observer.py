@@ -8,6 +8,7 @@ import os
 import re
 import stat
 
+from test_framework.messages import CBlock, FromHex, hash256
 from test_framework.test_framework import BitcoinTestFramework, SkipTest
 from test_framework.test_node import ErrorMatch
 from test_framework.util import assert_equal
@@ -51,8 +52,20 @@ BOOTSTRAP_RE = re.compile(
     r"token_parse_failures=(\d+) token_color_failures=(\d+) "
     r"cash_token_prefix_outputs=(\d+)"
 )
+RECORD_FINGERPRINT_RE = re.compile(
+    r"Chronik observer event sequence=(\d+) kind=(connected|disconnected) "
+    r"hash=([0-9a-f]{64}) [^\n]*"
+    r"block_transaction_record_fingerprint=(\d+) "
+    r"projection_transaction_record_fingerprint=(\d+)"
+)
+BOOTSTRAP_RECORD_FINGERPRINT_RE = re.compile(
+    r"Chronik observer bootstrap start_height=(\d+) tip_height=(\d+) "
+    r"[^\n]*transaction_record_fingerprint=(\d+)"
+)
 FNV_OFFSET_BASIS = 0xCBF29CE484222325
 FNV_PRIME = 0x100000001B3
+BLOCK_RECORD_FINGERPRINT_DOMAIN = b"ergon-confirmed-transaction-records-v1"
+PROJECTION_RECORD_FINGERPRINT_DOMAIN = b"ergon-confirmed-transaction-projection-v1"
 
 
 def fnv_fingerprint(payload):
@@ -71,6 +84,13 @@ def event_fingerprint(kind, block_hash, height):
         + height.to_bytes(4, byteorder="little", signed=True)
     )
     return fnv_fingerprint(payload)
+
+
+def append_fingerprint(fingerprint, payload):
+    for byte in payload:
+        fingerprint ^= byte
+        fingerprint = (fingerprint * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
+    return fingerprint
 
 
 class ChronikBlockObserverTest(BitcoinTestFramework):
@@ -119,6 +139,105 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             tuple(int(value) for value in event)
             for event in BOOTSTRAP_RE.findall(self.read_log(offset))
         ]
+
+    def read_record_fingerprints(self, offset=0):
+        return [
+            (int(sequence), kind, block_hash, int(block_records), int(projection))
+            for sequence, kind, block_hash, block_records, projection in (
+                RECORD_FINGERPRINT_RE.findall(self.read_log(offset))
+            )
+        ]
+
+    def read_bootstrap_record_fingerprints(self, offset=0):
+        return [
+            (int(start_height), int(tip_height), int(fingerprint))
+            for start_height, tip_height, fingerprint in (
+                BOOTSTRAP_RECORD_FINGERPRINT_RE.findall(self.read_log(offset))
+            )
+        ]
+
+    def block_transaction_record_fingerprint(self, block_hash):
+        if not hasattr(self, "_block_record_fingerprints"):
+            self._block_record_fingerprints = {}
+        if block_hash in self._block_record_fingerprints:
+            return self._block_record_fingerprints[block_hash]
+        block = FromHex(CBlock(), self.nodes[0].getblock(block_hash, 0))
+        fingerprint = append_fingerprint(
+            FNV_OFFSET_BASIS, BLOCK_RECORD_FINGERPRINT_DOMAIN
+        )
+        fingerprint = append_fingerprint(
+            fingerprint, len(block.vtx).to_bytes(8, byteorder="little")
+        )
+        for index, transaction in enumerate(block.vtx):
+            payload = transaction.serialize()
+            fingerprint = append_fingerprint(fingerprint, hash256(payload))
+            for field in (
+                index,
+                len(payload),
+                fnv_fingerprint(payload),
+                0,
+                0,
+                0,
+                0,
+                0,
+            ):
+                fingerprint = append_fingerprint(
+                    fingerprint, field.to_bytes(8, byteorder="little")
+                )
+        self._block_record_fingerprints[block_hash] = fingerprint
+        return fingerprint
+
+    def projection_transaction_record_fingerprint(self, block_hashes):
+        fingerprint = append_fingerprint(
+            FNV_OFFSET_BASIS, PROJECTION_RECORD_FINGERPRINT_DOMAIN
+        )
+        fingerprint = append_fingerprint(
+            fingerprint, len(block_hashes).to_bytes(8, byteorder="little")
+        )
+        for block_hash in block_hashes:
+            if not hasattr(self, "_block_heights"):
+                self._block_heights = {}
+            if block_hash not in self._block_heights:
+                self._block_heights[block_hash] = self.nodes[0].getblockheader(
+                    block_hash
+                )["height"]
+            height = self._block_heights[block_hash]
+            fingerprint = append_fingerprint(
+                fingerprint, bytes.fromhex(block_hash)[::-1]
+            )
+            fingerprint = append_fingerprint(
+                fingerprint,
+                height.to_bytes(4, byteorder="little", signed=True),
+            )
+            fingerprint = append_fingerprint(
+                fingerprint,
+                self.block_transaction_record_fingerprint(block_hash).to_bytes(
+                    8, byteorder="little"
+                ),
+            )
+        return fingerprint
+
+    def expected_record_fingerprints(self, initial_blocks, events):
+        projection = list(initial_blocks)
+        expected = []
+        for sequence, kind, block_hash, _height, _fingerprint in events:
+            block_fingerprint = self.block_transaction_record_fingerprint(block_hash)
+            if kind == "connected":
+                projection.append(block_hash)
+                projection = projection[-288:]
+            else:
+                assert_equal(projection[-1], block_hash)
+                projection.pop()
+            expected.append(
+                (
+                    sequence,
+                    kind,
+                    block_hash,
+                    block_fingerprint,
+                    self.projection_transaction_record_fingerprint(projection),
+                )
+            )
+        return expected
 
     def expected_event(self, sequence, kind, block_hash, height):
         return (
@@ -225,6 +344,17 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             extra_args=["-connect=0", "-disablewallet", "-chronikobserver"],
         )
         assert_equal(self.read_bootstrap(), [(0, 2, 3, 3, 0, 0, 0, 0, 0)])
+        initial_blocks = [node.getblockhash(height) for height in range(3)]
+        assert_equal(
+            self.read_bootstrap_record_fingerprints(),
+            [
+                (
+                    0,
+                    2,
+                    self.projection_transaction_record_fingerprint(initial_blocks),
+                )
+            ],
+        )
         assert_equal(node.getnetworkinfo()["connections"], 0)
         self.assert_no_chronik_paths()
 
@@ -262,6 +392,10 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
                 self.expected_disconnected(4, observed_blocks[0], 3, 3),
             ],
         )
+        assert_equal(
+            self.read_record_fingerprints(),
+            self.expected_record_fingerprints(initial_blocks, self.read_events()),
+        )
         self.stop_node(0)
         assert "Chronik observer stopped observations=6" in self.read_log()
 
@@ -272,6 +406,19 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         )
         assert_equal(
             self.read_bootstrap(restart_offset), [(0, 4, 5, 5, 0, 0, 0, 0, 0)]
+        )
+        restart_projection = [node.getblockhash(height) for height in range(5)]
+        assert_equal(
+            self.read_bootstrap_record_fingerprints(restart_offset),
+            [
+                (
+                    0,
+                    4,
+                    self.projection_transaction_record_fingerprint(
+                        restart_projection
+                    ),
+                )
+            ],
         )
         restart_block = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()
@@ -322,6 +469,11 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
                     enumerate(active_blocks), start=1
                 )
             ],
+        )
+        reindex_events = self.read_events(reindex_offset)
+        assert_equal(
+            self.read_record_fingerprints(reindex_offset),
+            self.expected_record_fingerprints([], reindex_events),
         )
         expected_tip = node.getbestblockhash()
         expected_utxo_hash = node.gettxoutsetinfo()["hash_serialized"]
@@ -378,6 +530,11 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
                 )
             ],
         )
+        chainstate_events = self.read_events(chainstate_offset)
+        assert_equal(
+            self.read_record_fingerprints(chainstate_offset),
+            self.expected_record_fingerprints([], chainstate_events),
+        )
         assert_equal(self.read_disconnected(chainstate_offset), [])
 
         retained_anchor = node.getblockhash(1)
@@ -386,6 +543,10 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         assert_equal(node.getblockcount(), 0)
         events_before_reconsider = self.read_events(chainstate_offset)
         assert_equal(events_before_reconsider[-1][0], 577)
+        assert_equal(
+            self.read_record_fingerprints(chainstate_offset),
+            self.expected_record_fingerprints([], events_before_reconsider),
+        )
         assert_equal(
             self.read_log(chainstate_offset).count(
                 "Chronik observer state=rebuild-required "
@@ -416,6 +577,21 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         assert_equal(
             self.read_bootstrap(recovery_offset),
             [(1, 288, 288, 288, 0, 0, 0, 0, 0)],
+        )
+        recovery_projection = [
+            node.getblockhash(height) for height in range(1, 289)
+        ]
+        assert_equal(
+            self.read_bootstrap_record_fingerprints(recovery_offset),
+            [
+                (
+                    1,
+                    288,
+                    self.projection_transaction_record_fingerprint(
+                        recovery_projection
+                    ),
+                )
+            ],
         )
         recovery_block = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()

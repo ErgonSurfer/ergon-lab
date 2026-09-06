@@ -23,6 +23,8 @@ const DISCONNECTED: u8 = 2;
 const CASH_TOKEN_PREFIX: u8 = 0xef;
 const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
 const FNV_PRIME: u64 = 0x100000001b3;
+const BLOCK_RECORD_FINGERPRINT_DOMAIN: &[u8] = b"ergon-confirmed-transaction-records-v1";
+const PROJECTION_RECORD_FINGERPRINT_DOMAIN: &[u8] = b"ergon-confirmed-transaction-projection-v1";
 
 /// Result of one connected or disconnected block observation.
 ///
@@ -48,9 +50,11 @@ pub struct BlockObservation {
     pub projection_token_parse_failures: u64,
     pub projection_token_color_failures: u64,
     pub projection_cash_token_prefix_outputs: u64,
+    pub block_transaction_record_fingerprint: u64,
+    pub projection_transaction_record_fingerprint: u64,
 }
 
-const _: () = assert!(std::mem::size_of::<BlockObservation>() == 17 * std::mem::size_of::<u64>());
+const _: () = assert!(std::mem::size_of::<BlockObservation>() == 19 * std::mem::size_of::<u64>());
 
 /// Aggregate result after atomically adopting a rebuilt projection.
 #[repr(C)]
@@ -64,10 +68,11 @@ pub struct ProjectionObservation {
     pub token_parse_failures: u64,
     pub token_color_failures: u64,
     pub cash_token_prefix_outputs: u64,
+    pub transaction_record_fingerprint: u64,
 }
 
 const _: () =
-    assert!(std::mem::size_of::<ProjectionObservation>() == 8 * std::mem::size_of::<u64>());
+    assert!(std::mem::size_of::<ProjectionObservation>() == 9 * std::mem::size_of::<u64>());
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct ProjectionTotals {
@@ -82,6 +87,9 @@ struct ProjectionTotals {
 
 impl ProjectionTotals {
     fn checked_add(self, block: &ProjectedBlock) -> Option<Self> {
+        if !block.records_are_consistent() {
+            return None;
+        }
         Some(Self {
             blocks: self.blocks.checked_add(1)?,
             transactions: self.transactions.checked_add(block.transactions)?,
@@ -104,6 +112,9 @@ impl ProjectionTotals {
     }
 
     fn checked_sub(self, block: &ProjectedBlock) -> Option<Self> {
+        if !block.records_are_consistent() {
+            return None;
+        }
         Some(Self {
             blocks: self.blocks.checked_sub(1)?,
             transactions: self.transactions.checked_sub(block.transactions)?,
@@ -127,6 +138,19 @@ impl ProjectionTotals {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ProjectedTransaction {
+    txid: [u8; 32],
+    index: u64,
+    payload_size: u64,
+    payload_fingerprint: u64,
+    slp_family: u64,
+    alp_family: u64,
+    token_parse_failures: u64,
+    token_color_failures: u64,
+    cash_token_prefix_outputs: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct ProjectedBlock {
     hash: [u8; 32],
     height: i32,
@@ -136,6 +160,48 @@ struct ProjectedBlock {
     token_parse_failures: u64,
     token_color_failures: u64,
     cash_token_prefix_outputs: u64,
+    transaction_record_fingerprint: u64,
+    transaction_records: Box<[ProjectedTransaction]>,
+}
+
+impl ProjectedBlock {
+    fn records_are_consistent(&self) -> bool {
+        let Some(transactions) = u64::try_from(self.transaction_records.len()).ok() else {
+            return false;
+        };
+        if transactions != self.transactions {
+            return false;
+        }
+
+        let mut summary = TokenSummary::default();
+        for (index, record) in self.transaction_records.iter().enumerate() {
+            let Some(index) = u64::try_from(index).ok() else {
+                return false;
+            };
+            if record.index != index
+                || record.payload_size == 0
+                || record.slp_family > 1
+                || record.alp_family > 1
+            {
+                return false;
+            }
+            let Some(next) = summary.checked_add_record(record) else {
+                return false;
+            };
+            summary = next;
+        }
+
+        self.slp_family_transactions == summary.slp_family_transactions
+            && self.alp_family_transactions == summary.alp_family_transactions
+            && self.token_parse_failures == summary.token_parse_failures
+            && self.token_color_failures == summary.token_color_failures
+            && self.cash_token_prefix_outputs == summary.cash_token_prefix_outputs
+            && self.transaction_record_fingerprint
+                == compute_transaction_record_fingerprint(
+                    self.transactions,
+                    &self.transaction_records,
+                )
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -147,9 +213,39 @@ struct TokenSummary {
     cash_token_prefix_outputs: u64,
 }
 
-fn summarize_transactions(transactions: &[Tx]) -> Option<TokenSummary> {
+impl TokenSummary {
+    fn checked_add_record(self, record: &ProjectedTransaction) -> Option<Self> {
+        Some(Self {
+            slp_family_transactions: self
+                .slp_family_transactions
+                .checked_add(record.slp_family)?,
+            alp_family_transactions: self
+                .alp_family_transactions
+                .checked_add(record.alp_family)?,
+            token_parse_failures: self
+                .token_parse_failures
+                .checked_add(record.token_parse_failures)?,
+            token_color_failures: self
+                .token_color_failures
+                .checked_add(record.token_color_failures)?,
+            cash_token_prefix_outputs: self
+                .cash_token_prefix_outputs
+                .checked_add(record.cash_token_prefix_outputs)?,
+        })
+    }
+}
+
+fn project_transactions(
+    transactions: &[Tx],
+) -> Option<(Box<[ProjectedTransaction]>, TokenSummary)> {
+    let mut records = Vec::new();
+    records.try_reserve_exact(transactions.len()).ok()?;
     let mut summary = TokenSummary::default();
-    for transaction in transactions {
+    for (index, transaction) in transactions.iter().enumerate() {
+        let mut saw_slp = false;
+        let mut saw_alp = false;
+        let mut token_parse_failures = 0;
+        let mut token_color_failures = 0;
         if let Some(colored) = ColoredTx::color_tx(transaction) {
             let token_types = colored
                 .sections
@@ -167,37 +263,39 @@ fn summarize_transactions(transactions: &[Tx]) -> Option<TokenSummary> {
                         .iter()
                         .map(|failure| failure.parsed.meta.token_type),
                 );
-            let mut saw_slp = false;
-            let mut saw_alp = false;
             for token_type in token_types {
                 match token_type {
                     TokenType::Slp(_) => saw_slp = true,
                     TokenType::Alp(_) => saw_alp = true,
                 }
             }
-            summary.slp_family_transactions = summary
-                .slp_family_transactions
-                .checked_add(u64::from(saw_slp))?;
-            summary.alp_family_transactions = summary
-                .alp_family_transactions
-                .checked_add(u64::from(saw_alp))?;
-            summary.token_parse_failures = summary
-                .token_parse_failures
-                .checked_add(u64::try_from(colored.failed_parsings.len()).ok()?)?;
-            summary.token_color_failures = summary
-                .token_color_failures
-                .checked_add(u64::try_from(colored.failed_colorings.len()).ok()?)?;
+            token_parse_failures = u64::try_from(colored.failed_parsings.len()).ok()?;
+            token_color_failures = u64::try_from(colored.failed_colorings.len()).ok()?;
         }
-        let prefix_outputs = transaction
-            .outputs
-            .iter()
-            .filter(|output| output.script.bytecode().first() == Some(&CASH_TOKEN_PREFIX))
-            .count();
-        summary.cash_token_prefix_outputs = summary
-            .cash_token_prefix_outputs
-            .checked_add(u64::try_from(prefix_outputs).ok()?)?;
+        let cash_token_prefix_outputs = u64::try_from(
+            transaction
+                .outputs
+                .iter()
+                .filter(|output| output.script.bytecode().first() == Some(&CASH_TOKEN_PREFIX))
+                .count(),
+        )
+        .ok()?;
+        let payload = transaction.ser();
+        let record = ProjectedTransaction {
+            txid: transaction.txid().to_bytes(),
+            index: u64::try_from(index).ok()?,
+            payload_size: u64::try_from(payload.len()).ok()?,
+            payload_fingerprint: fingerprint_bytes(payload),
+            slp_family: u64::from(saw_slp),
+            alp_family: u64::from(saw_alp),
+            token_parse_failures,
+            token_color_failures,
+            cash_token_prefix_outputs,
+        };
+        summary = summary.checked_add_record(&record)?;
+        records.push(record);
     }
-    Some(summary)
+    Some((records.into_boxed_slice(), summary))
 }
 
 fn apply_projection(observation: &mut BlockObservation, projection: ProjectionTotals) {
@@ -208,6 +306,64 @@ fn apply_projection(observation: &mut BlockObservation, projection: ProjectionTo
     observation.projection_token_parse_failures = projection.token_parse_failures;
     observation.projection_token_color_failures = projection.token_color_failures;
     observation.projection_cash_token_prefix_outputs = projection.cash_token_prefix_outputs;
+}
+
+fn update_fingerprint(fingerprint: &mut u64, bytes: &[u8]) {
+    for byte in bytes {
+        *fingerprint ^= u64::from(*byte);
+        *fingerprint = fingerprint.wrapping_mul(FNV_PRIME);
+    }
+}
+
+fn compute_transaction_record_fingerprint(
+    transactions: u64,
+    records: &[ProjectedTransaction],
+) -> u64 {
+    let mut fingerprint = FNV_OFFSET_BASIS;
+    update_fingerprint(&mut fingerprint, BLOCK_RECORD_FINGERPRINT_DOMAIN);
+    update_fingerprint(&mut fingerprint, &transactions.to_le_bytes());
+    for record in records {
+        update_fingerprint(&mut fingerprint, &record.txid);
+        for field in [
+            record.index,
+            record.payload_size,
+            record.payload_fingerprint,
+            record.slp_family,
+            record.alp_family,
+            record.token_parse_failures,
+            record.token_color_failures,
+            record.cash_token_prefix_outputs,
+        ] {
+            update_fingerprint(&mut fingerprint, &field.to_le_bytes());
+        }
+    }
+    fingerprint
+}
+
+fn block_transaction_record_fingerprint(block: &ProjectedBlock) -> u64 {
+    block.transaction_record_fingerprint
+}
+
+fn projection_transaction_record_fingerprint(blocks: &VecDeque<ProjectedBlock>) -> u64 {
+    let mut fingerprint = FNV_OFFSET_BASIS;
+    update_fingerprint(&mut fingerprint, PROJECTION_RECORD_FINGERPRINT_DOMAIN);
+    let block_count = u64::try_from(blocks.len()).unwrap_or(u64::MAX);
+    update_fingerprint(&mut fingerprint, &block_count.to_le_bytes());
+    for block in blocks {
+        update_fingerprint(&mut fingerprint, &block.hash);
+        update_fingerprint(&mut fingerprint, &block.height.to_le_bytes());
+        update_fingerprint(
+            &mut fingerprint,
+            &block.transaction_record_fingerprint.to_le_bytes(),
+        );
+    }
+    fingerprint
+}
+
+fn projection_totals(blocks: &VecDeque<ProjectedBlock>) -> Option<ProjectionTotals> {
+    blocks
+        .iter()
+        .try_fold(ProjectionTotals::default(), ProjectionTotals::checked_add)
 }
 
 #[derive(Debug)]
@@ -254,37 +410,49 @@ impl Observer {
             }
         }
 
+        let block_transaction_record_fingerprint = block_transaction_record_fingerprint(&block);
         let mut next_projection = self.projection.checked_add(&block)?;
         let evicted = if self.blocks.len() == self.max_blocks {
-            let evicted = *self.blocks.front()?;
-            next_projection = next_projection.checked_sub(&evicted)?;
-            Some(evicted)
+            next_projection = next_projection.checked_sub(self.blocks.front()?)?;
+            true
         } else {
             self.blocks.try_reserve(1).ok()?;
-            None
+            false
         };
 
         let first_block = self.blocks.is_empty();
-        if evicted.is_some() {
+        if evicted {
             self.blocks.pop_front();
             self.is_truncated = true;
         }
+        let block_hash = block.hash;
+        let block_height = block.height;
+        let block_transactions = block.transactions;
+        let block_slp_family_transactions = block.slp_family_transactions;
+        let block_alp_family_transactions = block.alp_family_transactions;
+        let block_token_parse_failures = block.token_parse_failures;
+        let block_token_color_failures = block.token_color_failures;
+        let block_cash_token_prefix_outputs = block.cash_token_prefix_outputs;
         self.blocks.push_back(block);
         if first_block {
-            self.is_truncated = block.height > 0;
+            self.is_truncated = block_height > 0;
         }
         self.projection = next_projection;
+        let projection_transaction_record_fingerprint =
+            projection_transaction_record_fingerprint(&self.blocks);
 
-        let (sequence, fingerprint) = self.record(CONNECTED, &block.hash, block.height);
+        let (sequence, fingerprint) = self.record(CONNECTED, &block_hash, block_height);
         let mut observation = BlockObservation {
             sequence,
             fingerprint,
-            transaction_count: block.transactions,
-            slp_family_transactions: block.slp_family_transactions,
-            alp_family_transactions: block.alp_family_transactions,
-            token_parse_failures: block.token_parse_failures,
-            token_color_failures: block.token_color_failures,
-            cash_token_prefix_outputs: block.cash_token_prefix_outputs,
+            transaction_count: block_transactions,
+            slp_family_transactions: block_slp_family_transactions,
+            alp_family_transactions: block_alp_family_transactions,
+            token_parse_failures: block_token_parse_failures,
+            token_color_failures: block_token_color_failures,
+            cash_token_prefix_outputs: block_cash_token_prefix_outputs,
+            block_transaction_record_fingerprint,
+            projection_transaction_record_fingerprint,
             ..Default::default()
         };
         apply_projection(&mut observation, next_projection);
@@ -295,28 +463,39 @@ impl Observer {
         if self.needs_rebuild {
             return None;
         }
-        let tip = *self.blocks.back()?;
+        let tip = self.blocks.back()?;
         if tip.hash != *hash {
             return None;
         }
 
-        let next_projection = self.projection.checked_sub(&tip)?;
+        let next_projection = self.projection.checked_sub(tip)?;
+        let block_transaction_record_fingerprint = block_transaction_record_fingerprint(tip);
+        let block_transactions = tip.transactions;
+        let block_slp_family_transactions = tip.slp_family_transactions;
+        let block_alp_family_transactions = tip.alp_family_transactions;
+        let block_token_parse_failures = tip.token_parse_failures;
+        let block_token_color_failures = tip.token_color_failures;
+        let block_cash_token_prefix_outputs = tip.cash_token_prefix_outputs;
         self.blocks.pop_back();
         self.projection = next_projection;
         if self.blocks.is_empty() && self.is_truncated {
             self.needs_rebuild = true;
         }
+        let projection_transaction_record_fingerprint =
+            projection_transaction_record_fingerprint(&self.blocks);
 
         let (sequence, fingerprint) = self.record(DISCONNECTED, hash, -1);
         let mut observation = BlockObservation {
             sequence,
             fingerprint,
-            transaction_count: tip.transactions,
-            slp_family_transactions: tip.slp_family_transactions,
-            alp_family_transactions: tip.alp_family_transactions,
-            token_parse_failures: tip.token_parse_failures,
-            token_color_failures: tip.token_color_failures,
-            cash_token_prefix_outputs: tip.cash_token_prefix_outputs,
+            transaction_count: block_transactions,
+            slp_family_transactions: block_slp_family_transactions,
+            alp_family_transactions: block_alp_family_transactions,
+            token_parse_failures: block_token_parse_failures,
+            token_color_failures: block_token_color_failures,
+            cash_token_prefix_outputs: block_cash_token_prefix_outputs,
+            block_transaction_record_fingerprint,
+            projection_transaction_record_fingerprint,
             ..Default::default()
         };
         apply_projection(&mut observation, next_projection);
@@ -417,7 +596,9 @@ fn observe_block(
         }
 
         let transaction_count = u64::try_from(transactions.len()).ok()?;
-        let token_summary = summarize_transactions(&transactions)?;
+        let (transaction_records, token_summary) = project_transactions(&transactions)?;
+        let transaction_record_fingerprint =
+            compute_transaction_record_fingerprint(transaction_count, &transaction_records);
         let block = ProjectedBlock {
             hash: owned_hash,
             height,
@@ -427,6 +608,8 @@ fn observe_block(
             token_parse_failures: token_summary.token_parse_failures,
             token_color_failures: token_summary.token_color_failures,
             cash_token_prefix_outputs: token_summary.cash_token_prefix_outputs,
+            transaction_record_fingerprint,
+            transaction_records,
         };
         // SAFETY: C++ exclusively owns the non-null observer handle and
         // serializes every callback that mutates it.
@@ -506,6 +689,7 @@ pub extern "C" fn chronik_observer_adopt_projection(
         if rebuilt_blocks == 0
             || rebuilt.sequence != rebuilt_blocks
             || rebuilt.projection.blocks != rebuilt_blocks
+            || projection_totals(&rebuilt.blocks) != Some(rebuilt.projection)
             || rebuilt.max_blocks != target.max_blocks
             || rebuilt.needs_rebuild
         {
@@ -530,6 +714,9 @@ pub extern "C" fn chronik_observer_adopt_projection(
             token_parse_failures: projection.token_parse_failures,
             token_color_failures: projection.token_color_failures,
             cash_token_prefix_outputs: projection.cash_token_prefix_outputs,
+            transaction_record_fingerprint: projection_transaction_record_fingerprint(
+                &target.blocks,
+            ),
         })
     }))
     .ok()
@@ -600,6 +787,29 @@ mod tests {
     fn canonical_default_tx() -> Tx {
         let tx = TxMut::default();
         Tx::with_txid(TxId::from_tx(&tx), tx)
+    }
+
+    fn expected_record(
+        transaction: &Tx,
+        index: u64,
+        slp_family: u64,
+        alp_family: u64,
+        token_parse_failures: u64,
+        token_color_failures: u64,
+        cash_token_prefix_outputs: u64,
+    ) -> ProjectedTransaction {
+        let payload = transaction.ser();
+        ProjectedTransaction {
+            txid: transaction.txid().to_bytes(),
+            index,
+            payload_size: u64::try_from(payload.len()).unwrap(),
+            payload_fingerprint: fingerprint_bytes(payload),
+            slp_family,
+            alp_family,
+            token_parse_failures,
+            token_color_failures,
+            cash_token_prefix_outputs,
+        }
     }
 
     fn serialized_block_with_parent(
@@ -707,6 +917,62 @@ mod tests {
     }
 
     #[test]
+    fn retains_only_fixed_confirmed_transaction_records() {
+        let observer = chronik_observer_create_bounded(2);
+        let transactions = vec![
+            canonical_default_tx(),
+            tx_with_outputs([Script::new(vec![CASH_TOKEN_PREFIX].into())]),
+        ];
+        let expected = transactions
+            .iter()
+            .enumerate()
+            .map(|(index, transaction)| {
+                let payload = transaction.ser();
+                (
+                    transaction.txid().to_bytes(),
+                    u64::try_from(index).unwrap(),
+                    u64::try_from(payload.len()).unwrap(),
+                    fingerprint_bytes(payload),
+                )
+            })
+            .collect::<Vec<_>>();
+        let (raw_block, hash) = serialized_block(transactions, 0x40);
+
+        let observation = observe_connected(observer, &raw_block, &hash, 7);
+        assert_eq!(observation.transaction_count, 2);
+        assert_ne!(observation.block_transaction_record_fingerprint, 0);
+        assert_ne!(observation.projection_transaction_record_fingerprint, 0);
+
+        // SAFETY: This test exclusively owns the live observer handle.
+        let projected = unsafe { &*observer };
+        let block = projected.blocks.back().unwrap();
+        assert_eq!(block.transaction_records.len(), 2);
+        assert_eq!(
+            block_transaction_record_fingerprint(block),
+            observation.block_transaction_record_fingerprint
+        );
+        assert_eq!(
+            projection_transaction_record_fingerprint(&projected.blocks),
+            observation.projection_transaction_record_fingerprint,
+        );
+        for (record, (txid, index, payload_size, payload_fingerprint)) in
+            block.transaction_records.iter().zip(expected)
+        {
+            assert_eq!(record.txid, txid);
+            assert_eq!(record.index, index);
+            assert_eq!(record.payload_size, payload_size);
+            assert_eq!(record.payload_fingerprint, payload_fingerprint);
+            assert_eq!(record.slp_family, 0);
+            assert_eq!(record.alp_family, 0);
+            assert_eq!(record.token_parse_failures, 0);
+            assert_eq!(record.token_color_failures, 0);
+        }
+        assert_eq!(block.transaction_records[0].cash_token_prefix_outputs, 0);
+        assert_eq!(block.transaction_records[1].cash_token_prefix_outputs, 1);
+        assert_eq!(chronik_observer_destroy(observer), 1);
+    }
+
+    #[test]
     fn connects_and_disconnects_only_the_exact_tip() {
         let observer = chronik_observer_create_bounded(4);
         let (raw_block_1, hash_1) = serialized_block(vec![canonical_default_tx()], 0x41);
@@ -787,11 +1053,31 @@ mod tests {
             Script::new(vec![0x51, CASH_TOKEN_PREFIX].into()),
         ]);
 
+        let expected_slp_record = expected_record(&slp, 0, 1, 0, 0, 0, 0);
+        let expected_block_2_records = [
+            expected_record(&alp, 0, 0, 1, 0, 0, 0),
+            expected_record(&alp_color_failure, 1, 0, 1, 0, 1, 0),
+            expected_record(&malformed_slp, 2, 0, 0, 1, 0, 0),
+            expected_record(&prefix_candidates, 3, 0, 0, 0, 0, 2),
+        ];
+
         let (raw_block_1, hash_1) = serialized_block(vec![slp], 0x45);
         let connected_1 = observe_connected(observer, &raw_block_1, &hash_1, 7);
         assert_eq!(connected_1.slp_family_transactions, 1);
         assert_eq!(connected_1.alp_family_transactions, 0);
         assert_eq!(connected_1.projection_slp_family_transactions, 1);
+        // SAFETY: This test exclusively owns the live observer handle.
+        let projected = unsafe { &*observer };
+        let block_1 = projected.blocks.back().unwrap();
+        assert_eq!(block_1.transaction_records.as_ref(), &[expected_slp_record]);
+        assert_eq!(
+            block_1.transaction_record_fingerprint,
+            compute_transaction_record_fingerprint(1, &[expected_slp_record]),
+        );
+        assert_eq!(
+            connected_1.block_transaction_record_fingerprint,
+            block_1.transaction_record_fingerprint,
+        );
 
         let (raw_block_2, hash_2) = serialized_block_with_parent(
             vec![alp, alp_color_failure, malformed_slp, prefix_candidates],
@@ -810,8 +1096,24 @@ mod tests {
         assert_eq!(connected_2.projection_token_parse_failures, 1);
         assert_eq!(connected_2.projection_token_color_failures, 1);
         assert_eq!(connected_2.projection_cash_token_prefix_outputs, 2);
+        // SAFETY: This test exclusively owns the live observer handle.
+        let projected = unsafe { &*observer };
+        let block_2 = projected.blocks.back().unwrap();
+        assert_eq!(
+            block_2.transaction_records.as_ref(),
+            &expected_block_2_records,
+        );
+        assert_eq!(
+            block_2.transaction_record_fingerprint,
+            compute_transaction_record_fingerprint(4, &expected_block_2_records),
+        );
+        assert_eq!(
+            connected_2.block_transaction_record_fingerprint,
+            block_2.transaction_record_fingerprint,
+        );
 
         let prefix_only = tx_with_outputs([Script::new(vec![CASH_TOKEN_PREFIX].into())]);
+        let expected_prefix_record = expected_record(&prefix_only, 0, 0, 0, 0, 0, 1);
         let (raw_block_3, hash_3) = serialized_block_with_parent(vec![prefix_only], 0x47, hash_2);
         let connected_3 = observe_connected(observer, &raw_block_3, &hash_3, 9);
         assert_eq!(connected_3.cash_token_prefix_outputs, 1);
@@ -822,6 +1124,17 @@ mod tests {
         assert_eq!(connected_3.projection_token_parse_failures, 1);
         assert_eq!(connected_3.projection_token_color_failures, 1);
         assert_eq!(connected_3.projection_cash_token_prefix_outputs, 3);
+        // SAFETY: This test exclusively owns the live observer handle.
+        let projected = unsafe { &*observer };
+        let block_3 = projected.blocks.back().unwrap();
+        assert_eq!(
+            block_3.transaction_records.as_ref(),
+            &[expected_prefix_record],
+        );
+        assert_eq!(
+            connected_3.block_transaction_record_fingerprint,
+            block_3.transaction_record_fingerprint,
+        );
 
         let disconnected_3 = chronik_observer_block_disconnected(observer, hash_3.as_ptr());
         assert_eq!(disconnected_3.projection_blocks, 1);
@@ -923,12 +1236,17 @@ mod tests {
             observe_connected(rebuilt, &raw_block_2, &hash_2, 8).sequence,
             2
         );
+        // SAFETY: This test exclusively owns the live staging handle.
+        let rebuilt_projection = unsafe { &*rebuilt };
+        let rebuilt_projection_fingerprint =
+            projection_transaction_record_fingerprint(&rebuilt_projection.blocks);
         assert_eq!(
             chronik_observer_adopt_projection(observer, rebuilt),
             ProjectionObservation {
                 success: 1,
                 blocks: 2,
                 transactions: 3,
+                transaction_record_fingerprint: rebuilt_projection_fingerprint,
                 ..Default::default()
             },
         );

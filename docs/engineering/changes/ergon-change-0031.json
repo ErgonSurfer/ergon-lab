@@ -1,0 +1,294 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0031",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0031.json",
+  "purpose": {
+    "summary": "Retain bounded fixed-size records for confirmed transactions in the volatile Chronik observer without assigning validation or consensus authority.",
+    "scope": [
+      "Retain transaction ID, block position, serialized size, a non-cryptographic payload fingerprint, observed-family flags, diagnostic counts, and CashTokens-prefix output count for each confirmed transaction in the active suffix.",
+      "Compute each debug-only block fingerprint once and compose projection fingerprints from at most 288 cached block values so public tests can compare connect, disconnect, restart, reindex, pruning, and bounded-eviction state.",
+      "Keep records volatile, reversible, and bounded by the existing 288-block suffix.",
+      "Preserve compile-time default OFF, runtime default OFF, explicit local-regtest-only opt-in, and observe/index-only operation."
+    ],
+    "exclusions": [
+      "No consensus, validation, mempool, chain-selection, activation, chain-parameter, testnet, mainnet, P2P, RPC, wallet, or user-interface rule changes.",
+      "No transaction bodies, inputs, outputs, prevouts, token identifiers, balances, UTXO relationships, persistence, database, file format, API, socket, service, or thread.",
+      "No token-validity, cryptographic-commitment, stable-API, or security claim for the retained diagnostics or FNV fingerprints.",
+      "No local binary, build cache, raw process output, absolute host path, parent environment, operator material, private history, or unrelated product material enters this change."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "b46d2a96aeff345228a798e0af2b882ad163646a",
+      "tree": "940f27a610aabe1b79fd30318588e4f81f3c4584"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "1ecf732ff498d53ffa843a672587cd19e38f6620a291116b97c920d5352a0ec7",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata, and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {"mode": "100644", "bytes": 7943, "git_blob": "01f529359a1bb6d79af48449247af23c1796ef33", "sha256": "9d3edf1488014a0371e97e37c6e052edd2eb54a13291178d9bb2d4ef2b3470cd"},
+      "after": {"mode": "100644", "bytes": 8325, "git_blob": "cde4b008bc0191f164d927a580fd1b0450f42107", "sha256": "3ce7c884afc02b133c25ce530a0eb2cdedef7c501a69e95ee515062eff6df097"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public boundary documentation only.",
+      "test_reachability": "Defines the exact retained fields, bounded lifetime, fingerprint purpose, and excluded authority."
+    },
+    {
+      "path": "chronik/chronik-observer/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 38854, "git_blob": "5977828e40d55fb465fcacf622fbe237d083c661", "sha256": "51e06448f1d31953114529d2fad8a5b7eac4d936f7c8b483fa13193af69eec5a"},
+      "after": {"mode": "100644", "bytes": 51928, "git_blob": "dffb1de3d3325b4a7fca2118a4f4a8587624aa67", "sha256": "f621d13603362c9fe16fb783b7a1a4562f9021fcba146a66baf0f96f72f6a3ff"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Compiled only in the optional local-regtest observer; stores fixed records after node validation and returns no validation decision.",
+      "test_reachability": "Adds fixed-record retention, cached block commitments, consistency checks, and exact per-position non-zero asset-field units."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 12263, "git_blob": "7dbb085029039c7d4bb59622bd3cda9bd3f76515", "sha256": "d63bb28a9d4801ed0d3b0a90372535e56c72df287318e62f9e977b2ac8e59daa"},
+      "after": {"mode": "100644", "bytes": 13067, "git_blob": "f480170e55df738a39ac5b2ee69739dc87d69daa", "sha256": "1a0e8ebde86515b752fe6d43d48c250314f314b3bcb7405457434a9dc5b13a4a"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Extends the private optional-observer ABI and debug logs only; callbacks remain post-validation and void.",
+      "test_reachability": "Publishes block and projection record fingerprints to the public functional oracle."
+    },
+    {
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100755", "bytes": 16064, "git_blob": "359c6ae8a89ad75b1931ef773351186e8672c533", "sha256": "e3448fbfcecba936338b31d1331b816a87c642e90cbf03746b2de9b4701cfbd6"},
+      "after": {"mode": "100755", "bytes": 22864, "git_blob": "8dc0c134931226f58d08268fd3aab4a31c5c8d5e", "sha256": "d128a87b93e607bf420cc3fe4f3519f55c71abe78d2a3c6988da85de9ac2d291"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Independently recomputes ordered record commitments across connect, every deep post-eviction disconnect, restart, full reindex, chainstate reindex, and recovery."
+    },
+    {
+      "path": "test/functional/feature_chronik_pruned_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100755", "bytes": 3963, "git_blob": "8ddd2d5221fbcefce721f78f2f134bf91cb39679", "sha256": "b74e78620259104b40592d272658de096527f849641f64088107606bb25c07c1"},
+      "after": {"mode": "100755", "bytes": 4637, "git_blob": "b4e7bd850529b2397f9268014499cf79c7f4afd0", "sha256": "2fd73d67b8274135f828b2754395935e165fcd0c21edb438146390e08a0ceafe"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; functional test only.",
+      "test_reachability": "Independently recomputes the exact pruned bootstrap commitment and the bounded projection after the next connected block."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": ["Build with both Chronik options OFF and run inherited legacy mining."],
+        "expected_results": ["No Chronik link edge enters bitcoind and legacy behavior remains unchanged."]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": ["Build with BUILD_CHRONIK_OBSERVER=ON, omit -chronikobserver, and run mining_basic.py."],
+        "expected_results": ["The optional library is linked but no observer starts and inherited mining passes."]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": ["Run check-chronik-observer and feature_chronik_block_observer.py with --hermetic-child-env on a fresh datadir."],
+        "expected_results": ["Focused units and all bounded record-reconstruction scenarios pass."]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Start the compiled-in observer only on isolated regtest and connect, disconnect, and reconsider confirmed blocks.",
+        "expected_results": ["Debug commitments match independent reconstruction while the node tip remains authoritative."],
+        "failure_conditions": ["Any non-regtest activation, commitment mismatch, state mutation on rejection, or validation influence fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Restart the observer after building a retained active-chain suffix.",
+        "expected_results": ["Startup atomically adopts the exact ordered retained-record commitment without minting live events."],
+        "failure_conditions": ["Partial adoption, stale records, wrong order, wrong commitment, or growth beyond 288 blocks fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run a fresh full reindex process at height 288.",
+        "expected_results": ["Ordered block-file callbacks rebuild the exact last-288-block record projection and its independent commitment."],
+        "failure_conditions": ["Missing, duplicated, reordered, rejected, or mismatched records fail the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run a fresh chainstate reindex process at height 288.",
+        "expected_results": ["Ordered chainstate callbacks rebuild the exact last-288-block record projection without changing the active tip or UTXO-set hash."],
+        "failure_conditions": ["Bootstrap masking, block-file reindex, changed chain state, callback divergence, or mismatched records fail the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Restart explicit observer opt-in on the inherited physically pruned height-1001 datadir.",
+        "expected_results": ["The exact still-readable 288-block suffix reconstructs with its independently checked record commitment, and the next connection preserves the bound."],
+        "failure_conditions": ["Unreadable retained bodies, wrong suffix, event minting, record mismatch, or bound growth fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Disconnect through the retained anchor, reject continuation, and restart for reconstruction.",
+        "expected_results": ["Records roll back LIFO, the observer fails closed beyond its anchor, and restart reconstructs the active suffix."],
+        "failure_conditions": ["Non-LIFO acceptance, mutation after rebuild-required, unbounded retention, or node consensus influence fails the scenario."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "macOS arm64 local contradiction testing",
+        "Ubuntu 22.04 ARM64 public verification after technical acceptance"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 0e9724c13b801c1e1968f4ecd7683f6cc7833bf73522c2b0c496d57771aeb049"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Projection fingerprints are non-cryptographic debug commitments composed from at most 288 cached per-block fingerprints on each event.",
+    "Memory is bounded by 288 consensus-bounded blocks but grows with the confirmed transaction count inside that suffix.",
+    "The functional commitment oracle uses ordinary zero-asset coinbase transactions; focused units independently assert each non-zero observed-family record field, txid, and block position.",
+    "No transaction body, prevout, durable state, historical full-chain index, mempool view, or query interface is retained.",
+    "Local tests are contradiction checks only; no result is public reproduction evidence at record-review time."
+  ],
+  "counterevidence": [
+    "No public build or functional execution of the exact candidate exists at record-review time.",
+    "A matching FNV commitment does not establish cryptographic integrity, transaction validity, token validity, or consensus correctness.",
+    "Restart and reindex reconstruction do not demonstrate persistence, crash recovery, historical queries, or production API compatibility.",
+    "The unchanged default path remains authoritative: Chronik is compiled out or runtime disabled unless explicitly enabled on local regtest."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
