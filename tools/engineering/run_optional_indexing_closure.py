@@ -27,8 +27,8 @@ PUBLIC_URL = "https://github.com/ErgonSurfer/ergon-lab.git"
 BASELINE_COMMIT = "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b"
 BASELINE_TREE = "8a74bb952c2137156214b9fe5888c494bd77aeca"
 PUBLIC_ROOT_COMMIT = "5bcdba149119aa9035830e069d1cae1d9bcddfb4"
-INTEGRATION_PARENT_COMMIT = "b91ac10f741de15218e5b033430e19974668c5a6"
-INTEGRATION_PARENT_TREE = "c210d4db9c6c78a774518e993cbc83e33dc3ef8d"
+INTEGRATION_PARENT_COMMIT = "c0aa85d54f05414a206cb23f70e04f578fd111a7"
+INTEGRATION_PARENT_TREE = "7415afc5390a8f0716685d95bfd8791b39936736"
 SIGNING_PRINCIPAL = "153525861+ErgonSurfer@users.noreply.github.com"
 SIGNING_FINGERPRINT = "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q"
 SIGNING_PUBLIC_KEY = (
@@ -42,10 +42,15 @@ ALLOWED_SIGNERS = (
     SIGNING_PUBLIC_KEY.split(b" ", 2)[1] + b"\n"
 )
 ALLOWED_SIGNERS_SHA256 = "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738"
-RECORD_PATH = Path("docs/engineering/changes/ergon-change-0033.json")
+RECORD_PATH = Path("docs/engineering/changes/ergon-change-0034.json")
 HARNESS_PATH = Path("tools/engineering/run_optional_indexing_closure.py")
 LOCK_PATH = Path("chronik/Cargo.lock")
 EXPECTED_CHANGED_PATHS = tuple(sorted((str(RECORD_PATH), str(HARNESS_PATH))))
+PRIOR_HARNESS_IDENTITY = {
+    "mode": "100755", "bytes": 75472,
+    "git_blob": "096252104432db211b618bf47e33b4be5ef84047",
+    "sha256": "bb91d19090e153fdab31e55de79271752d09b0cef43d0917604d1164bd5804a0",
+}
 SCENARIOS = (
     "index-local-regtest-opt-in",
     "index-restart-288",
@@ -320,7 +325,7 @@ def verify_signature(source: Path, commit: str) -> dict[str, str]:
 
 def validate_record(source: Path, public_repo: Path) -> dict[str, Any]:
     record = load_json(source / RECORD_PATH)
-    require(record.get("change_id") == "ERGON-CHANGE-0033" and
+    require(record.get("change_id") == "ERGON-CHANGE-0034" and
             record.get("stage") == "optional-indexing" and
             record.get("status") == "under-review", "change record identity differs")
     require(record.get("record_path") == str(RECORD_PATH), "record path differs")
@@ -366,7 +371,8 @@ def validate_record(source: Path, public_repo: Path) -> dict[str, Any]:
     }
     files = record.get("files", [])
     require(len(files) == 1 and files[0].get("path") == str(HARNESS_PATH) and
-            files[0].get("action") == "add" and files[0].get("before") is None and
+            files[0].get("action") == "modify" and
+            files[0].get("before") == PRIOR_HARNESS_IDENTITY and
             files[0].get("after") == expected_identity,
             "recorded harness postimage differs")
     for relative in (HARNESS_PATH, RECORD_PATH):
@@ -427,7 +433,8 @@ def validate_source(source: Path, public_repo: Path,
     require(changed == EXPECTED_CHANGED_PATHS, "candidate diff contains an unexpected path")
     statuses = git_output(public_repo, "diff", "--name-status",
                           parent_commit, candidate_commit).splitlines()
-    require(all(line.startswith("A\t") for line in statuses), "candidate paths must be additions")
+    require(statuses == [f"A\t{RECORD_PATH}", f"M\t{HARNESS_PATH}"],
+            "candidate path actions differ")
     validate_record(source, public_repo)
     signatures = {
         "public_root": verify_signature(public_repo, PUBLIC_ROOT_COMMIT),
@@ -488,7 +495,8 @@ def cargo_seed_manifest(root: Path) -> str:
 
 def source_manifest(root: Path) -> str:
     entries = []
-    for item in sorted(root.rglob("*")):
+    for item in sorted(root.rglob("*"),
+                       key=lambda path: path.relative_to(root).as_posix()):
         require(not item.is_symlink(), "exported source contains a symlink")
         if item.is_file():
             permissions = item.stat().st_mode & 0o777
@@ -1453,6 +1461,9 @@ def self_test(repository_root: str | None) -> None:
             (LOCK_PATH, "version = 3\n"),
             (Path(".gitattributes"),
              "payload.txt export-ignore\nformatted.txt export-subst\n"),
+            (Path(".gitlab-ci.yml"), "flat path order canary\n"),
+            (Path(".gitlab/issue_templates/Bug_report.md"),
+             "component path order canary\n"),
             (Path("payload.txt"), "signed payload\n"),
             (Path("formatted.txt"), "$Format:%H$\n"),
             (Path("executable.sh"), "#!/bin/sh\nexit 0\n"),
@@ -1506,6 +1517,14 @@ def self_test(repository_root: str | None) -> None:
             source_manifest(materialized_source) == materialized_manifest,
             "Git attributes altered or omitted signed-tree material",
         )
+        order_canary = [
+            item["path"] for item in signed_tree_inventory(
+                archive_bare, archive_commit, git_test_environment,
+            ) if item["path"].startswith(".gitlab")
+        ]
+        require(order_canary == [
+            ".gitlab-ci.yml", ".gitlab/issue_templates/Bug_report.md",
+        ], "signed tree flat-path order canary differs")
         os.chmod(materialized_source / "executable.sh", 0o644)
         try:
             require(source_manifest(materialized_source) == materialized_manifest,
@@ -1534,7 +1553,7 @@ def self_test(repository_root: str | None) -> None:
                       "GIT_ATTR_NOSYSTEM", "CCACHE_DISABLE",
                       "materialize_signed_tree", "checkout-index", "-s",
                       "PYTHONNOUSERSITE", "sys.flags.isolated", "RLIMIT_FSIZE",
-                      "ls-tree"):
+                      "relative_to(root).as_posix()", "ls-tree"):
             require(token in source, f"harness contract token absent: {token}")
     print("optional-indexing closure self-test passed "
           f"({len(mutations) + 17} rejection classes)")
