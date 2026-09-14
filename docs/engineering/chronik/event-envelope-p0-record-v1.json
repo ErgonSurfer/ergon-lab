@@ -1,0 +1,218 @@
+{
+  "authority": {
+    "base_commit": "cc755a7687dc0a226c2897d3d1bce4302e699301",
+    "base_tree": "e20e48730ec799f1bba770afe0708b3c722a58cc",
+    "phase": "P0_ISOLATED_QUARANTINE_IMPLEMENTATION_ONLY"
+  },
+  "evidence_ceiling": "local-assembled-runtime",
+  "knowledge_status": "Observed",
+  "claims": {
+    "compile_time_off_inert": true,
+    "local_regtest_observer_behavior_observed": true,
+    "node_authority_unchanged": true,
+    "deterministic_build": "not_claimed",
+    "public_reproduction": "not_claimed",
+    "public_network_behavior": "not_claimed",
+    "runtime_off_inert": true,
+    "testnet_readiness": "not_claimed"
+  },
+  "dependency_and_license": {
+    "cargo_lock_sha256": "0e9724c13b801c1e1968f4ecd7683f6cc7833bf73522c2b0c496d57771aeb049",
+    "dynamic_dependency_set_matches_compiled_out": true,
+    "implementation_origin": "independent local implementation; no donor source copied",
+    "license": "MIT",
+    "new_external_dependencies": []
+  },
+  "exclusions": [
+    "persistent index or schema",
+    "socket, listener, query service, or public bind",
+    "CORS or mutation route",
+    "token-authority change",
+    "dependency resolution or new external dependency",
+    "public reproduction proof",
+    "deterministic build proof",
+    "deployment, exposure, migration, replacement, or cutover"
+  ],
+  "implementation_inventory": [
+    {
+      "action": "add",
+      "bytes": 3051,
+      "mode": "100644",
+      "path": "chronik/event-envelope.h",
+      "post_blob": "720d5f713f803ade7df2066574762193b8ed1a1a",
+      "post_sha256": "e588349fa6addbf2a38905500aebcb7c046c50cbd34d433af468efbfbd11523d",
+      "pre_blob": null,
+      "pre_bytes": null,
+      "pre_sha256": null
+    },
+    {
+      "action": "add",
+      "bytes": 14991,
+      "mode": "100644",
+      "path": "chronik/event-envelope.cpp",
+      "post_blob": "c7cc9e2993efcb25d09ef0bc2e59d198c33a6f69",
+      "post_sha256": "da990c00cb2bb9aac961142dc9f5954fc29b199ab4176d32590a820586538e40",
+      "pre_blob": null,
+      "pre_bytes": null,
+      "pre_sha256": null
+    },
+    {
+      "action": "modify",
+      "bytes": 19933,
+      "mode": "100644",
+      "path": "chronik/node-observer.cpp",
+      "post_blob": "0920129a99656b87bc1dd8105b368b328da519e7",
+      "post_sha256": "91d6f65c511cd9958cfd68aac3ac3ba2107cea0e4a30be5bd5032dc7e50fad12",
+      "pre_blob": "59716576db0947e84a4f4b103d3362dec54e4a8b",
+      "pre_bytes": 13104,
+      "pre_sha256": "3b40f711b83d1788979be539d43b265c3755ad5f2b96fb1acc2a93502eefb142"
+    },
+    {
+      "action": "modify",
+      "bytes": 17158,
+      "mode": "100644",
+      "path": "src/CMakeLists.txt",
+      "post_blob": "afe0530b5f76e5d87bb285b6913f2591aa6f72fa",
+      "post_sha256": "a245b4b44bbb1b7e5c5cdfd24bf562226bc16a5108c81c5ca177ed2e4dd9a59e",
+      "pre_blob": "1b9c72cf7a8f2d1e972f1bf3c7510d9698248d37",
+      "pre_bytes": 17122,
+      "pre_sha256": "91df561101406eb4abb396184e05dbe9351e067224edc6a5b9d3ad02b7cbb18b"
+    },
+    {
+      "action": "modify",
+      "bytes": 116596,
+      "mode": "100644",
+      "path": "src/init.cpp",
+      "post_blob": "c4ca08f8ed0bc979e59e01542d3caed1b135b051",
+      "post_sha256": "9be2892c272c2b4924184ecb1eca7f13d710597b81def26ed232ec4c1713ba8d",
+      "pre_blob": "b4d6b0c451f7e68741e2cc696d042a73650f572c",
+      "pre_bytes": 115285,
+      "pre_sha256": "14c4f34060287e75323c85783218339332a9e05c5326c0cb8a4af3a2c892c75d"
+    },
+    {
+      "action": "modify",
+      "bytes": 5764,
+      "mode": "100644",
+      "path": "src/test/CMakeLists.txt",
+      "post_blob": "96a5575f17c9a049d3804996a567e580bed19039",
+      "post_sha256": "27bc767e128ba68036f3eaaf8510554f2fa70be0ee7571a99421b0cd6a8d4890",
+      "pre_blob": "ad147233c625eb7a063025aae85e513c3ffb8bbd",
+      "pre_bytes": 5581,
+      "pre_sha256": "4288dbba7600dfcb46b19dbf58626283b8c3ba887b9f802710f9f2f986a43969"
+    },
+    {
+      "action": "add",
+      "bytes": 15709,
+      "mode": "100644",
+      "path": "src/test/chronik_event_envelope_tests.cpp",
+      "post_blob": "bf93e51134febc1578478412733e49e487ff2680",
+      "post_sha256": "1c0608faecbfada3f2492e3d91d631a8dc440ee9e45daec346455d4c921b73a4",
+      "pre_blob": null,
+      "pre_bytes": null,
+      "pre_sha256": null
+    },
+    {
+      "action": "modify",
+      "bytes": 24401,
+      "mode": "100755",
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "post_blob": "f3ba5e19683c0bec954aa273f967119dcb49c8ec",
+      "post_sha256": "f386d86070cdc5f868b1bc78e4aeca220ba14e8e8eef30584cdf735babce07c5",
+      "pre_blob": "d3aae1ae9b98e80c156a79110cd7b60d440aba1a",
+      "pre_bytes": 23062,
+      "pre_sha256": "83c9ec953e226b752e8b448e21c404298cf608806b4361249e0458581caf6119"
+    }
+  ],
+  "invariants": {
+    "bounded_capacity": 64,
+    "bounded_shutdown_milliseconds": 2000,
+    "callback_receives_consumer_result": false,
+    "consumer_can_block_callback": false,
+    "concurrent_producer_collision_fails_closed": true,
+    "failure_state_single_atomic_word": true,
+    "immutable_owned_payload": true,
+    "monotonic_sequence_and_gap_detection": true,
+    "predicate_transitions_serialized_with_worker_wait": true,
+    "startup_exceptions_disable_only_the_observer": true,
+    "thread_lifecycle_exceptions_are_contained": true,
+    "worker_or_overflow_failure_requires_rebuild": true
+  },
+  "protected_authority_gates": {
+    "activation": "no ActivateBestChain reference",
+    "chain_selection": "read-only ChainActive bootstrap only; no ChainstateManager reference",
+    "lifecycle": "startup failure disables observer and node continues; shutdown is bounded",
+    "mempool": "no mempool reference",
+    "mining": "no CreateNewBlock or BlockAssembler reference",
+    "relay": "no RelayTransaction reference",
+    "template": "no GetBlockTemplate reference",
+    "validation": "observer registration only; no AcceptToMemoryPool or ProcessNewBlock reference"
+  },
+  "record_identity": "reported externally to avoid self-reference",
+  "schema": "ergon.chronik.event-envelope-p0-record.v1",
+  "tests": [
+    {
+      "id": "cpp-envelope-direct",
+      "result": "pass",
+      "scope": "11 cases; 200 deterministic full-suite iterations; 2200 case executions; includes a forced predicate-false-to-wait interleaving with the producer supplying the only notification"
+    },
+    {
+      "id": "cpp-concurrent-producer-stress",
+      "result": "pass",
+      "scope": "200 deterministic collision iterations; bounded non-waiting fail-closed behavior"
+    },
+    {
+      "id": "cpp-envelope-asan-ubsan",
+      "result": "pass",
+      "scope": "11 cases; 20 full-suite iterations; AddressSanitizer and UndefinedBehaviorSanitizer enabled"
+    },
+    {
+      "id": "cpp-observer-startup-exception-seams",
+      "result": "pass",
+      "scope": "3 compiled tests and 15 assertions cover construction, bootstrap, and envelope-start exceptions; each returns promptly with no active or registered observer"
+    },
+    {
+      "id": "cpp-envelope-tsan",
+      "result": "environment_unsupported",
+      "scope": "ThreadSanitizer aborted before test execution at tsan_platform_linux.cpp:315 while requesting ADDR_NO_RANDOMIZE; deterministic collision test and bounded stress retained as local concurrency evidence"
+    },
+    {
+      "id": "rust-observer-units",
+      "result": "pass",
+      "scope": "11 cases, locked and offline"
+    },
+    {
+      "id": "compiled-out-build-and-symbol-gates",
+      "result": "pass",
+      "scope": "current-source macOS bitcoind build; no Cargo edge, Chronik global symbol, observer string, or event-envelope string; dynamic dependency set matches compiled-in"
+    },
+    {
+      "id": "compiled-out-inherited-mining",
+      "result": "pass"
+    },
+    {
+      "id": "compiled-in-runtime-off-inherited-mining-and-log",
+      "result": "pass"
+    },
+    {
+      "id": "local-regtest-observer",
+      "result": "pass",
+      "scope": "bootstrap, connect, disconnect, restart, reindex, chainstate reindex, degradation, recovery, and public-network refusal; construction, bootstrap, and envelope-start exceptions each leave bitcoind started, RPC-responsive, on the same tip, with the observer disabled"
+    },
+    {
+      "id": "c0-and-c1-portable-oracles",
+      "result": "pass",
+      "scope": "20 route laws, 6 fixtures, 20 C0 negatives, 46 C1 negative mutations"
+    },
+    {
+      "id": "p0-record-binding-oracle",
+      "result": "pass",
+      "scope": "8 implementation postimages bind exact byte counts, Git blobs, and SHA-256 values; record identity is reported externally"
+    }
+  ],
+  "limitations": [
+    "ThreadSanitizer remains environment-unsupported and is not claimed as a passing result",
+    "the current-source proof is macOS arm64; Docker Desktop has no retained Linux image, so no fresh Linux rebuild is claimed",
+    "Boost 1.85 was selected with a build-only basename compatibility include and UPnP was disabled to accommodate the local host toolchain; neither adjustment changes source bytes or runtime authority",
+    "no public-network service, persistent index, deployment, migration, replacement, or cutover was exercised"
+  ]
+}

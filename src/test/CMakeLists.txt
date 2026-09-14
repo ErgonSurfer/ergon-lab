@@ -199,6 +199,11 @@ add_boost_unit_tests_to_suite(bitcoin test_bitcoin
 		${BITCOIN_PROPERTY_BASED_TESTS}
 )
 
+if(BUILD_CHRONIK_OBSERVER)
+	target_sources(test_bitcoin PRIVATE chronik_event_envelope_tests.cpp)
+	target_compile_definitions(test_bitcoin PRIVATE ENABLE_CHRONIK_OBSERVER=1)
+endif()
+
 if(ENABLE_PROPERTY_BASED_TESTS)
 	target_link_libraries(test_bitcoin Rapidcheck::rapidcheck)
 endif()

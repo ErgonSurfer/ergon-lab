@@ -11,7 +11,7 @@ import stat
 from test_framework.messages import CBlock, FromHex, hash256
 from test_framework.test_framework import BitcoinTestFramework, SkipTest
 from test_framework.test_node import ErrorMatch
-from test_framework.util import assert_equal
+from test_framework.util import assert_equal, wait_until
 
 
 EVENT_RE = re.compile(
@@ -121,6 +121,9 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
                 self.read_log(offset)
             )
         ]
+
+    def wait_for_event_count(self, count, offset=0):
+        wait_until(lambda: len(self.read_events(offset)) >= count)
 
     def read_connected(self, offset=0):
         return [
@@ -345,7 +348,8 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         )
         assert (
             "Chronik observer started mode=in-memory events=blocks "
-            "retained_blocks=288 owner=rust-worker command_capacity=0"
+            "retained_blocks=288 owner=event-envelope+rust-worker "
+            "command_capacity=64 callback_waits=0"
             in self.read_log()
         )
         assert_equal(self.read_bootstrap(), [(0, 2, 3, 3, 0, 0, 0, 0, 0)])
@@ -369,6 +373,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         node.syncwithvalidationinterfacequeue()
         node.reconsiderblock(observed_blocks[0])
         node.syncwithvalidationinterfacequeue()
+        self.wait_for_event_count(6)
         assert_equal(node.getbestblockhash(), observed_blocks[1])
         assert_equal(
             self.read_events(),
@@ -427,6 +432,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         )
         restart_block = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()
+        self.wait_for_event_count(1, restart_offset)
         assert_equal(
             self.read_connected(restart_offset),
             [self.expected_connected(1, restart_block, 5, 6, 6)],
@@ -447,6 +453,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             ],
         )
         node.syncwithvalidationinterfacequeue()
+        self.wait_for_event_count(289, reindex_offset)
         active_blocks = [node.getblockhash(height) for height in range(289)]
         assert "Chronik observer bootstrap active_chain=empty retained_blocks=0" in self.read_log(
             reindex_offset
@@ -498,6 +505,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             ],
         )
         node.syncwithvalidationinterfacequeue()
+        self.wait_for_event_count(289, chainstate_offset)
         assert_equal(node.getblockcount(), 288)
         assert_equal(node.getbestblockhash(), expected_tip)
         assert_equal(
@@ -545,6 +553,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         retained_anchor = node.getblockhash(1)
         node.invalidateblock(retained_anchor)
         node.syncwithvalidationinterfacequeue()
+        self.wait_for_event_count(577, chainstate_offset)
         assert_equal(node.getblockcount(), 0)
         events_before_reconsider = self.read_events(chainstate_offset)
         assert_equal(events_before_reconsider[-1][0], 577)
@@ -600,6 +609,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         )
         recovery_block = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()
+        self.wait_for_event_count(1, recovery_offset)
         assert_equal(
             self.read_connected(recovery_offset),
             [self.expected_connected(1, recovery_block, 289, 288, 288)],
@@ -609,6 +619,28 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         assert "Chronik observer stopped observations=1" in self.read_log(
             recovery_offset
         )
+
+        for failure_point in (1, 2, 3):
+            failure_offset = os.path.getsize(self.log_path())
+            self.start_node(
+                0,
+                extra_args=[
+                    "-connect=0",
+                    "-disablewallet",
+                    "-chronikobserver",
+                    f"-chronikobserverfailpoint={failure_point}",
+                ],
+            )
+            assert_equal(node.getbestblockhash(), recovery_block)
+            assert_equal(node.getnetworkinfo()["connections"], 0)
+            failure_log = self.read_log(failure_offset)
+            assert (
+                "Chronik observer disabled reason=startup-failure "
+                "node_continues=1"
+                in failure_log
+            )
+            assert "Chronik observer started" not in failure_log
+            self.stop_node(0)
 
         self.assert_network_rejected([])
         self.assert_network_rejected(["-testnet"])

@@ -60,6 +60,10 @@
 
 #ifdef ENABLE_CHRONIK_OBSERVER
 #include <chronik/node-observer.h>
+
+namespace chronik {
+bool StartNodeObserverForTest(uint8_t test_failure_point) noexcept;
+} // namespace chronik
 #endif
 
 #include <boost/algorithm/string/classification.hpp>
@@ -427,6 +431,10 @@ void SetupServerArgs() {
                  "Enable volatile block observation on local regtest "
                  "(default: 0)",
                  true, OptionsCategory::DEBUG_TEST);
+    gArgs.AddArg("-chronikobserverfailpoint=<n>",
+                 "Inject a Chronik observer startup failure for tests "
+                 "(1=construction, 2=bootstrap, 3=envelope; default: 0)",
+                 false, OptionsCategory::DEBUG_TEST);
 #endif
     gArgs.AddArg("-blockreconstructionextratxn=<n>",
                  strprintf("Extra transactions to keep in memory for compact "
@@ -1639,10 +1647,21 @@ bool AppInitParameterInteraction(Config &config) {
     // Step 2: parameter interactions
 
 #ifdef ENABLE_CHRONIK_OBSERVER
+    const int64_t chronik_observer_failpoint =
+        gArgs.GetArg("-chronikobserverfailpoint", 0);
+    if (chronik_observer_failpoint < 0 || chronik_observer_failpoint > 3) {
+        return InitError("-chronikobserverfailpoint must be between 0 and 3");
+    }
     if (gArgs.GetBoolArg("-chronikobserver", false) &&
         chainparams.NetworkIDString() != CBaseChainParams::REGTEST) {
         return InitError(
             "-chronikobserver is restricted to the local regtest profile");
+    }
+    if (chronik_observer_failpoint != 0 &&
+        (!gArgs.GetBoolArg("-chronikobserver", false) ||
+         chainparams.NetworkIDString() != CBaseChainParams::REGTEST)) {
+        return InitError("-chronikobserverfailpoint requires "
+                         "-chronikobserver on local regtest");
     }
 #endif
 
@@ -2569,9 +2588,17 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
     // have not started. A full reindex deliberately starts from an empty chain
     // and reconstructs the same bounded projection through later callbacks.
 #ifdef ENABLE_CHRONIK_OBSERVER
-    if (gArgs.GetBoolArg("-chronikobserver", false) &&
-        !chronik::StartNodeObserver()) {
-        return InitError("Unable to start the volatile Chronik observer");
+    const uint8_t chronik_observer_failpoint = static_cast<uint8_t>(
+        gArgs.GetArg("-chronikobserverfailpoint", 0));
+    const bool chronik_observer_started =
+        !gArgs.GetBoolArg("-chronikobserver", false) ||
+        (chronik_observer_failpoint == 0
+             ? chronik::StartNodeObserver()
+             : chronik::StartNodeObserverForTest(
+                   chronik_observer_failpoint));
+    if (!chronik_observer_started) {
+        LogPrintf("Chronik observer disabled reason=startup-failure "
+                  "node_continues=1\n");
     }
 #endif
 
