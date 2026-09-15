@@ -531,7 +531,10 @@ target_link_libraries(server
 )
 
 if(BUILD_CHRONIK_OBSERVER)
-	target_sources(server PRIVATE ../chronik/node-observer.cpp)
+	target_sources(server PRIVATE
+		../chronik/event-envelope.cpp
+		../chronik/node-observer.cpp
+	)
 	target_include_directories(server PRIVATE "${CMAKE_SOURCE_DIR}")
 	target_compile_definitions(server PRIVATE ENABLE_CHRONIK_OBSERVER=1)
 	add_dependencies(server chronik_observer_rust_build)
