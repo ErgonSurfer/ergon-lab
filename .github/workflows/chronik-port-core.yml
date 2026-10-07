@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   test:
-    name: Locked token, database and protobuf corpus
+    name: Locked token, database, protobuf and runtime corpus
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

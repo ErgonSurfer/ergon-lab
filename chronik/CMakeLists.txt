@@ -57,6 +57,7 @@ set(CHRONIK_PORT_CORE_PACKAGES
     --package bitcoinsuite-slp
     --package chronik-db
     --package chronik-proto
+    --package chronik-runtime
 )
 if(BUILD_CHRONIK_BUILD_ONLY)
     add_custom_target(chronik_build_only ALL

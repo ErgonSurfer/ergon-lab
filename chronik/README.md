@@ -7,8 +7,9 @@ default to `OFF`:
 
 - `BUILD_CHRONIK_BUILD_ONLY` compiles and tests isolated Rust primitives. It
   does not link them into the node.
-- `BUILD_CHRONIK_PORT_CORE` compiles and tests the dormant token, database and
-  protobuf port core. It does not link them into the node or start a service.
+- `BUILD_CHRONIK_PORT_CORE` compiles and tests the token, database, protobuf
+  and persistent runtime core. It does not link them into the node or start a
+  service.
 - `BUILD_CHRONIK_OBSERVER` links a small Rust/C++ block-event observer into
   `bitcoind`. Its runtime flag also defaults to off and is accepted only on the
   exact local `regtest` profile.
@@ -40,13 +41,29 @@ Chronik integration stage. It builds and tests exactly these default packages:
 - `bitcoinsuite-slp`, including the complete imported ALP/SLP test corpus
 - `chronik-db`, including token ancestry, UTXO, mempool and rollback units
 - `chronik-proto`, generated from the pinned `chronik.proto` input
+- `chronik-runtime`, an Ergon host-neutral adapter that atomically commits
+  accepted blocks, transaction identities and ALP/SLP ancestry to RocksDB
 
 The database's default-disabled plugin facade and supporting utility crates are
-workspace dependencies. The imported bridge, indexer, HTTP, service library and
-Python plugin implementation are deliberately excluded from the executable Lot
-A workspace. Their donor-bound sources are present for review and the later
-host adapter, but no current CMake target builds or links them. In particular, Lot A
-creates no RocksDB path, listener, API, callback or node dependency at runtime.
+workspace dependencies. The imported bridge, full indexer, HTTP, service
+library and Python plugin implementation remain excluded from the executable
+workspace. Their donor-bound sources are present for review and selective
+adaptation, but no current CMake target links them into the node.
+
+The persistent runtime core is the first Lot B slice. It opens a caller-chosen
+RocksDB path, accepts only a non-empty genesis-first chain, requires every
+connect to extend the exact stored tip, and requires every disconnect body to
+match that exact tip and its ordered transaction IDs. One RocksDB write batch
+makes the block identity, transaction reverse lookups, ALP/SLP verification
+results and token ancestry visible together. Reopening the same path preserves
+the indexed tip and token records. Tip rollback removes the same data
+atomically. A failed ordering, identity or token-verification check commits
+nothing.
+
+This slice is deliberately host-neutral: it owns no validation callback,
+datadir selection, startup reconciliation, socket, HTTP handler or consensus
+decision. The existing node observer is not yet wired to this database. That
+host link and its restart/reindex/reorg matrix are the next Lot B boundary.
 
 ## Bounded block projection
 
@@ -114,11 +131,12 @@ still-readable heights 714 through 1001.
   counts every output whose serialized locking script starts with `0xef` as a
   CashTokens *prefix candidate*, including malformed candidates. These are
   observations of confirmed block bytes, not validity statements.
-- Indexed or reconstructed data: the volatile 288-block suffix stores block
-  identity and height plus the fixed-size confirmed-transaction records listed
-  above. Reversible block totals are derived from those records. Transaction
-  bodies, prevouts, token identifiers, balances, and UTXO relationships are not
-  retained. Nothing is durable or queryable through an API.
+- Indexed or reconstructed data: the node-linked observer still exposes only
+  the volatile 288-block suffix described above. Separately, the unlinked
+  persistent runtime core can store active-chain block/transaction identities
+  and verified ALP/SLP token ancestry, including mint, send, burn, restart and
+  exact-tip rollback behavior. It is exercised as a Rust component and is not
+  yet reachable from `bitcoind` or a query API.
 - Authoritative token validation or token state: none. The observer does not
   load prevouts, verify token ancestry or conservation, maintain spent token
   state, strictly decode CashTokens, or influence node validation.
@@ -149,8 +167,9 @@ boundary drift:
 python3 -B tools/engineering/check_chronik_port_core.py check
 ```
 
-The reduced workspace manifest, lockfile, CMake adapters, observer crate, C++
-adapter, checker, tests and this README are independently authored MIT files.
+The reduced workspace manifest, lockfile, CMake adapters, observer crate,
+persistent runtime crate, C++ adapter, checker, tests and this README are
+independently authored MIT files.
 `Cargo.lock` is generated from the public workspace and contains no Git or
 external path dependency. No private history, operator material or unrelated
 private product code is part of this boundary.

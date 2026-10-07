@@ -1729,18 +1729,20 @@
       "bitcoinsuite-core",
       "bitcoinsuite-slp",
       "chronik-db",
-      "chronik-proto"
+      "chronik-proto",
+      "chronik-runtime"
     ],
     "node_runtime_linked": false,
-    "runtime_status": "dormant-until-lot-b"
+    "runtime_status": "lot-b-persistent-core-unlinked"
   },
   "workspace": {
-    "cargo_lock_sha256": "7af496d774c6180ed13a935b8c8080b0394fe5720697231aabbcc0b2cfaaf689",
+    "cargo_lock_sha256": "4cf83a615f394890a749abe5bddf973a07bb779026b25110a31f48c4cb617a17",
     "default_members": [
       "bitcoinsuite-core",
       "bitcoinsuite-slp",
       "chronik-db",
-      "chronik-proto"
+      "chronik-proto",
+      "chronik-runtime"
     ],
     "excluded": [
       "chronik-bridge",
@@ -1759,6 +1761,7 @@
       "chronik-plugin-common",
       "chronik-plugin-impl",
       "chronik-proto",
+      "chronik-runtime",
       "chronik-util"
     ],
     "rust_version": "1.85.0"

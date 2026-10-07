@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 The Ergon developers
+
+[package]
+name = "chronik-runtime"
+version = "0.1.0"
+edition = "2021"
+rust-version.workspace = true
+license = "MIT"
+
+[dependencies]
+abc-rust-error = { path = "../abc-rust-error" }
+bitcoinsuite-core = { path = "../bitcoinsuite-core" }
+bitcoinsuite-slp = { path = "../bitcoinsuite-slp" }
+chronik-db = { path = "../chronik-db" }
+thiserror = "2.0.3"
+
+[dev-dependencies]
+tempdir = "0.3"
