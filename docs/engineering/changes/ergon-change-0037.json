@@ -1,0 +1,880 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0037",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0037.json",
+  "purpose": {
+    "summary": "Connect the accepted Bitcoin Static block-event observer to the persistent Chronik ALP/SLP runtime on explicit local regtest while keeping failures isolated from node correctness.",
+    "scope": [
+      "Bridge accepted connected and disconnected blocks from the existing bounded observer into the persistent Chronik runtime through a panic-contained C ABI.",
+      "Store the runtime below the node index directory, resume the indexed tip after restart and explicitly rebuild it for full or chainstate reindex.",
+      "Keep callbacks asynchronous through a bounded 512-event queue so indexing latency cannot block validation callbacks.",
+      "Disable only the persistent runtime after a runtime contradiction or unavailable historical block while the standalone node and volatile bounded observer continue.",
+      "Build and exercise the compiled-out, compiled-in-disabled and explicit local-regtest indexing profiles in public CI.",
+      "Make inherited compilation units explicitly include the standard declarations they use on current Linux compilers."
+    ],
+    "exclusions": [
+      "No consensus, validation, mempool-admission, activation, chain-selection, wallet, P2P, network-identity or mainnet parameter change is included.",
+      "No HTTP, gRPC, websocket, RPC, served query API, mempool index or public production deployment is added.",
+      "No private history, private source, operator data, incoming report, binary, build output or host-specific path is tracked."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "1e7e7d7a3d9e9605592c45b62a64b0ef0ada3eaf",
+      "tree": "4d0d9ee308abec103a7a9d8bffea4d8dce5f26dc"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "6ecf217823d8c039d6968749914cdca89faa877d17ab43f7831aa0fdb9660c4c",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 2163,
+        "git_blob": "c88ad9b5a7ca1b625620cdacfdbade4a7b2d5593",
+        "sha256": "94f9a7243f9a9ffe408fdb4de30e0c7c52bc2593db7834322382efb4ab5e78eb"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4370,
+        "git_blob": "a103d8e08815c77f68eb62ff877d0d75725978ab",
+        "sha256": "2a924e0ebf0131dd0447b1cc78be36094a415956e1483bda239766729766ef81"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 3897,
+        "git_blob": "297de58f917b6b82eb7a79e4c9f7165033804c70",
+        "sha256": "979fba10b99db572912c496aecb6f69c0fa5d6b4d4afa4bc4ae0997db4133840"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3916,
+        "git_blob": "764fe5210cd9b5d3d2aa0c02c322791a968ff30a",
+        "sha256": "72f5e3935ef983857c306cf599336be463fe0ddfc2ab30167875f397599bedb1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "chronik/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 5552,
+        "git_blob": "2766db39e525e734e2fcf6b88d13550b33d7bf63",
+        "sha256": "1c7505b0a5dbe9e356b4e05233a93d7b3e6179ee9893f3878be7c4996ae2bd10"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5590,
+        "git_blob": "84e246c722f1b96dc775d3cd791d95215622e7c5",
+        "sha256": "ef9c60c5c326e301a74d71fceb2da184490899c7072f24b40aeb07a833a46cf4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 37975,
+        "git_blob": "cb525946a44994088ff8739b4a1cca90f8730bfa",
+        "sha256": "4cf83a615f394890a749abe5bddf973a07bb779026b25110a31f48c4cb617a17"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 38005,
+        "git_blob": "3ffc8f4f7d8d4e000351763d2f8555066a395183",
+        "sha256": "dc0de683db8040b68d01f5f18fb919091ebb94ac94864d29fa64b3c715806cee"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1-GENERATED",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 12778,
+        "git_blob": "9994577ffd055c2c4b2cb4b8f5c561470ddd1454",
+        "sha256": "9b412913b58529a00f44af1c1269ea1201af8f6709c2e5388d85b6e4400b81a6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13334,
+        "git_blob": "653958ef71c028cdf04f726169fd77f7b2dcd6f9",
+        "sha256": "e369f9e436d396828ba19bd41ade91a62499de549f326bb9e69e5f6dad65fcd0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public architecture and operational-boundary documentation.",
+      "test_reachability": "Checked by publication, provenance and diff gates."
+    },
+    {
+      "path": "chronik/chronik-observer/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 361,
+        "git_blob": "839d5e2d6ea1b42b6c2587e87a8d412c4782e386",
+        "sha256": "3759a617e718dfd8469c55ff0ef9a60731c8548b067d9b4d3d95e402b93b3480"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 411,
+        "git_blob": "514624dd3dfe10aa3c36df75061aa30c71ca0b16",
+        "sha256": "25d101a559b0eee041d39039b12df5bcde629a1700dc50b606e3b47451f813d0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "chronik/chronik-observer/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 64565,
+        "git_blob": "54a043ddbd51abeafcaa3311be92589486f4b284",
+        "sha256": "4e2228fd6dc1f4ee7ed97f51b60c39fefa69c2603f04a48a3037d6b73ceb5028"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 64582,
+        "git_blob": "c6cb04b7ca71d27afdbf87f39da9e913829daaaf",
+        "sha256": "4f1a4731605583da3ea7b548f39046c5a4b42e91f108257a357b618d17715116"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Reachable only when the observer is compiled in and explicitly enabled on local regtest; it has no validation, consensus, activation or chain-selection authority.",
+      "test_reachability": "Covered by Rust unit tests, C++ boundary tests and local-regtest restart, reindex, pruning and reorg scenarios."
+    },
+    {
+      "path": "chronik/chronik-observer/src/persistent.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7544,
+        "git_blob": "e51b254b89899ed659bbb204fac4404f3ccbd0d0",
+        "sha256": "517bcdf55d86a9e1cd17d40897204185a7067599343159f7563900fc85b1643d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Reachable only when the observer is compiled in and explicitly enabled on local regtest; it has no validation, consensus, activation or chain-selection authority.",
+      "test_reachability": "Covered by Rust unit tests, C++ boundary tests and local-regtest restart, reindex, pruning and reorg scenarios."
+    },
+    {
+      "path": "chronik/chronik-runtime/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 456,
+        "git_blob": "34f17b1135c070de8a074d77a49f86c7353c08d7",
+        "sha256": "db36853779b895d09d7f65fba98797f9f8fb95c3f3c64538b0ea48e247ed2b76"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 470,
+        "git_blob": "0e92aa6b0193834981ae44dc5b5d42a4feccb59b",
+        "sha256": "7b18ecb90c36dd8b5a01485963bfeb14d33f6cbb9ef547977eb6044b90754d34"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "chronik/chronik-runtime/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 19933,
+        "git_blob": "699a1432c2aa51f713d3bfcc9332d84e9c04efa4",
+        "sha256": "974912337731d9b4b333aaa084cdd5755bd7e852c37bdfec4c98519ef2aec722"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 23184,
+        "git_blob": "757e1a34e0a84b011cee472532fbacd092cbac27",
+        "sha256": "c3dee67c8d6499df4b9e70b59c8a320f6fc042932a3992dcd121bfea70e4bc71"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Reachable only when the observer is compiled in and explicitly enabled on local regtest; it has no validation, consensus, activation or chain-selection authority.",
+      "test_reachability": "Covered by Rust unit tests, C++ boundary tests and local-regtest restart, reindex, pruning and reorg scenarios."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 19933,
+        "git_blob": "0920129a99656b87bc1dd8105b368b328da519e7",
+        "sha256": "91d6f65c511cd9958cfd68aac3ac3ba2107cea0e4a30be5bd5032dc7e50fad12"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 30490,
+        "git_blob": "adebd5a4b4bddb1fd1306d484fc19ba8f41e555c",
+        "sha256": "938b5d150eb4f2b7290ae9c8c6621e682c4b9e80de7db4061ae6385eef9c7be2"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Reachable only when the observer is compiled in and explicitly enabled on local regtest; it has no validation, consensus, activation or chain-selection authority.",
+      "test_reachability": "Covered by Rust unit tests, C++ boundary tests and local-regtest restart, reindex, pruning and reorg scenarios."
+    },
+    {
+      "path": "chronik/node-observer.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 430,
+        "git_blob": "a716ff1e1779517c6bacea074f73b717d31f5a96",
+        "sha256": "0c7c58fb7a86097187230faacd2af860e1365249b91e25a80ccb645c513687ad"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 513,
+        "git_blob": "8e63c2d0ded95435596a06bb308d1cc3cb0d8b52",
+        "sha256": "b7ce4a3903addd92d7d834c708f880269eec51a1797f99661ab31e87aa578dc7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Reachable only when the observer is compiled in and explicitly enabled on local regtest; it has no validation, consensus, activation or chain-selection authority.",
+      "test_reachability": "Covered by Rust unit tests, C++ boundary tests and local-regtest restart, reindex, pruning and reorg scenarios."
+    },
+    {
+      "path": "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json",
+      "action": "modify",
+      "role": "provenance",
+      "before": {
+        "mode": "100644",
+        "bytes": 71232,
+        "git_blob": "ddfb956462303094862f2e1ed5f5d35e9b85dfc3",
+        "sha256": "ce9851646277bc2840970f333715275aef07647a5d76636562ee1a062c534363"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 71233,
+        "git_blob": "3667546096caa4f00d1050855dbe00391ddebd31",
+        "sha256": "b26dc03d41f7525d7df25cb11293c2c637e23a3f51b67eafcaf18aed49d0916a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; machine-readable donor, license and workspace-boundary record.",
+      "test_reachability": "Validated by the Chronik port-core checker."
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 17158,
+        "git_blob": "afe0530b5f76e5d87bb285b6913f2591aa6f72fa",
+        "sha256": "a245b4b44bbb1b7e5c5cdfd24bf562226bc16a5108c81c5ca177ed2e4dd9a59e"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16955,
+        "git_blob": "209e8f9da2bbd70e4becc28534a3ffe071ea8799",
+        "sha256": "42454d12730fecf2a11141af222ba93877850cfe905a837f8e54c4759c0f4e8a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off build and CI graph for the optional observer; compiled-out node behavior remains independent of Chronik.",
+      "test_reachability": "Builds compiled-out and compiled-in profiles and binds the locked Rust workspace."
+    },
+    {
+      "path": "src/base58.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2221,
+        "git_blob": "79eec64af1c2b2e8bd2c12eb5fe858eebf6d368e",
+        "sha256": "8eb4d6dd4fa2e9b5b0278857d3254ae163c8319564ba4ccf1f2cf4c3a00d80c0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2240,
+        "git_blob": "5fe7ed67816594aee50f31c407b1162b1599f7cd",
+        "sha256": "fa028a9bf8a439d5ddd85cab975a2846dd5fb6b906d073aa062ac72e22e1d915"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Portable declaration fix only: include cstdint where uint8_t is used directly; no Base58 behavior changes.",
+      "test_reachability": "Compiled transitively by bitcoind and test_bitcoin in the public Ubuntu build."
+    },
+    {
+      "path": "src/clientversion.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 4235,
+        "git_blob": "94af1310bcdddcf84453804d87e4afcc0fde3267",
+        "sha256": "6eb813ac2b2b1a4a0514c72640461050a394fada5e26350589b6bfc9bbb93cff"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4254,
+        "git_blob": "40ca360897cee02bf9e449ffe6e84d196c62f096",
+        "sha256": "01e732b4a8a64306e0e1dd3d31ebfdc7dfa99714c6fb26faaa1c64bd0910ecaa"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Compile-time portability prerequisite only; client name, version behavior and node authority are unchanged.",
+      "test_reachability": "Compiled by the public Ubuntu node-adapter build that exposed the missing fixed-width integer declaration."
+    },
+    {
+      "path": "src/consensus/validation.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3007,
+        "git_blob": "401c6e75fba59baaa6ee737d05ac160de656a41d",
+        "sha256": "ff409ae6b4a2aeab848332f8f15aebd833dd37f21b32a87c9a6396c214f2a349"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3026,
+        "git_blob": "416215a18457d6e0fcef7179e50efa9d5671e635",
+        "sha256": "50d77f9024dd68c1758ff963c4bccd08362997fa2d343a3955a710de0ee8950a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Portable declaration fix only: include cstdint where reject-code constants use uint8_t; validation behavior and values are unchanged.",
+      "test_reachability": "Compiled transitively by bitcoind and test_bitcoin in the public Ubuntu build."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 116596,
+        "git_blob": "c4ca08f8ed0bc979e59e01542d3caed1b135b051",
+        "sha256": "9be2892c272c2b4924184ecb1eca7f13d710597b81def26ed232ec4c1713ba8d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 117020,
+        "git_blob": "3c47c3f59f9d9f00bfc098dd57bbef9a6452db15",
+        "sha256": "a20da0ed08852db38271f4185312e8bdd2296bdf648237074270ef3b958f43b3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Reachable only when the observer is compiled in and explicitly enabled on local regtest; it has no validation, consensus, activation or chain-selection authority.",
+      "test_reachability": "Covered by Rust unit tests, C++ boundary tests and local-regtest restart, reindex, pruning and reorg scenarios."
+    },
+    {
+      "path": "src/support/lockedpool.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 13347,
+        "git_blob": "3d5f21ae4fc9835dd26a1e7c8eef999563637403",
+        "sha256": "84af2952130b79e16909dd826a09f754223b030882f1d537d9fb6f6e19d9cdf5"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13405,
+        "git_blob": "41d7d202c2ff7b67b226cf4dce075aed40503af5",
+        "sha256": "62bd9b2851e027a12e51b0c29f5102f1529c20f68df5f9ceea3ae3f4b7845d8c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Compile-time portability prerequisite only; locked-memory allocation behavior and node authority are unchanged.",
+      "test_reachability": "Compiled by the public Ubuntu node-adapter build that exposed missing direct standard-library declarations."
+    },
+    {
+      "path": "src/test/cuckoocache_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 18826,
+        "git_blob": "f2844f02b4a43342992f62b4233da3a4c10aba9b",
+        "sha256": "4f6f03bc82528cbf6caff5d4e922c818308f16d9968e4208f921ac23b9950bec"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 18844,
+        "git_blob": "24856ad2dba2d4c927517f3381553e071b08a168",
+        "sha256": "0da85060671ace9289f6b135be43a35453167a94879a300f2806db04ff325de4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; direct deque declaration fix in inherited unit-test source only.",
+      "test_reachability": "Compiled into test_bitcoin by the public Ubuntu node-adapter build."
+    },
+    {
+      "path": "test/functional/feature_chronik_asset_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 7966,
+        "git_blob": "b5982a4466b23ba0b41f0f20a7d3478ee28c9b92",
+        "sha256": "b9f63e74d252794e41107c7c1b1cfdae1050f0839d73384f9a6d18ff2bfeb3d3"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 7974,
+        "git_blob": "471a5b023fd406a0ac367e11b5525e5a75178ab0",
+        "sha256": "093e8542d72b3e0044fe34c0ee985a0bb84d16c1f54b72609c914c1a1a2cc90e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in production; functional or fail-closed engineering verification only.",
+      "test_reachability": "Exercises success and failure boundaries in fresh isolated processes and datadirs."
+    },
+    {
+      "path": "test/functional/feature_chronik_block_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 24401,
+        "git_blob": "f3ba5e19683c0bec954aa273f967119dcb49c8ec",
+        "sha256": "f386d86070cdc5f868b1bc78e4aeca220ba14e8e8eef30584cdf735babce07c5"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 25114,
+        "git_blob": "363cb0ec788efc9e1b5ebfbec97d911bf2e1ef4c",
+        "sha256": "0965c9747325f637fa06356ac626adb290c5f54af9f37d21cd5b1300335519b0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in production; functional or fail-closed engineering verification only.",
+      "test_reachability": "Exercises success and failure boundaries in fresh isolated processes and datadirs."
+    },
+    {
+      "path": "test/functional/feature_chronik_pruned_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 4637,
+        "git_blob": "b4e7bd850529b2397f9268014499cf79c7f4afd0",
+        "sha256": "2fd73d67b8274135f828b2754395935e165fcd0c21edb438146390e08a0ceafe"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 5123,
+        "git_blob": "eec8d3a3da0f697440f233d331dfd0621cb1fabd",
+        "sha256": "34cc0e6e5889ade75ac5da3a2996808e9185631cb66d61ae7b3365e4cd40dcd5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in production; functional or fail-closed engineering verification only.",
+      "test_reachability": "Exercises success and failure boundaries in fresh isolated processes and datadirs."
+    },
+    {
+      "path": "tools/engineering/check_chronik_port_core.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 14443,
+        "git_blob": "93ca6b8dd6e6ec8231610c2cb30234d5c10aec31",
+        "sha256": "8d7abd85325bc332bcfc60a66d88b435d9b717068f6d8d5ba8ab1914c779f10c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14874,
+        "git_blob": "aa566b2eb499ffbd4cd78e10a782d0fab9e0239b",
+        "sha256": "ab7b03d390496e4cc3b5d374ed63aa46fa050173b6333071f1bfe3282662195e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None in production; functional or fail-closed engineering verification only.",
+      "test_reachability": "Exercises success and failure boundaries in fresh isolated processes and datadirs."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Configure and build bitcoind with BUILD_CHRONIK_OBSERVER=OFF from the exact public parent and verify that no Rust or Chronik runtime edge is present."
+        ],
+        "expected_results": [
+          "The standalone node remains independent of Chronik and preserves the accepted parent behavior."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Configure and build bitcoind plus test_bitcoin with BUILD_CHRONIK_OBSERVER=ON, leave -chronikobserver disabled, and run chronik_event_envelope_tests."
+        ],
+        "expected_results": [
+          "The bridge and runtime compile, boundary tests pass, and the disabled runtime is not registered or opened."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Enable -chronikobserver=1 only on local regtest and run the asset, block and pruned observer functional matrices from isolated datadirs."
+        ],
+        "expected_results": [
+          "Accepted ALP/SLP block streams persist across restart and rebuild, exact-tip disconnects reverse state, and runtime failures never affect node correctness."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run feature_chronik_asset_observer.py against the compiled-in candidate from a fresh datadir.",
+        "expected_results": [
+          "Explicit local-regtest opt-in creates the persistent runtime beneath blocks/index/chronik and indexes accepted asset events."
+        ],
+        "failure_conditions": [
+          "Implicit enablement, missing runtime state, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the restart section of feature_chronik_block_observer.py with the persistent runtime enabled.",
+        "expected_results": [
+          "The durable runtime resumes at the accepted tip while the bounded volatile projection reconstructs consistently."
+        ],
+        "failure_conditions": [
+          "Tip divergence, lost token state, callback blockage, cleanup failure, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the full-reindex section of feature_chronik_block_observer.py.",
+        "expected_results": [
+          "Full reindex explicitly resets and reconstructs the persistent runtime from accepted ordered block callbacks."
+        ],
+        "failure_conditions": [
+          "Stale state adoption, incomplete rebuild, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the chainstate-reindex section of feature_chronik_block_observer.py.",
+        "expected_results": [
+          "Chainstate reindex resets and reconstructs the persistent runtime without changing chain selection."
+        ],
+        "failure_conditions": [
+          "Stale state adoption, incomplete rebuild, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run feature_chronik_pruned_observer.py with pruning and persistent indexing enabled.",
+        "expected_results": [
+          "Available accepted blocks index normally; an unavailable historical block disables only persistent indexing while the node and volatile observer continue."
+        ],
+        "failure_conditions": [
+          "Node shutdown, validation effect, silent persistent continuation, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the deep-reorg section of feature_chronik_block_observer.py.",
+        "expected_results": [
+          "Exact-tip disconnects reverse persistent state; a contradiction fails closed within the indexing layer and does not affect node correctness."
+        ],
+        "failure_conditions": [
+          "Silent state corruption, node-authority effect, callback deadlock, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "ubuntu-24.04",
+        "macos-26-arm64-local-observation"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 dc0de683db8040b68d01f5f18fb919091ebb94ac94864d29fa64b3c715806cee"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "The adapter is explicit local-regtest-only and has no served API, mempool index, wallet integration or production deployment contract.",
+    "The persistent runtime can rebuild only from readable accepted block data; pruning can therefore disable the persistent layer until an operator supplies a reconstructible datadir or reindex source.",
+    "The bounded asynchronous queue is intentionally finite; saturation disables only the persistent runtime instead of blocking node callbacks.",
+    "Local macOS builds and functional runs are component observations only; this under-review record attaches no public evidence and claims neither Observed nor Reproduced.",
+    "Native compiler, libclang and RocksDB build outputs are not bit-reproducibly pinned."
+  ],
+  "counterevidence": [
+    "A 64-event queue saturated during the first deep-reorg run when RocksDB writes lagged the callback burst; the reviewed bound is now 512 and the complete scenario passes, but sustained overload remains an explicit runtime-disable condition.",
+    "A pruned datadir can make an accepted historical block unavailable to the persistent runtime; the required behavior is to disable persistence while the node and volatile observer continue.",
+    "The first asset functional expectation used a path outside the node index directory; the test now binds the actual blocks/index/chronik location.",
+    "The first two public Ubuntu build attempts exposed missing direct standard-library includes in the inherited MIT-licensed client-version and locked-pool compilation units; this change adds cstdint to the former and the directly used limits, stdexcept and utility headers to the latter.",
+    "The third public Ubuntu build selected an older versioned libclang shared object before the installed development symlink; the workflow now selects the highest unversioned libclang.so path and fails closed if none exists.",
+    "The fourth public Ubuntu build exposed another inherited transitive-include dependency: base58.h used uint8_t without directly including cstdint; this change makes that declaration self-contained without changing Base58 behavior.",
+    "The fifth public Ubuntu build reached 244 of 317 native targets before the inherited cuckoocache unit test used std::deque without directly including deque; this change adds only that test-source declaration.",
+    "The sixth public Ubuntu build reached 295 of 317 native targets before consensus/validation.h used uint8_t reject-code constants without directly including cstdint; this change makes the declarations self-contained without altering validation behavior or values.",
+    "The imported donor bridge remains excluded because it targets a different node API and wider service surface; this adapter is independently authored against the accepted Bitcoin Static observer boundary."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

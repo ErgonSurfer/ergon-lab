@@ -231,6 +231,7 @@ dependencies = [
  "bitcoinsuite-core",
  "bitcoinsuite-slp",
  "bytes",
+ "chronik-runtime",
 ]
 
 [[package]]
@@ -294,6 +295,7 @@ dependencies = [
  "abc-rust-error",
  "bitcoinsuite-core",
  "bitcoinsuite-slp",
+ "bytes",
  "chronik-db",
  "tempdir",
  "thiserror",

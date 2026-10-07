@@ -12,6 +12,8 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
+#include <deque>
+
 /**
  * Test Suite for CuckooCache
  *

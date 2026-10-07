@@ -248,28 +248,21 @@ add_subdirectory(leveldb)
 add_subdirectory(secp256k1)
 add_subdirectory(univalue)
 
-# Find the git root, and returns the full path to the .git/logs/HEAD file if
-# it exists.
+# Return Git's own path to logs/HEAD. This supports both ordinary checkouts and
+# linked worktrees, where .git is a pointer file rather than a directory.
 function(find_git_head_logs_file RESULT)
 	find_package(Git)
 	if(GIT_FOUND)
 		execute_process(
-			COMMAND "${GIT_EXECUTABLE}" "rev-parse" "--show-toplevel"
+			COMMAND "${GIT_EXECUTABLE}" "rev-parse" "--git-path" "logs/HEAD"
 			WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-			OUTPUT_VARIABLE GIT_ROOT
+			OUTPUT_VARIABLE GIT_HEAD_LOGS_FILE
 			RESULT_VARIABLE GIT_RESULT
 			OUTPUT_STRIP_TRAILING_WHITESPACE
 			ERROR_QUIET
 		)
 
 		if(GIT_RESULT EQUAL 0)
-			set(GIT_LOGS_DIR "${GIT_ROOT}/.git/logs")
-			set(GIT_HEAD_LOGS_FILE "${GIT_LOGS_DIR}/HEAD")
-			# If the .git/logs/HEAD does not exist, create it
-			if(NOT EXISTS "${GIT_HEAD_LOGS_FILE}")
-				file(MAKE_DIRECTORY "${GIT_LOGS_DIR}")
-				file(TOUCH "${GIT_HEAD_LOGS_FILE}")
-			endif()
 			set(${RESULT} "${GIT_HEAD_LOGS_FILE}" PARENT_SCOPE)
 		endif()
 	endif()

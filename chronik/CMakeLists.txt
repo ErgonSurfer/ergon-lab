@@ -148,7 +148,7 @@ if(BUILD_CHRONIK_OBSERVER)
             --locked
             --offline
         BYPRODUCTS "${CHRONIK_OBSERVER_STATICLIB}"
-        COMMENT "Building the in-memory Chronik observer"
+        COMMENT "Building the Chronik observer and persistent token runtime"
         USES_TERMINAL
         VERBATIM
     )
@@ -168,7 +168,7 @@ if(BUILD_CHRONIK_OBSERVER)
             --release
             --locked
             --offline
-        COMMENT "Testing the in-memory Chronik observer"
+        COMMENT "Testing the Chronik observer and persistent token runtime"
         USES_TERMINAL
         VERBATIM
     )

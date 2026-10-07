@@ -203,7 +203,7 @@ class ChronikAssetObserverTest(ChronikBlockObserverTest):
         node.syncwithvalidationinterfacequeue()
         assert_equal(node.getbestblockhash(), malformed_block)
         assert_equal(len(self.read_connected()), 10)
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
         self.stop_node(0)
 
         restart_offset = os.path.getsize(self.log_path())
@@ -237,7 +237,7 @@ class ChronikAssetObserverTest(ChronikBlockObserverTest):
         assert_equal(len(reindexed), 6)
         assert_equal(reindexed[-1][-5:], (1, 2, 1, 1, 1))
         assert "Chronik observer rejected" not in self.read_log(reindex_offset)
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
 
 
 if __name__ == "__main__":

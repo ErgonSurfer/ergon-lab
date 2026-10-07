@@ -79,7 +79,7 @@ option(BUILD_CHRONIK_PORT_CORE
 	OFF
 )
 option(BUILD_CHRONIK_OBSERVER
-	"Link the optional in-memory Chronik block observer"
+	"Link the optional Chronik block observer and persistent token runtime"
 	OFF
 )
 

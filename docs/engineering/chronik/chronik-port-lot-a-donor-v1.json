@@ -1732,11 +1732,11 @@
       "chronik-proto",
       "chronik-runtime"
     ],
-    "node_runtime_linked": false,
-    "runtime_status": "lot-b-persistent-core-unlinked"
+    "node_runtime_linked": true,
+    "runtime_status": "lot-b-local-regtest-node-adapter"
   },
   "workspace": {
-    "cargo_lock_sha256": "4cf83a615f394890a749abe5bddf973a07bb779026b25110a31f48c4cb617a17",
+    "cargo_lock_sha256": "dc0de683db8040b68d01f5f18fb919091ebb94ac94864d29fa64b3c715806cee",
     "default_members": [
       "bitcoinsuite-core",
       "bitcoinsuite-slp",
