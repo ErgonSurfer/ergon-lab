@@ -16,9 +16,9 @@ if(NOT CHRONIK_RUSTC_RESULT EQUAL 0)
 endif()
 string(REGEX MATCH "rustc ([0-9]+[.][0-9]+[.][0-9]+)" _ "${CHRONIK_RUSTC_OUTPUT}")
 set(CHRONIK_RUSTC_VERSION "${CMAKE_MATCH_1}")
-if(NOT CHRONIK_RUSTC_VERSION OR CHRONIK_RUSTC_VERSION VERSION_LESS "1.80.0")
+if(NOT CHRONIK_RUSTC_VERSION OR CHRONIK_RUSTC_VERSION VERSION_LESS "1.85.0")
     message(FATAL_ERROR
-        "Chronik requires Rust 1.80.0 or newer; found ${CHRONIK_RUSTC_OUTPUT}"
+        "Chronik requires Rust 1.85.0 or newer; found ${CHRONIK_RUSTC_OUTPUT}"
     )
 endif()
 
@@ -28,12 +28,36 @@ set(CHRONIK_BUILD_ONLY_TARGET_DIR
 set(CHRONIK_CARGO_HOME "" CACHE PATH
     "Optional isolated Cargo home for the Chronik build-only target"
 )
+set(CHRONIK_LIBCLANG_DIR "" CACHE PATH
+    "Optional directory containing libclang for Chronik RocksDB bindings"
+)
 set(CHRONIK_CARGO_ENV
     "CARGO_TARGET_DIR=${CHRONIK_BUILD_ONLY_TARGET_DIR}"
 )
 if(CHRONIK_CARGO_HOME)
     list(APPEND CHRONIK_CARGO_ENV "CARGO_HOME=${CHRONIK_CARGO_HOME}")
 endif()
+if(CHRONIK_LIBCLANG_DIR)
+    list(APPEND CHRONIK_CARGO_ENV "LIBCLANG_PATH=${CHRONIK_LIBCLANG_DIR}")
+    if(APPLE)
+        list(APPEND CHRONIK_CARGO_ENV
+            "DYLD_LIBRARY_PATH=${CHRONIK_LIBCLANG_DIR}"
+        )
+    endif()
+endif()
+
+set(CHRONIK_FOUNDATION_PACKAGES
+    --package abc-rust-error
+    --package abc-rust-lint
+    --package bitcoinsuite-core
+    --package bitcoinsuite-slp
+)
+set(CHRONIK_PORT_CORE_PACKAGES
+    --package bitcoinsuite-core
+    --package bitcoinsuite-slp
+    --package chronik-db
+    --package chronik-proto
+)
 if(BUILD_CHRONIK_BUILD_ONLY)
     add_custom_target(chronik_build_only ALL
         COMMAND
@@ -42,8 +66,7 @@ if(BUILD_CHRONIK_BUILD_ONLY)
             "${CHRONIK_CARGO_EXECUTABLE}"
             build
             --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml"
-            --workspace
-            --exclude chronik-observer
+            ${CHRONIK_FOUNDATION_PACKAGES}
             --release
             --locked
             --offline
@@ -59,8 +82,7 @@ if(BUILD_CHRONIK_BUILD_ONLY)
             "${CHRONIK_CARGO_EXECUTABLE}"
             test
             --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml"
-            --workspace
-            --exclude chronik-observer
+            ${CHRONIK_FOUNDATION_PACKAGES}
             --release
             --locked
             --offline
@@ -69,6 +91,44 @@ if(BUILD_CHRONIK_BUILD_ONLY)
         VERBATIM
     )
     add_dependencies(check check-chronik-build-only)
+endif()
+
+if(BUILD_CHRONIK_PORT_CORE)
+    find_program_or_fail(CHRONIK_PROTOC_EXECUTABLE protoc)
+    list(APPEND CHRONIK_CARGO_ENV "PROTOC=${CHRONIK_PROTOC_EXECUTABLE}")
+
+    add_custom_target(chronik_port_core ALL
+        COMMAND
+            "${CMAKE_COMMAND}" -E env
+            ${CHRONIK_CARGO_ENV}
+            "${CHRONIK_CARGO_EXECUTABLE}"
+            build
+            --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml"
+            ${CHRONIK_PORT_CORE_PACKAGES}
+            --release
+            --locked
+            --offline
+        COMMENT "Building the dormant Chronik token and database port core"
+        USES_TERMINAL
+        VERBATIM
+    )
+
+    add_custom_target(check-chronik-port-core
+        COMMAND
+            "${CMAKE_COMMAND}" -E env
+            ${CHRONIK_CARGO_ENV}
+            "${CHRONIK_CARGO_EXECUTABLE}"
+            test
+            --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml"
+            ${CHRONIK_PORT_CORE_PACKAGES}
+            --release
+            --locked
+            --offline
+        COMMENT "Testing the dormant Chronik token and database port core"
+        USES_TERMINAL
+        VERBATIM
+    )
+    add_dependencies(check check-chronik-port-core)
 endif()
 
 if(BUILD_CHRONIK_OBSERVER)

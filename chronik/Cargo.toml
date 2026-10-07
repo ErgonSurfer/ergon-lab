@@ -7,9 +7,27 @@ members = [
     "abc-rust-lint",
     "bitcoinsuite-core",
     "bitcoinsuite-slp",
+    "chronik-db",
     "chronik-observer",
+    "chronik-plugin",
+    "chronik-plugin-common",
+    "chronik-plugin-impl",
+    "chronik-proto",
+    "chronik-util",
+]
+default-members = [
+    "bitcoinsuite-core",
+    "bitcoinsuite-slp",
+    "chronik-db",
+    "chronik-proto",
+]
+exclude = [
+    "chronik-bridge",
+    "chronik-http",
+    "chronik-indexer",
+    "chronik-lib",
 ]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.80.0"
+rust-version = "1.85.0"
