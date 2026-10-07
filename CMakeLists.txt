@@ -75,7 +75,7 @@ option(BUILD_CHRONIK_BUILD_ONLY
 	OFF
 )
 option(BUILD_CHRONIK_PORT_CORE
-	"Build the dormant Chronik token, database, and protobuf port core"
+	"Build the Chronik token, database, protobuf, and persistent runtime core"
 	OFF
 )
 option(BUILD_CHRONIK_OBSERVER

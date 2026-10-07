@@ -1,0 +1,521 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0036",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0036.json",
+  "purpose": {
+    "summary": "Add a persistent, reversible Chronik token-index runtime core for accepted ALP and SLP transaction streams while keeping the runtime unlinked from the node and outside every consensus decision.",
+    "scope": [
+      "Introduce the independently authored chronik-runtime crate over the donor-bound Chronik database, transaction and ALP/SLP verification primitives accepted in ERGON-CHANGE-0035.",
+      "Atomically persist accepted block identity, ordered transaction reverse lookups, token ancestry, token metadata and genesis payloads, then reconstruct the indexed tip after restart.",
+      "Require exact height and parent continuity on connect and exact tip identity plus ordered transaction identity on disconnect.",
+      "Exercise ALP genesis, mint, send and burn persistence, restart, exact-tip rollback, ordering contradictions and failed-validation atomicity.",
+      "Include the runtime in the default-off locked Rust build and CI corpus while preserving the existing node-independent build graph."
+    ],
+    "exclusions": [
+      "No node callback, startup option, datadir binding, block-file reader, mempool hook, HTTP, gRPC, websocket or public query API is added.",
+      "No consensus, validation, activation, chain-selection, wallet, P2P, network identity or mainnet parameter change is included.",
+      "No private history, private source, operator data, incoming report, binary, build output or host-specific path is tracked."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "87ec12990966c5dd1e6023f7bde1771700bc4813",
+      "tree": "2ce830739a8594952fe9354ca2236b0d4215a804"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "ff61ec0db0785e2b2ba35b288e64924408862c0f1e4205b392b57f3fce425ff6",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 2154,
+        "git_blob": "cc4eda9b630d3fd067111e3792a1cc1dca6727b4",
+        "sha256": "3fc5b66e9622623c270c5fe8a9ab6419162034edb1ce0ee29356fb2708236650"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2163,
+        "git_blob": "c88ad9b5a7ca1b625620cdacfdbade4a7b2d5593",
+        "sha256": "94f9a7243f9a9ffe408fdb4de30e0c7c52bc2593db7834322382efb4ab5e78eb"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build and CI graph only; BUILD_CHRONIK_PORT_CORE remains default OFF and no node link edge is added.",
+      "test_reachability": "Runs the locked donor corpus plus persistent runtime tests under Rust 1.85.0."
+    },
+    {
+      "path": "CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 3890,
+        "git_blob": "d3ce75226d851e7f2d2be95d4af2bee7037874bd",
+        "sha256": "02f905543d0086d2abb7ced1c0b065e2fcee8ce0ed2cf2c028dc93bda51a909d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3897,
+        "git_blob": "297de58f917b6b82eb7a79e4c9f7165033804c70",
+        "sha256": "979fba10b99db572912c496aecb6f69c0fa5d6b4d4afa4bc4ae0997db4133840"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build description only; the default-off switch remains unchanged.",
+      "test_reachability": "Describes the persistent runtime now covered by the port-core target."
+    },
+    {
+      "path": "chronik/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 5522,
+        "git_blob": "354f614cb2a267461990aea8e126ba538d61085c",
+        "sha256": "a169078ae8ac7b2dab0577c8c3561fa3b9a8a260abd3db2788af5a82dcf97d90"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5552,
+        "git_blob": "2766db39e525e734e2fcf6b88d13550b33d7bf63",
+        "sha256": "1c7505b0a5dbe9e356b4e05233a93d7b3e6179ee9893f3878be7c4996ae2bd10"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off Rust build target only; no C++ node target consumes the runtime.",
+      "test_reachability": "Adds chronik-runtime to the governed package list."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 37797,
+        "git_blob": "d432f1ed969cc02eede14581405a6a9c07c278a0",
+        "sha256": "7af496d774c6180ed13a935b8c8080b0394fe5720697231aabbcc0b2cfaaf689"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 37975,
+        "git_blob": "cb525946a44994088ff8739b4a1cca90f8730bfa",
+        "sha256": "4cf83a615f394890a749abe5bddf973a07bb779026b25110a31f48c4cb617a17"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1-GENERATED",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Locked build input for the default-off Chronik port-core workspace.",
+      "test_reachability": "Binds the local runtime package without widening the external dependency closure."
+    },
+    {
+      "path": "chronik/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 621,
+        "git_blob": "ccc2ca568ad2f924e936875e8805f7c467c32795",
+        "sha256": "29ad05fcaa8d3605d8c85c18c8140f7d0e8f70f87407d0dba2212381b28bbc78"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 667,
+        "git_blob": "3f6d74df97dd36ae0c7eba4492fcc4655e753452",
+        "sha256": "328ba0a85058124187563effc88560663ebdc34df781b12965e325b014ac858f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Workspace construction only; no standalone-node link edge.",
+      "test_reachability": "Makes chronik-runtime a governed default workspace member."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 11717,
+        "git_blob": "6dbed12675838125a547823ca233e813f1d7f36d",
+        "sha256": "dd320a6f0661201f388ed004340cb055f41189ef6e9db5bf2a396fcde3a05578"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12778,
+        "git_blob": "9994577ffd055c2c4b2cb4b8f5c561470ddd1454",
+        "sha256": "9b412913b58529a00f44af1c1269ea1201af8f6709c2e5388d85b6e4400b81a6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public boundary and architecture documentation.",
+      "test_reachability": "Reviewed by the publication and provenance gates."
+    },
+    {
+      "path": "chronik/chronik-runtime/Cargo.toml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 456,
+        "git_blob": "34f17b1135c070de8a074d77a49f86c7353c08d7",
+        "sha256": "db36853779b895d09d7f65fba98797f9f8fb95c3f3c64538b0ea48e247ed2b76"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Default-off Rust workspace descriptor; not linked into bitcoind.",
+      "test_reachability": "Declares the persistent runtime and its test-only temporary-directory dependency."
+    },
+    {
+      "path": "chronik/chronik-runtime/src/lib.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 19933,
+        "git_blob": "699a1432c2aa51f713d3bfcc9332d84e9c04efa4",
+        "sha256": "974912337731d9b4b333aaa084cdd5755bd7e852c37bdfec4c98519ef2aec722"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Persistent library core only; no host adapter, startup registration, node callback or public API reaches it in this lot.",
+      "test_reachability": "Unit tests cover ALP lifecycle persistence, direct SLP persistence, restart, rollback, boundary contradictions and failed-validation atomicity."
+    },
+    {
+      "path": "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 71146,
+        "git_blob": "bac446dd1b3b7059efc98f2d5a04598e861149fc",
+        "sha256": "7723d031ad0dd1378cf7c0294a5cec5151636527994d51fbf8c76e9088a736fc"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 71232,
+        "git_blob": "ddfb956462303094862f2e1ed5f5d35e9b85dfc3",
+        "sha256": "ce9851646277bc2840970f333715275aef07647a5d76636562ee1a062c534363"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; machine-readable provenance and workspace-boundary record.",
+      "test_reachability": "Updates the governed member list, runtime status and lock digest."
+    },
+    {
+      "path": "tools/engineering/check_chronik_port_core.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 14362,
+        "git_blob": "760d4008039688993d622b273f8ed35862316df3",
+        "sha256": "2e3fa12a6ce4f23ad818c4187430bfaad6e5ab9d60875ddc3171190972d961f3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14443,
+        "git_blob": "93ca6b8dd6e6ec8231610c2cb30234d5c10aec31",
+        "sha256": "8d7abd85325bc332bcfc60a66d88b435d9b717068f6d8d5ba8ab1914c779f10c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; fail-closed engineering checker.",
+      "test_reachability": "Enforces the runtime workspace membership, default-member status and build-description boundary."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": false,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Configure a fresh supported Linux build with BUILD_CHRONIK_BUILD_ONLY=OFF, BUILD_CHRONIK_PORT_CORE=OFF and BUILD_CHRONIK_OBSERVER=OFF; require no Cargo or Chronik runtime edge before building bitcoind."
+        ],
+        "expected_results": [
+          "The standalone node build graph and binary remain independent of Rust and Chronik."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Run the port-core provenance checker, then build and test all five governed default workspace packages offline under Rust 1.85.0 with the exact lock.",
+          "Open a fresh chronik-runtime database, connect an ALP genesis/mint/send chain and burn, reopen it, verify persisted token ancestry, then disconnect exact tips to empty."
+        ],
+        "expected_results": [
+          "The complete donor corpus and persistent runtime tests pass without linking a node runtime bridge.",
+          "Block, transaction and token writes are atomic, durable across restart and exactly reversible at the active tip."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Preserve the separately governed local-regtest observer profile and rerun its bounded optional-indexing matrix after the persistent runtime corpus succeeds."
+        ],
+        "expected_results": [
+          "The existing observe/index-only matrix remains behaviorally unchanged because this lot adds no node host adapter."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the existing local-regtest opt-in observer scenario from a fresh datadir after the runtime corpus passes.",
+        "expected_results": [
+          "Observer opt-in remains explicit and node authority remains unchanged."
+        ],
+        "failure_conditions": [
+          "Implicit enablement, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the existing bounded 288-block restart reconstruction scenario.",
+        "expected_results": [
+          "The retained observer projection reconstructs identically after restart; the new runtime separately proves durable reopen semantics."
+        ],
+        "failure_conditions": [
+          "Projection divergence, incomplete cleanup, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the existing bounded full-reindex reconstruction scenario.",
+        "expected_results": [
+          "Full reindex reconstructs the retained observer projection."
+        ],
+        "failure_conditions": [
+          "Projection divergence, incomplete cleanup, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the existing bounded chainstate-reindex reconstruction scenario.",
+        "expected_results": [
+          "Chainstate reindex reconstructs the retained observer projection."
+        ],
+        "failure_conditions": [
+          "Projection divergence, incomplete cleanup, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the existing bounded pruned-datadir reconstruction scenario.",
+        "expected_results": [
+          "The available active-chain suffix reconstructs within the governed bound."
+        ],
+        "failure_conditions": [
+          "Out-of-bound access, projection divergence, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the existing deep-reorg contradiction scenario below the retained observer anchor.",
+        "expected_results": [
+          "The observer marks rebuild-required and rejects further updates until reconstruction."
+        ],
+        "failure_conditions": [
+          "Silent continuation, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "ubuntu-24.04",
+        "macos-26-arm64-local-observation"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 4cf83a615f394890a749abe5bddf973a07bb779026b25110a31f48c4cb617a17"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "This lot creates a persistent token-index runtime library but does not yet connect accepted node events, startup reconstruction or reorg callbacks to it.",
+    "The runtime currently exposes only a Rust library query for token ancestry; no public node API, mempool view or subscription surface exists.",
+    "The runtime trusts its future host adapter to supply accepted active-chain blocks in exact order; binary-to-source and block-file provenance remain outside this library boundary.",
+    "The local Rust run is a component observation only; no public CI receipt exists before publication and no result is promoted to Observed or Reproduced here.",
+    "The dependency closure is locked, but native compiler, libclang and RocksDB build outputs are not bit-reproducibly pinned by this record."
+  ],
+  "counterevidence": [
+    "The pinned donor chronik-cpp bridge targets a newer Bitcoin ABC node API and cannot be copied directly into Bitcoin Static v24.0.5 without unsafe assumptions about validation callbacks, HTTP services and chain interfaces.",
+    "The staged implementation therefore stops at a host-neutral persistent runtime and leaves the Bitcoin Static adapter to a separate reviewed change.",
+    "A failed cyclic-token batch is required to leave no indexed tip, transaction reverse lookup or token record behind.",
+    "Any node link edge, startup registration, API exposure, consensus effect, dependency drift or unreviewed path must fail this lot boundary."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

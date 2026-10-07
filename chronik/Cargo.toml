@@ -13,6 +13,7 @@ members = [
     "chronik-plugin-common",
     "chronik-plugin-impl",
     "chronik-proto",
+    "chronik-runtime",
     "chronik-util",
 ]
 default-members = [
@@ -20,6 +21,7 @@ default-members = [
     "bitcoinsuite-slp",
     "chronik-db",
     "chronik-proto",
+    "chronik-runtime",
 ]
 exclude = [
     "chronik-bridge",

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Generate and validate the pinned Chronik Lot A donor inventory."""
+"""Validate the Chronik donor corpus and governed executable workspace."""
 
 from __future__ import annotations
 
@@ -58,6 +58,7 @@ WORKSPACE_MEMBERS = (
     "chronik-plugin-common",
     "chronik-plugin-impl",
     "chronik-proto",
+    "chronik-runtime",
     "chronik-util",
 )
 DEFAULT_MEMBERS = (
@@ -65,6 +66,7 @@ DEFAULT_MEMBERS = (
     "bitcoinsuite-slp",
     "chronik-db",
     "chronik-proto",
+    "chronik-runtime",
 )
 EXCLUDED_MEMBERS = (
     "chronik-bridge",
@@ -313,8 +315,9 @@ def validate(repository_root: Path) -> dict:
     root_cmake = (repository_root / "CMakeLists.txt").read_text(encoding="utf-8")
     require(
         "option(BUILD_CHRONIK_PORT_CORE" in root_cmake
-        and "Build the dormant Chronik token, database, and protobuf port core" in root_cmake,
-        "Lot A CMake option missing",
+        and "Build the Chronik token, database, protobuf, and persistent runtime core"
+        in root_cmake,
+        "Chronik port-core CMake option missing",
     )
     chronik_cmake = (repository_root / "chronik/CMakeLists.txt").read_text(
         encoding="utf-8"
@@ -365,7 +368,7 @@ def main() -> int:
                 "PASS: "
                 f"{payload['scope']['exact_donor_files']} donor files, "
                 f"{payload['scope']['adapted_donor_files']} whitespace adaptations, "
-                f"{len(payload['workspace']['default_members'])} executable Lot A packages"
+                f"{len(payload['workspace']['default_members'])} governed executable packages"
             )
         return 0
     except (CheckError, KeyError, OSError, ValueError, tomllib.TOMLDecodeError) as error:
