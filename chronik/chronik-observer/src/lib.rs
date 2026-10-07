@@ -28,6 +28,8 @@ use bitcoinsuite_core::{
 use bitcoinsuite_slp::{color::ColoredTx, token_type::TokenType};
 use bytes::Bytes;
 
+mod persistent;
+
 const CONNECTED: u8 = 1;
 const DISCONNECTED: u8 = 2;
 const CASH_TOKEN_PREFIX: u8 = 0xef;

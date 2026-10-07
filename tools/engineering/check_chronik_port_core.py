@@ -198,9 +198,9 @@ def generate(repository_root: Path, donor_root: Path, tree_json: Path) -> dict:
         "scope": {
             "exact_donor_files": len(entries),
             "adapted_donor_files": len(adaptations),
-            "runtime_status": "dormant-until-lot-b",
+            "runtime_status": "lot-b-local-regtest-node-adapter",
             "consensus_authority": False,
-            "node_runtime_linked": False,
+            "node_runtime_linked": True,
             "executable_packages": list(DEFAULT_MEMBERS),
             "excluded_runtime_members": list(EXCLUDED_MEMBERS),
         },
@@ -253,6 +253,19 @@ def validate(repository_root: Path) -> dict:
     require(
         payload.get("scope", {}).get("adapted_donor_files") == len(adaptations),
         "donor adaptation count mismatch",
+    )
+    require(
+        payload.get("scope", {}).get("runtime_status")
+        == "lot-b-local-regtest-node-adapter",
+        "runtime status drift",
+    )
+    require(
+        payload.get("scope", {}).get("node_runtime_linked") is True,
+        "node runtime link boundary drift",
+    )
+    require(
+        payload.get("scope", {}).get("consensus_authority") is False,
+        "Chronik consensus authority drift",
     )
     require(tuple(adapted_paths) == WHITESPACE_ADAPTATIONS, "donor adaptation allowlist drift")
 

@@ -74,6 +74,18 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
                 "-chronikobserver",
             ],
         )
+        restart_log = self.read_log(restart_offset)
+        assert "Chronik runtime rejected kind=bootstrap-read" in restart_log
+        assert (
+            "Chronik runtime state=disabled reason=bootstrap-failed "
+            "node_continues=1 observer_continues=1 recovery=reindex"
+            in restart_log
+        )
+        assert (
+            "Chronik observer started mode=persistent-token-runtime "
+            "runtime_enabled=0"
+            in restart_log
+        )
         assert_equal(
             self.read_bootstrap(restart_offset),
             [(714, 1001, 288, 288, 0, 0, 0, 0, 0)],
@@ -102,7 +114,7 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
         )
         assert_equal(node.getblock(retained_hash)["height"], 714)
         assert_equal(node.getbestblockhash(), tip_hash)
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
 
         next_hash = node.generatetoaddress(1, address)[0]
         node.syncwithvalidationinterfacequeue()
@@ -116,7 +128,7 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
                 retained_blocks, self.read_events(restart_offset)
             ),
         )
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
         self.stop_node(0)
         assert "Chronik observer stopped observations=1" in self.read_log(
             restart_offset

@@ -14,12 +14,15 @@ use std::path::Path;
 use abc_rust_error::Result;
 use bitcoinsuite_core::{
     block::BlockHash,
+    hash::{Hashed, Sha256d},
+    ser::BitcoinSer,
     tx::{Tx, TxId},
 };
 use bitcoinsuite_slp::{
     structs::{GenesisInfo, TokenMeta},
     verify::SpentToken,
 };
+use bytes::Bytes;
 use chronik_db::{
     db::{Db, WriteBatch},
     index_tx::prepare_indexed_txs,
@@ -76,6 +79,18 @@ pub struct TokenRecord {
 /// Fail-closed ordering and identity errors at the node/runtime boundary.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum RuntimeError {
+    /// A serialized block must contain its 80-byte header and tx count.
+    #[error("serialized block is shorter than its header and transaction count")]
+    SerializedBlockTooShort,
+
+    /// The host-supplied block hash must match the serialized header.
+    #[error("serialized block header does not match the supplied block hash")]
+    BlockHashMismatch,
+
+    /// A complete block payload may not have trailing bytes.
+    #[error("serialized block has trailing bytes")]
+    TrailingBlockBytes,
+
     /// Blocks must contain at least their coinbase transaction.
     #[error("refusing an empty accepted block at height {0}")]
     EmptyBlock(i32),
@@ -113,6 +128,11 @@ impl PersistentTokenIndexer {
         Ok(Self {
             db: Db::open(path)?,
         })
+    }
+
+    /// Destroy a closed runtime database before an explicit rebuild.
+    pub fn destroy(path: impl AsRef<Path>) -> Result<()> {
+        Db::destroy(path)
     }
 
     /// Return the currently indexed active-chain tip.
@@ -240,6 +260,35 @@ impl PersistentTokenIndexer {
         }
         Ok(())
     }
+}
+
+/// Decode the node's canonical network serialization into the runtime input.
+pub fn decode_accepted_block(
+    hash: [u8; 32],
+    height: i32,
+    raw_block: &[u8],
+) -> Result<AcceptedBlock> {
+    if raw_block.len() <= 80 {
+        return Err(RuntimeError::SerializedBlockTooShort.into());
+    }
+    let computed_hash = BlockHash::from(Sha256d::digest(&raw_block[..80]));
+    let hash = BlockHash::from(hash);
+    if computed_hash != hash {
+        return Err(RuntimeError::BlockHashMismatch.into());
+    }
+    let mut prev_hash = [0; 32];
+    prev_hash.copy_from_slice(&raw_block[4..36]);
+    let mut tx_bytes = Bytes::copy_from_slice(&raw_block[80..]);
+    let txs = Vec::<Tx>::deser(&mut tx_bytes)?;
+    if !tx_bytes.is_empty() {
+        return Err(RuntimeError::TrailingBlockBytes.into());
+    }
+    Ok(AcceptedBlock {
+        hash,
+        prev_hash: BlockHash::from(prev_hash),
+        height,
+        txs,
+    })
 }
 
 fn db_block(block: &AcceptedBlock) -> DbBlock {
@@ -562,5 +611,45 @@ mod tests {
         assert_eq!(runtime.token_record(&TxId::from([1; 32]))?, None);
         assert_eq!(runtime.token_record(&TxId::from([2; 32]))?, None);
         Ok(())
+    }
+
+    #[test]
+    fn decodes_exact_node_block_serialization() -> Result<()> {
+        let mut header = [0u8; 80];
+        header[..4].copy_from_slice(&1i32.to_le_bytes());
+        header[4..36].copy_from_slice(&[7; 32]);
+        let tx_mut = TxMut {
+            outputs: vec![TxOutput {
+                sats: 42,
+                script: Script::EMPTY,
+            }],
+            ..Default::default()
+        };
+        let transaction = Tx::with_txid(TxId::from_tx(&tx_mut), tx_mut);
+        let mut serialized = header.to_vec();
+        serialized.extend_from_slice(&vec![transaction.clone()].ser());
+        let hash = Sha256d::digest(header).to_le_bytes();
+
+        let block = decode_accepted_block(hash, 9, &serialized)?;
+        assert_eq!(block.hash, BlockHash::from(hash));
+        assert_eq!(block.prev_hash, BlockHash::from([7; 32]));
+        assert_eq!(block.height, 9);
+        assert_eq!(block.txs, vec![transaction]);
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_mismatched_truncated_and_trailing_block_payloads() {
+        let mut header = [0u8; 80];
+        header[..4].copy_from_slice(&1i32.to_le_bytes());
+        let hash = Sha256d::digest(header).to_le_bytes();
+        let transaction = TxMut::default();
+        let mut serialized = header.to_vec();
+        serialized.extend_from_slice(&vec![transaction].ser());
+
+        assert!(decode_accepted_block([9; 32], 0, &serialized).is_err());
+        assert!(decode_accepted_block(hash, 0, &serialized[..80]).is_err());
+        serialized.push(0);
+        assert!(decode_accepted_block(hash, 0, &serialized).is_err());
     }
 }

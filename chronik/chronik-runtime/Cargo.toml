@@ -12,6 +12,7 @@ license = "MIT"
 abc-rust-error = { path = "../abc-rust-error" }
 bitcoinsuite-core = { path = "../bitcoinsuite-core" }
 bitcoinsuite-slp = { path = "../bitcoinsuite-slp" }
+bytes = "1.4"
 chronik-db = { path = "../chronik-db" }
 thiserror = "2.0.3"
 

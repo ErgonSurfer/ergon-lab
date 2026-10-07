@@ -310,6 +310,19 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         assert_equal(found_paths, [])
         assert_equal(found_sockets, [])
 
+    def assert_chronik_runtime_path(self):
+        chain_dir = os.path.join(self.nodes[0].datadir, "regtest")
+        runtime_dir = os.path.join(chain_dir, "blocks", "index", "chronik")
+        assert os.path.isdir(runtime_dir)
+        assert os.path.isfile(os.path.join(runtime_dir, "CURRENT"))
+        found_sockets = []
+        for root, directories, files in os.walk(runtime_dir):
+            for name in directories + files:
+                path = os.path.join(root, name)
+                if stat.S_ISSOCK(os.lstat(path).st_mode):
+                    found_sockets.append(os.path.relpath(path, chain_dir))
+        assert_equal(found_sockets, [])
+
     def assert_network_rejected(self, network_args):
         self.nodes[0].assert_start_raises_init_error(
             extra_args=[
@@ -347,9 +360,10 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             extra_args=["-connect=0", "-disablewallet", "-chronikobserver"],
         )
         assert (
-            "Chronik observer started mode=in-memory events=blocks "
+            "Chronik observer started mode=persistent-token-runtime "
+            "runtime_enabled=1 events=blocks "
             "retained_blocks=288 owner=event-envelope+rust-worker "
-            "command_capacity=64 callback_waits=0"
+            "command_capacity=512 callback_waits=0"
             in self.read_log()
         )
         assert_equal(self.read_bootstrap(), [(0, 2, 3, 3, 0, 0, 0, 0, 0)])
@@ -365,7 +379,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             ],
         )
         assert_equal(node.getnetworkinfo()["connections"], 0)
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
 
         observed_blocks = node.generatetoaddress(2, address)
         node.syncwithvalidationinterfacequeue()
@@ -577,7 +591,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
         node.syncwithvalidationinterfacequeue()
         assert_equal(node.getblockcount(), 288)
         assert_equal(self.read_events(chainstate_offset), events_before_reconsider)
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
         self.stop_node(0)
         assert "Chronik observer stopped observations=577" in self.read_log(
             chainstate_offset
@@ -614,7 +628,7 @@ class ChronikBlockObserverTest(BitcoinTestFramework):
             self.read_connected(recovery_offset),
             [self.expected_connected(1, recovery_block, 289, 288, 288)],
         )
-        self.assert_no_chronik_paths()
+        self.assert_chronik_runtime_path()
         self.stop_node(0)
         assert "Chronik observer stopped observations=1" in self.read_log(
             recovery_offset

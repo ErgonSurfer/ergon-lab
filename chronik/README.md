@@ -10,9 +10,9 @@ default to `OFF`:
 - `BUILD_CHRONIK_PORT_CORE` compiles and tests the token, database, protobuf
   and persistent runtime core. It does not link them into the node or start a
   service.
-- `BUILD_CHRONIK_OBSERVER` links a small Rust/C++ block-event observer into
-  `bitcoind`. Its runtime flag also defaults to off and is accepted only on the
-  exact local `regtest` profile.
+- `BUILD_CHRONIK_OBSERVER` links the Rust/C++ block-event observer and the
+  persistent ALP/SLP token runtime into `bitcoind`. Its runtime flag also
+  defaults to off and is accepted only on the exact local `regtest` profile.
 
 With all three options off, CMake does not enter this directory, discover Rust,
 invoke Cargo, add a node definition, or change an executable link graph. The
@@ -60,24 +60,24 @@ the indexed tip and token records. Tip rollback removes the same data
 atomically. A failed ordering, identity or token-verification check commits
 nothing.
 
-This slice is deliberately host-neutral: it owns no validation callback,
-datadir selection, startup reconciliation, socket, HTTP handler or consensus
-decision. The existing node observer is not yet wired to this database. That
-host link and its restart/reindex/reorg matrix are the next Lot B boundary.
+The crate remains host-neutral: it owns no validation callback, datadir
+selection, socket, HTTP handler or consensus decision. The optional node
+adapter described below supplies accepted active-chain blocks and owns startup,
+restart, reindex and reorganization reconciliation.
 
-## Bounded block projection
+## Optional node adapter
 
-When `BUILD_CHRONIK_OBSERVER=ON`, `bitcoind` contains an in-memory observer and
-exposes the debug-only `-chronikobserver` flag. Launching without that flag
-registers no callback and creates no Chronik state. Launching with it is
-fail-closed outside the exact local `regtest` profile.
+When `BUILD_CHRONIK_OBSERVER=ON`, `bitcoind` contains the bounded observer and
+persistent token runtime and exposes the debug-only `-chronikobserver` flag.
+Launching without that flag registers no callback and creates no Chronik state.
+Launching with it is fail-closed outside the exact local `regtest` profile.
 
 For each accepted block-connected callback, C++ serializes the immutable
 `CBlock` once with the canonical network serializer. The C ABI copies those
-bytes once into an owned Rust buffer and moves that buffer through a synchronous
-zero-capacity command rendezvous. A single Rust worker thread exclusively owns
-the live observer state. Its producer mutex covers each complete command and
-response, so commands cannot queue or overlap at the state owner. The worker
+bytes once into an owned Rust buffer and moves that buffer through a bounded
+512-event envelope. Validation callbacks never wait for indexing. A single
+Rust worker thread exclusively owns the live observer state, preserves event
+order, and disables observation on overflow. The worker
 checks that the 80-byte header hashes to the callback block identity,
 deserializes the non-empty transaction vector without trailing bytes, and
 independently checks its Merkle root against header bytes 36 through 68. These
@@ -108,13 +108,20 @@ or an unwind caught after worker mutation, enters a fail-closed
 `rebuild-required` state; further events are rejected by the observer until a
 normal restart reconstructs the new active suffix.
 
-The state remains volatile: there is no persistent index to trust or migrate.
-This boundary creates no Chronik file, database, socket, API, or service, and
-it returns no decision to validation. The zero-capacity rendezvous bounds the
-worker command backlog to zero; it does not bound a payload already copied by
-a caller waiting for the producer mutex. Shutdown drains the validation
+Alongside that volatile suffix, the adapter stores the complete accepted
+ALP/SLP token projection under `blocks/index/chronik`. Startup resumes only
+when the database tip exactly matches the active-chain tip. A fresh database
+reconstructs from genesis when every required block is readable. Full reindex
+and chainstate reindex explicitly reset the database and rebuild through
+ordered accepted callbacks. A tip mismatch, unreadable historical block,
+payload contradiction or RocksDB error disables only the persistent runtime;
+the node and bounded observer continue, and recovery requires reindex. Runtime
+failure never returns a validation decision.
+
+This boundary creates no Chronik socket, API, or service. The event backlog is
+bounded and payload ownership remains explicit. Shutdown drains the validation
 callback queue before unregistering the observer, closes the command channel,
-joins the Rust worker, and destroys its handle. Dedicated
+joins the Rust worker, flushes RocksDB, and destroys both Rust handles. Dedicated
 `-reindex-chainstate` and actually pruned-datadir canaries exercise the same
 reconstruction boundary without adding a second state path. The chainstate
 canary replays genesis through height 288 and checks the unchanged active tip
@@ -131,15 +138,15 @@ still-readable heights 714 through 1001.
   counts every output whose serialized locking script starts with `0xef` as a
   CashTokens *prefix candidate*, including malformed candidates. These are
   observations of confirmed block bytes, not validity statements.
-- Indexed or reconstructed data: the node-linked observer still exposes only
-  the volatile 288-block suffix described above. Separately, the unlinked
-  persistent runtime core can store active-chain block/transaction identities
-  and verified ALP/SLP token ancestry, including mint, send, burn, restart and
-  exact-tip rollback behavior. It is exercised as a Rust component and is not
-  yet reachable from `bitcoind` or a query API.
-- Authoritative token validation or token state: none. The observer does not
-  load prevouts, verify token ancestry or conservation, maintain spent token
-  state, strictly decode CashTokens, or influence node validation.
+- Indexed or reconstructed data: the node-linked runtime stores active-chain
+  block and transaction identities plus verified ALP/SLP token ancestry,
+  metadata, genesis payloads, mint, send and burn state. It survives restart
+  and applies exact-tip rollback. The separate 288-block projection remains a
+  bounded diagnostic view. Neither is exposed through a public query API yet.
+- Authoritative token validation or token state: none. Chronik resolves and
+  verifies ALP/SLP ancestry for its own accepted-block index, but that result
+  cannot accept or reject a node transaction or block, alter chain selection,
+  or activate consensus. CashTokens remains prefix observation only.
 - Governed consensus activation: none. No activation height, chain parameter,
   testnet rule, or mainnet rule is added. Observing SLP, ALP, or an `0xef`
   prefix does not make that asset family native or active in Ergon consensus.
@@ -214,12 +221,13 @@ is 1.85.0. That dependency constraint supersedes the donor workspace's stale
 fails if Cargo, rustc or the sysroot drift, fetches the committed lock once and
 then runs the governed test phase offline.
 
-Compiled-in observer, runtime disabled by default:
+Compiled-in observer and persistent runtime, disabled by default:
 
 ```sh
 cmake -S . -B /absolute/path/build-observer -GNinja \
   -DBUILD_CHRONIK_OBSERVER=ON \
-  -DCHRONIK_CARGO_HOME=/absolute/path/cargo-home
+  -DCHRONIK_CARGO_HOME=/absolute/path/cargo-home \
+  -DCHRONIK_LIBCLANG_DIR=/absolute/path/to/libclang
 cmake --build /absolute/path/build-observer --target bitcoind
 cmake --build /absolute/path/build-observer --target check-chronik-observer
 ```
@@ -249,7 +257,6 @@ general pruning test.
 Build directories, Cargo caches, and test datadirs belong outside the source
 tree. Peak parsing memory includes the C++ serialization, one Rust-owned block
 buffer per caller that has crossed the C ABI, and parsed transaction structures;
-startup reconstruction and every validation callback round trip are
-synchronous. Compiling or enabling this observer is not evidence of a durable
-production index, API compatibility, native-asset validation, or consensus
-behavior.
+startup reconstruction and the bounded event worker are asynchronous from
+validation callbacks. Compiling or enabling this runtime proves neither served
+API compatibility, native-asset consensus activation nor production readiness.

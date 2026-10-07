@@ -62,7 +62,9 @@
 #include <chronik/node-observer.h>
 
 namespace chronik {
-bool StartNodeObserverForTest(uint8_t test_failure_point) noexcept;
+bool StartNodeObserverForTest(uint8_t test_failure_point,
+                              const std::string &runtime_path,
+                              bool reset_runtime) noexcept;
 } // namespace chronik
 #endif
 
@@ -2590,12 +2592,17 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
 #ifdef ENABLE_CHRONIK_OBSERVER
     const uint8_t chronik_observer_failpoint = static_cast<uint8_t>(
         gArgs.GetArg("-chronikobserverfailpoint", 0));
+    const std::string chronik_runtime_path =
+        (GetIndexDir() / "chronik").string();
+    const bool chronik_runtime_reset = fReindex || fReindexChainState;
     const bool chronik_observer_started =
         !gArgs.GetBoolArg("-chronikobserver", false) ||
         (chronik_observer_failpoint == 0
-             ? chronik::StartNodeObserver()
+             ? chronik::StartNodeObserver(chronik_runtime_path,
+                                          chronik_runtime_reset)
              : chronik::StartNodeObserverForTest(
-                   chronik_observer_failpoint));
+                   chronik_observer_failpoint, chronik_runtime_path,
+                   chronik_runtime_reset));
     if (!chronik_observer_started) {
         LogPrintf("Chronik observer disabled reason=startup-failure "
                   "node_continues=1\n");

@@ -8,6 +8,10 @@ on:
       - ".github/workflows/chronik-port-core.yml"
       - "CMakeLists.txt"
       - "chronik/**"
+      - "src/CMakeLists.txt"
+      - "src/init.cpp"
+      - "test/functional/feature_chronik_*_observer.py"
+      - "docs/engineering/changes/ergon-change-0037.json"
       - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
       - "tools/engineering/check_chronik_port_core.py"
   push:
@@ -17,6 +21,10 @@ on:
       - ".github/workflows/chronik-port-core.yml"
       - "CMakeLists.txt"
       - "chronik/**"
+      - "src/CMakeLists.txt"
+      - "src/init.cpp"
+      - "test/functional/feature_chronik_*_observer.py"
+      - "docs/engineering/changes/ergon-change-0037.json"
       - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
       - "tools/engineering/check_chronik_port_core.py"
   workflow_dispatch:
@@ -48,8 +56,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
+            build-essential \
             clang \
+            cmake \
             libclang-dev \
+            libboost-all-dev \
+            libevent-dev \
+            libssl-dev \
+            ninja-build \
+            pkg-config \
             protobuf-compiler
 
       - name: Select the declared Rust toolchain
@@ -68,3 +83,47 @@ jobs:
         env:
           CARGO_NET_OFFLINE: "true"
         run: cargo test --manifest-path chronik/Cargo.toml --locked --offline
+
+      - name: Configure the optional node adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          libclang_library=$(find /usr/lib/llvm-* -path '*/lib/libclang.so' -print | sort -V | tail -n 1)
+          test -n "$libclang_library"
+          libclang_path=$(dirname "$libclang_library")
+          test -n "$libclang_path"
+          cmake -S . -B build-chronik-node -GNinja \
+            -DBUILD_CHRONIK_OBSERVER=ON \
+            -DBUILD_CHRONIK_PORT_CORE=OFF \
+            -DBUILD_CHRONIK_BUILD_ONLY=OFF \
+            -DBUILD_BITCOIN_WALLET=OFF \
+            -DBUILD_BITCOIN_QT=OFF \
+            -DBUILD_BITCOIN_ZMQ=OFF \
+            -DENABLE_UPNP=OFF \
+            -DCHRONIK_LIBCLANG_DIR="$libclang_path"
+
+      - name: Build the node adapter and C++ boundary tests
+        run: cmake --build build-chronik-node --target bitcoind test_bitcoin -j2
+
+      - name: Run the C++ event-envelope boundary
+        run: |
+          build-chronik-node/src/test/test_bitcoin \
+            --run_test=chronik_event_envelope_tests \
+            --report_level=short \
+            --log_level=message \
+            --color_output=no
+
+      - name: Run restart, reindex, asset and pruned matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_name in \
+            feature_chronik_block_observer \
+            feature_chronik_asset_observer \
+            feature_chronik_pruned_observer
+          do
+            python3 "test/functional/${test_name}.py" \
+              --configfile="$GITHUB_WORKSPACE/build-chronik-node/test/config.ini" \
+              --tmpdir="$RUNNER_TEMP/${test_name}" \
+              --hermetic-child-env
+          done

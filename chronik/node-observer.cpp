@@ -66,9 +66,33 @@ struct ChronikProjectionObservation {
 
 static_assert(sizeof(ChronikProjectionObservation) == 9 * sizeof(uint64_t));
 
+struct ChronikRuntimeTip {
+    uint64_t success;
+    uint64_t error_code;
+    uint64_t present;
+    int64_t height;
+    std::array<uint8_t, 32> hash;
+};
+
+static_assert(sizeof(ChronikRuntimeTip) == 8 * sizeof(uint64_t));
+
+struct ChronikRuntimeMutation {
+    uint64_t success;
+    uint64_t error_code;
+    int64_t height;
+    uint64_t transactions;
+    uint64_t new_tokens;
+    uint64_t token_transactions;
+};
+
+static_assert(sizeof(ChronikRuntimeMutation) == 6 * sizeof(uint64_t));
+
 // Match the active-chain suffix that the legacy node guarantees to retain.
 constexpr int32_t CHRONIK_OBSERVER_RETAINED_BLOCKS = MIN_BLOCKS_TO_KEEP;
-constexpr size_t CHRONIK_EVENT_CAPACITY = 64;
+// Cover the governed 288-block observer window plus callback bursts while
+// RocksDB commits are serialized by the worker. The queue remains bounded and
+// callbacks never wait; overflow still disables observation fail-closed.
+constexpr size_t CHRONIK_EVENT_CAPACITY = 512;
 constexpr auto CHRONIK_SHUTDOWN_TIMEOUT = std::chrono::seconds(2);
 constexpr uint8_t TEST_FAILURE_NONE = 0;
 constexpr uint8_t TEST_FAILURE_CONSTRUCTION = 1;
@@ -86,6 +110,16 @@ ChronikBlockObservation chronik_observer_block_connected(
     const uint8_t *raw_block, size_t raw_block_size);
 ChronikBlockObservation chronik_observer_block_disconnected(
     void *observer, const uint8_t *hash);
+void *chronik_runtime_create(const uint8_t *path, size_t path_size,
+                             uint64_t reset);
+uint64_t chronik_runtime_destroy(void *runtime);
+ChronikRuntimeTip chronik_runtime_tip(const void *runtime);
+ChronikRuntimeMutation chronik_runtime_connect(
+    const void *runtime, const uint8_t *hash, int32_t height,
+    const uint8_t *raw_block, size_t raw_block_size);
+ChronikRuntimeMutation chronik_runtime_disconnect(
+    const void *runtime, const uint8_t *hash, int32_t height,
+    const uint8_t *raw_block, size_t raw_block_size);
 }
 
 class RustObserverHandle final {
@@ -105,6 +139,25 @@ public:
 
 private:
     void *m_observer;
+};
+
+class RustRuntimeHandle final {
+public:
+    explicit RustRuntimeHandle(void *runtime) : m_runtime(runtime) {}
+    RustRuntimeHandle(const RustRuntimeHandle &) = delete;
+    RustRuntimeHandle &operator=(const RustRuntimeHandle &) = delete;
+
+    ~RustRuntimeHandle() { Destroy(); }
+
+    void *Get() const noexcept { return m_runtime; }
+
+    uint64_t Destroy() noexcept {
+        void *runtime = std::exchange(m_runtime, nullptr);
+        return runtime == nullptr ? 0 : chronik_runtime_destroy(runtime);
+    }
+
+private:
+    void *m_runtime;
 };
 
 std::array<uint8_t, 32> CopyHash(const uint256 &hash) {
@@ -208,12 +261,28 @@ void LogDisconnectedObservation(
 
 class ChronikNodeObserver final : public CValidationInterface {
 public:
-    explicit ChronikNodeObserver(uint8_t test_failure_point = TEST_FAILURE_NONE)
+    explicit ChronikNodeObserver(const std::string &runtime_path,
+                                 bool reset_runtime,
+                                 uint8_t test_failure_point = TEST_FAILURE_NONE)
         : m_observer(std::make_shared<RustObserverHandle>(
               chronik_observer_create_bounded(
                   CHRONIK_OBSERVER_RETAINED_BLOCKS))),
+          m_runtime_requested(!runtime_path.empty()),
+          m_runtime_active(std::make_shared<std::atomic<bool>>(false)),
           m_rebuild_required_logged(std::make_shared<std::atomic<bool>>(false)),
           m_test_failure_point(test_failure_point) {
+        if (m_runtime_requested) {
+            void *runtime = chronik_runtime_create(
+                reinterpret_cast<const uint8_t *>(runtime_path.data()),
+                runtime_path.size(), reset_runtime);
+            if (runtime != nullptr) {
+                m_runtime = std::make_shared<RustRuntimeHandle>(runtime);
+                m_runtime_active->store(true, std::memory_order_release);
+            } else {
+                LogPrintf("Chronik runtime state=disabled reason=open-failed "
+                          "node_continues=1 observer_continues=1\n");
+            }
+        }
     }
 
     ~ChronikNodeObserver() {
@@ -231,11 +300,15 @@ public:
             observations = m_observer->Destroy();
         }
         m_observer.reset();
+        const uint64_t runtime_closed =
+            drained && m_runtime ? m_runtime->Destroy() : 0;
+        m_runtime.reset();
         LogPrintf("Chronik observer stopped observations=%u accepted=%u "
                   "processed=%u degraded=%d rebuild_required=%d "
-                  "shutdown=%s\n",
+                  "runtime_closed=%d shutdown=%s\n",
                   observations, snapshot.accepted, snapshot.processed,
                   snapshot.degraded, snapshot.rebuild_required,
+                  runtime_closed != 0,
                   drained ? "drained" : "detached");
     }
 
@@ -243,9 +316,16 @@ public:
         return m_observer && m_observer->Get() != nullptr;
     }
 
+    bool RuntimeActive() const noexcept {
+        return m_runtime_active->load(std::memory_order_acquire);
+    }
+
     bool Bootstrap() {
         if (m_test_failure_point == TEST_FAILURE_BOOTSTRAP) {
             throw std::runtime_error("injected bootstrap failure");
+        }
+        if (!BootstrapRuntime()) {
+            DisableRuntime("bootstrap-failed");
         }
         std::vector<const CBlockIndex *> indexes;
         {
@@ -319,15 +399,108 @@ public:
         return true;
     }
 
+    bool BootstrapRuntime() {
+        if (!m_runtime || !RuntimeActive()) {
+            return true;
+        }
+        const ChronikRuntimeTip runtime_tip =
+            chronik_runtime_tip(m_runtime->Get());
+        if (runtime_tip.success == 0) {
+            LogPrintf("Chronik runtime rejected kind=tip-query error=%u\n",
+                      runtime_tip.error_code);
+            return false;
+        }
+
+        std::vector<const CBlockIndex *> indexes;
+        const CBlockIndex *active_tip = nullptr;
+        {
+            LOCK(cs_main);
+            active_tip = ::ChainActive().Tip();
+            if (runtime_tip.present != 0) {
+                if (active_tip != nullptr &&
+                    runtime_tip.height == active_tip->nHeight &&
+                    runtime_tip.hash == CopyHash(active_tip->GetBlockHash())) {
+                    LogPrintf("Chronik runtime bootstrap mode=resume "
+                              "tip_height=%d tip_hash=%s\n",
+                              active_tip->nHeight,
+                              active_tip->GetBlockHash().GetHex());
+                    return true;
+                }
+                LogPrintf("Chronik runtime state=rebuild-required "
+                          "reason=tip-mismatch recovery=reindex\n");
+                return false;
+            }
+            if (active_tip == nullptr) {
+                LogPrintf("Chronik runtime bootstrap mode=empty tip_height=-1\n");
+                return true;
+            }
+            indexes.reserve(active_tip->nHeight + 1);
+            for (int32_t height = 0; height <= active_tip->nHeight; ++height) {
+                indexes.push_back(::ChainActive()[height]);
+            }
+        }
+
+        uint64_t transactions = 0;
+        uint64_t new_tokens = 0;
+        uint64_t token_transactions = 0;
+        for (const CBlockIndex *index : indexes) {
+            CBlock block;
+            if (!ReadBlockFromDisk(block, index, Params().GetConsensus())) {
+                LogPrintf("Chronik runtime rejected kind=bootstrap-read "
+                          "hash=%s height=%d recovery=reindex\n",
+                          index->GetBlockHash().GetHex(), index->nHeight);
+                return false;
+            }
+            CDataStream serialized_block(SER_NETWORK, PROTOCOL_VERSION);
+            serialized_block << block;
+            const uint256 hash = index->GetBlockHash();
+            const ChronikRuntimeMutation mutation = chronik_runtime_connect(
+                m_runtime->Get(), hash.begin(), index->nHeight,
+                reinterpret_cast<const uint8_t *>(serialized_block.data()),
+                serialized_block.size());
+            if (mutation.success == 0) {
+                LogPrintf("Chronik runtime rejected kind=bootstrap-index "
+                          "hash=%s height=%d error=%u recovery=reindex\n",
+                          hash.GetHex(), index->nHeight,
+                          mutation.error_code);
+                return false;
+            }
+            transactions += mutation.transactions;
+            new_tokens += mutation.new_tokens;
+            token_transactions += mutation.token_transactions;
+        }
+        LogPrintf("Chronik runtime bootstrap mode=rebuild start_height=0 "
+                  "tip_height=%d blocks=%u transactions=%u new_tokens=%u "
+                  "token_transactions=%u\n",
+                  active_tip->nHeight, indexes.size(), transactions,
+                  new_tokens, token_transactions);
+        return true;
+    }
+
+    void DisableRuntime(const char *reason) noexcept {
+        if (!m_runtime_active->exchange(false, std::memory_order_acq_rel)) {
+            return;
+        }
+        if (m_runtime) {
+            m_runtime->Destroy();
+        }
+        LogPrintf("Chronik runtime state=disabled reason=%s node_continues=1 "
+                  "observer_continues=1 recovery=reindex\n",
+                  reason);
+    }
+
     bool StartEnvelope() {
         if (m_test_failure_point == TEST_FAILURE_ENVELOPE_START) {
             throw std::runtime_error("injected envelope-start failure");
         }
         const auto observer = m_observer;
+        const auto runtime = m_runtime;
+        const auto runtime_active = m_runtime_active;
         const auto rebuild_logged = m_rebuild_required_logged;
         m_envelope = chronik::EventEnvelope::Create(
             CHRONIK_EVENT_CAPACITY,
-            [observer, rebuild_logged](const chronik::OwnedEvent &event) {
+            [observer, runtime, runtime_active,
+             rebuild_logged](const chronik::OwnedEvent &event) {
                 const uint256 hash = CopyUint256(event.hash);
                 ChronikBlockObservation observation{};
                 if (event.kind == chronik::EventKind::BLOCK_CONNECTED) {
@@ -339,6 +512,44 @@ public:
                     observation = chronik_observer_block_disconnected(
                         observer->Get(), event.hash.data());
                     LogDisconnectedObservation(hash, observation);
+                }
+                if (runtime &&
+                    runtime_active->load(std::memory_order_acquire)) {
+                    const ChronikRuntimeMutation mutation =
+                        event.kind == chronik::EventKind::BLOCK_CONNECTED
+                            ? chronik_runtime_connect(
+                                  runtime->Get(), event.hash.data(),
+                                  event.height, event.payload.data(),
+                                  event.payload.size())
+                            : chronik_runtime_disconnect(
+                                  runtime->Get(), event.hash.data(),
+                                  event.height, event.payload.data(),
+                                  event.payload.size());
+                    if (mutation.success == 0) {
+                        runtime_active->store(false, std::memory_order_release);
+                        runtime->Destroy();
+                        LogPrintf("Chronik runtime rejected kind=%s hash=%s "
+                                  "height=%d error=%u node_continues=1 "
+                                  "observer_continues=1 "
+                                  "runtime_state=disabled recovery=reindex\n",
+                                  event.kind ==
+                                          chronik::EventKind::BLOCK_CONNECTED
+                                      ? "connected"
+                                      : "disconnected",
+                                  hash.GetHex(), event.height,
+                                  mutation.error_code);
+                    } else {
+                        LogPrintf("Chronik runtime event kind=%s hash=%s "
+                                  "height=%d transactions=%u new_tokens=%u "
+                                  "token_transactions=%u\n",
+                                  event.kind ==
+                                          chronik::EventKind::BLOCK_CONNECTED
+                                      ? "connected"
+                                      : "disconnected",
+                                  hash.GetHex(), event.height,
+                                  mutation.transactions, mutation.new_tokens,
+                                  mutation.token_transactions);
+                    }
                 }
                 if (observation.sequence == 0 ||
                     observation.sequence != event.sequence) {
@@ -400,12 +611,18 @@ protected:
             return;
         }
         try {
+            CDataStream serialized_block(SER_NETWORK, PROTOCOL_VERSION);
+            serialized_block << *block;
+            const auto *payload_begin =
+                reinterpret_cast<const uint8_t *>(serialized_block.data());
+            const std::vector<uint8_t> payload(
+                payload_begin, payload_begin + serialized_block.size());
             const uint64_t sequence = NextSequence();
             if (sequence != 0) {
-                const std::vector<uint8_t> no_payload;
                 m_envelope->Submit(sequence,
                                    chronik::EventKind::BLOCK_DISCONNECTED,
-                                   CopyHash(block->GetHash()), -1, no_payload);
+                                   CopyHash(block->GetHash()), -1,
+                                   std::move(payload));
             }
         } catch (...) {
             m_envelope->MarkDegraded();
@@ -424,6 +641,9 @@ private:
     }
 
     std::shared_ptr<RustObserverHandle> m_observer;
+    std::shared_ptr<RustRuntimeHandle> m_runtime;
+    bool m_runtime_requested;
+    std::shared_ptr<std::atomic<bool>> m_runtime_active;
     std::shared_ptr<std::atomic<bool>> m_rebuild_required_logged;
     uint8_t m_test_failure_point;
     std::unique_ptr<chronik::EventEnvelope> m_envelope;
@@ -433,7 +653,9 @@ private:
 std::unique_ptr<ChronikNodeObserver> g_chronik_node_observer;
 bool g_chronik_node_observer_registered{false};
 
-bool StartNodeObserverWithFailurePoint(uint8_t test_failure_point) noexcept {
+bool StartNodeObserverWithFailurePoint(const std::string &runtime_path,
+                                       bool reset_runtime,
+                                       uint8_t test_failure_point) noexcept {
     if (g_chronik_node_observer) {
         return false;
     }
@@ -443,18 +665,22 @@ bool StartNodeObserverWithFailurePoint(uint8_t test_failure_point) noexcept {
         if (test_failure_point == TEST_FAILURE_CONSTRUCTION) {
             throw std::runtime_error("injected construction failure");
         }
-        auto observer = std::make_unique<ChronikNodeObserver>(test_failure_point);
+        auto observer = std::make_unique<ChronikNodeObserver>(
+            runtime_path, reset_runtime, test_failure_point);
         if (!observer->IsReady() || !observer->Bootstrap() ||
             !observer->StartEnvelope()) {
             return false;
         }
+        const bool runtime_active = observer->RuntimeActive();
         registered_observer = observer.get();
         RegisterValidationInterface(registered_observer);
         g_chronik_node_observer_registered = true;
         g_chronik_node_observer = std::move(observer);
-        LogPrintf("Chronik observer started mode=in-memory events=blocks "
+        LogPrintf("Chronik observer started mode=persistent-token-runtime "
+                  "runtime_enabled=%d events=blocks "
                   "retained_blocks=%d owner=event-envelope+rust-worker "
                   "command_capacity=%u callback_waits=0\n",
+                  runtime_active,
                   CHRONIK_OBSERVER_RETAINED_BLOCKS,
                   static_cast<unsigned>(CHRONIK_EVENT_CAPACITY));
         return true;
@@ -477,12 +703,21 @@ bool StartNodeObserverWithFailurePoint(uint8_t test_failure_point) noexcept {
 
 namespace chronik {
 
-bool StartNodeObserver() {
-    return StartNodeObserverWithFailurePoint(TEST_FAILURE_NONE);
+bool StartNodeObserver(const std::string &runtime_path, bool reset_runtime) {
+    return StartNodeObserverWithFailurePoint(
+        runtime_path, reset_runtime, TEST_FAILURE_NONE);
 }
 
 bool StartNodeObserverForTest(uint8_t test_failure_point) noexcept {
-    return StartNodeObserverWithFailurePoint(test_failure_point);
+    return StartNodeObserverWithFailurePoint(
+        std::string{}, false, test_failure_point);
+}
+
+bool StartNodeObserverForTest(uint8_t test_failure_point,
+                              const std::string &runtime_path,
+                              bool reset_runtime) noexcept {
+    return StartNodeObserverWithFailurePoint(
+        runtime_path, reset_runtime, test_failure_point);
 }
 
 bool NodeObserverActiveForTest() noexcept {

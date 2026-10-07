@@ -4,6 +4,7 @@
 
 #include <clientversion.h>
 
+#include <cstdint>
 #include <tinyformat.h>
 
 #include <string>
