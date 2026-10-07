@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: MIT
+
+name: Chronik port core
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/chronik-port-core.yml"
+      - "CMakeLists.txt"
+      - "chronik/**"
+      - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
+      - "tools/engineering/check_chronik_port_core.py"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/chronik-port-core.yml"
+      - "CMakeLists.txt"
+      - "chronik/**"
+      - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
+      - "tools/engineering/check_chronik_port_core.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chronik-port-core-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Locked token, database and protobuf corpus
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      # actions/checkout v7.0.1, pinned to an immutable commit.
+      - name: Check out the reviewed tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate the donor and workspace inventory
+        run: python3 -B tools/engineering/check_chronik_port_core.py check
+
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            clang \
+            libclang-dev \
+            protobuf-compiler
+
+      - name: Select the declared Rust toolchain
+        run: |
+          rustup toolchain install 1.85.0 --profile minimal --no-self-update
+          rustup override set 1.85.0
+          rustc --version | grep '^rustc 1.85.0 '
+          cargo --version | grep '^cargo 1.85.0 '
+          rustc --print sysroot | grep '/toolchains/1.85.0-'
+          protoc --version
+
+      - name: Fetch the exact locked public dependency set
+        run: cargo fetch --manifest-path chronik/Cargo.toml --locked
+
+      - name: Run the governed corpus offline
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: cargo test --manifest-path chronik/Cargo.toml --locked --offline

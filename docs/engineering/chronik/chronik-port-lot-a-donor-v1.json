@@ -1,0 +1,1766 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "adaptations": [
+    {
+      "after": {
+        "bytes": 2081,
+        "git_blob": "06a21c564f39432486a2c3a5d5719ff98b3d891f",
+        "mode": "100644",
+        "sha256": "04be7e4c901614469f421aaf22607cd49ad82b00878a8d45bb18caf07fb588c4"
+      },
+      "before": {
+        "bytes": 2083,
+        "git_blob": "0975b08ba1294a7054848d0309d3d3d50da7d546",
+        "mode": "100644",
+        "sha256": "10e614982308f182e0fc3f469db05e61b8faa2658142e86f1695c13fd0424e19"
+      },
+      "donor_path": "chronik/chronik-http/Cargo.toml",
+      "path": "chronik/chronik-http/Cargo.toml",
+      "removed_bytes": 2,
+      "rule": "strip-ascii-trailing-spaces"
+    },
+    {
+      "after": {
+        "bytes": 1013,
+        "git_blob": "5963eea7fbeb0219282aef97748124f654f3042f",
+        "mode": "100644",
+        "sha256": "1ede0f11a0379146ef8c2beef096ffa2e2a85267c0ca3177657a0fe976012403"
+      },
+      "before": {
+        "bytes": 1014,
+        "git_blob": "9b9bf7938904da2b145b679c4484fc6a3f4b700e",
+        "mode": "100644",
+        "sha256": "b792a49e96c13b60b439d4bce77527e63026478e7ba8ee7f2ce998bc95c455b2"
+      },
+      "donor_path": "chronik/chronik-plugin-impl/Cargo.toml",
+      "path": "chronik/chronik-plugin-impl/Cargo.toml",
+      "removed_bytes": 1,
+      "rule": "strip-ascii-trailing-spaces"
+    },
+    {
+      "after": {
+        "bytes": 21695,
+        "git_blob": "2d8063a13c948ce99b5a3f321b214c46510fde9a",
+        "mode": "100644",
+        "sha256": "3b44a91df884dbb956e8053888b16f2043e83659b74718513ed75761e0163460"
+      },
+      "before": {
+        "bytes": 21697,
+        "git_blob": "5066db0424d61b3924ad1d0d12d171cfcabf0ac5",
+        "mode": "100644",
+        "sha256": "ee6ded2e25d184b9a66f4f1d96a0979257c90aad7a5fb3c8ca9d16ddbb3c640a"
+      },
+      "donor_path": "chronik/chronik-proto/proto/chronik.proto",
+      "path": "chronik/chronik-proto/proto/chronik.proto",
+      "removed_bytes": 2,
+      "rule": "strip-ascii-trailing-spaces"
+    }
+  ],
+  "donor": {
+    "archive_sha256": "310d266efd6a0fa5486746d0fc9dda7db983542f054a149386cb69a8d2e6fcfd",
+    "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+    "license": "MIT",
+    "license_path": "chronik/COPYING",
+    "repository": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+    "tree": "763739eb3c255e90a6122a2679c667089f9efad2"
+  },
+  "entries": [
+    {
+      "bytes": 1146,
+      "donor_path": "COPYING",
+      "git_blob": "d412e7ec3891bf087c1b6a1f4bf8d407796d85b8",
+      "mode": "100644",
+      "path": "chronik/COPYING",
+      "sha256": "3299786914d097c7f1231aaa298eb6ccbfabb60798d48c6472a9629916e4e7a2"
+    },
+    {
+      "bytes": 442,
+      "donor_path": "chronik/abc-rust-error/Cargo.toml",
+      "git_blob": "d16ef135aa90fbe14d4578393760240b233d7827",
+      "mode": "100644",
+      "path": "chronik/abc-rust-error/Cargo.toml",
+      "sha256": "ff5b756daab8e16b3a1a59c077c4ad34400162ebe85abc68a2035dea60a899c6"
+    },
+    {
+      "bytes": 1359,
+      "donor_path": "chronik/abc-rust-error/src/http_status.rs",
+      "git_blob": "b70ea6c85f9ace5cab274efea2425da90452359f",
+      "mode": "100644",
+      "path": "chronik/abc-rust-error/src/http_status.rs",
+      "sha256": "946f57d5b9c95abecf49aa01dca5fe87c2f766fc366d82455b34970d69dca604"
+    },
+    {
+      "bytes": 913,
+      "donor_path": "chronik/abc-rust-error/src/lib.rs",
+      "git_blob": "208f656002ee27d8629c75d17e1a24abcab8157b",
+      "mode": "100644",
+      "path": "chronik/abc-rust-error/src/lib.rs",
+      "sha256": "8408d56817186e1f8904c841995f855963c806bcf080dea01b9b5104f5f850f9"
+    },
+    {
+      "bytes": 335,
+      "donor_path": "chronik/abc-rust-error/tests/test_error.rs",
+      "git_blob": "167208a57b2aa6ccb2a0a42bc236b9d97a45299b",
+      "mode": "100644",
+      "path": "chronik/abc-rust-error/tests/test_error.rs",
+      "sha256": "0bb2d86c23df504f0c9a3d890a4f1d59080bef2e2f22ae1b54c9b674c0a207ac"
+    },
+    {
+      "bytes": 159,
+      "donor_path": "chronik/abc-rust-lint/Cargo.toml",
+      "git_blob": "71444398dccd2c49572c2aa8a5e61118718a0711",
+      "mode": "100644",
+      "path": "chronik/abc-rust-lint/Cargo.toml",
+      "sha256": "b454fc50083e12925aa9fad74950c4f3413dd8dc6e402e6f325cf917cb5e49f9"
+    },
+    {
+      "bytes": 1401,
+      "donor_path": "chronik/abc-rust-lint/src/lib.rs",
+      "git_blob": "f4f0611bf58b66a05bf474a8a6b2cba138d47df1",
+      "mode": "100644",
+      "path": "chronik/abc-rust-lint/src/lib.rs",
+      "sha256": "c35ead0d189c75891b680406ff603ca99ccd4c1fd59a4b63cf5d285a97e32fac"
+    },
+    {
+      "bytes": 845,
+      "donor_path": "chronik/bitcoinsuite-core/Cargo.toml",
+      "git_blob": "d0b3e67c5045f4c6415e2c523e19b272ead894aa",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/Cargo.toml",
+      "sha256": "cbfa17480652b21f33199a556b29b00cace65441f8d0b44944d87e3365b0182c"
+    },
+    {
+      "bytes": 21788,
+      "donor_path": "chronik/bitcoinsuite-core/src/address.rs",
+      "git_blob": "e9fea722ed0a8a7ded2fcba6b00b08b090042095",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/address.rs",
+      "sha256": "ce4aa363c074769a7090e90962193abff3139f18609c4d3d5b913aad0a4783ed"
+    },
+    {
+      "bytes": 4376,
+      "donor_path": "chronik/bitcoinsuite-core/src/block/block_hash.rs",
+      "git_blob": "11cb897db92e7cd4f0fcfe11ce3b748620444db2",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/block/block_hash.rs",
+      "sha256": "fe0ccfb828d5d201b54a59cca7e90eced5f092edd775f783a4417e4e23dcb09a"
+    },
+    {
+      "bytes": 292,
+      "donor_path": "chronik/bitcoinsuite-core/src/block/mod.rs",
+      "git_blob": "18f846b54eb9a151983ae4a0b78ac41d13383def",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/block/mod.rs",
+      "sha256": "fbaf361809fcd9406c1019a6659036d4672d54f5028c193d482000aac6236d97"
+    },
+    {
+      "bytes": 2137,
+      "donor_path": "chronik/bitcoinsuite-core/src/bytes.rs",
+      "git_blob": "8f30b45d81e5d6de9854acb0f5eab3668b4b0874",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/bytes.rs",
+      "sha256": "4a5ac1c131f7eca30b6d7ea7e628ff7bf2792de965a2dec0a6b3470a788163df"
+    },
+    {
+      "bytes": 1161,
+      "donor_path": "chronik/bitcoinsuite-core/src/error.rs",
+      "git_blob": "e3d8475505a667a2f4bce3cc26010f01916ecba0",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/error.rs",
+      "sha256": "a61feb8c5f12d474504c1530243a1c2f0b25ece64c5f86d58a699c3daecbadbb"
+    },
+    {
+      "bytes": 16125,
+      "donor_path": "chronik/bitcoinsuite-core/src/hash.rs",
+      "git_blob": "2a2bf6cc5d33809893ebc9aab169c849d43cb7c7",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/hash.rs",
+      "sha256": "89359ce671dfb6fd9816a458fc90e5a55cc3b7c069548b2ff96c117047a532ba"
+    },
+    {
+      "bytes": 565,
+      "donor_path": "chronik/bitcoinsuite-core/src/lib.rs",
+      "git_blob": "0d8456d8a6d9bbb74679e510130e237b3e28b3d2",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/lib.rs",
+      "sha256": "7764543a1d762a972519e684c4e35a262397f7455eb58b708e908e93d4e6d5bd"
+    },
+    {
+      "bytes": 441,
+      "donor_path": "chronik/bitcoinsuite-core/src/net.rs",
+      "git_blob": "1e037ef5382e1c0d88ba46c12d433f539b4bd9d3",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/net.rs",
+      "sha256": "c46d6f5041bd0fb9b92d253fb478dbdff84d3ab2313932ac43576555bfdcfe9a"
+    },
+    {
+      "bytes": 6185,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/compress.rs",
+      "git_blob": "63aa363a863030d24bae1fe863694168da70581c",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/compress.rs",
+      "sha256": "d642e4a5012c1ec3189388b6345c8bb365abe0ae354ccbef745ac4a6601e4f96"
+    },
+    {
+      "bytes": 1231,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/iter.rs",
+      "git_blob": "0db1f23b3e14ff37f18b64c9f04d136f6d5a429a",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/iter.rs",
+      "sha256": "6b71136801f2dededaaecd5fe246173b373bbd8e14e7dafc4ae918e018a018c6"
+    },
+    {
+      "bytes": 672,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/mod.rs",
+      "git_blob": "d9a880930a36fc8df812bc44431090181ce6bf96",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/mod.rs",
+      "sha256": "1cc90c1801d52313ed84f86c3adaaf4dc9e40316fdc6a792e32815bf13f1e369"
+    },
+    {
+      "bytes": 2755,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/op.rs",
+      "git_blob": "211d2b8c0e44453b4a7b8983307b148767d33e85",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/op.rs",
+      "sha256": "aa48fbf885b957beb7d0d847f7719b53cf711b1b84e350b95efc363c2c5dc5a9"
+    },
+    {
+      "bytes": 12662,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/opcode.rs",
+      "git_blob": "1bfe253c67b145e6f254fb1ce340e6e619789a2c",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/opcode.rs",
+      "sha256": "185d68c9955c10a30be23ee996cb4b8f5ca65ed042264ea213be539ac5e8dfd0"
+    },
+    {
+      "bytes": 2719,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/pubkey.rs",
+      "git_blob": "7d9b79d6be3d39f691d576d9dfc2f735e495890a",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/pubkey.rs",
+      "sha256": "90ebd5c74191ad4ecb67b951cb5ba7cd7bd6e2981fffe03e977cc5349cb35e9a"
+    },
+    {
+      "bytes": 2065,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/pubkey_variant.rs",
+      "git_blob": "a516769bf5c9e551ff59bf04ed0122d1af38f0be",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/pubkey_variant.rs",
+      "sha256": "a8f506715ebeb636dd8f272b679d9c62fa87ec968680b5554bfcca3b6b46011b"
+    },
+    {
+      "bytes": 19081,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/script.rs",
+      "git_blob": "7f96002b7b7d794ff94cf8be8adce71eea3c32a2",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/script.rs",
+      "sha256": "b3b943ee85325761209a3939b6336e7a3da2f8b5a32cfdc1352b16148009a71b"
+    },
+    {
+      "bytes": 5313,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/script_mut.rs",
+      "git_blob": "919de0b660d665545ef94502094feafca11207f1",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/script_mut.rs",
+      "sha256": "62136d4fa2fa0693558bddfb9afad16bc9eaffbfa095fe36ca3510443dcf07ff"
+    },
+    {
+      "bytes": 3405,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/uncompressed_pubkey.rs",
+      "git_blob": "0dbfd13b6810fd0d6898166c96c01d8609169904",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/uncompressed_pubkey.rs",
+      "sha256": "74b5f1eba456a6a8890aa14ff026d36d313b4aa3f23b1852bd617694ca296de9"
+    },
+    {
+      "bytes": 8774,
+      "donor_path": "chronik/bitcoinsuite-core/src/script/variant.rs",
+      "git_blob": "9c84e164449e432a81a6d55ff97149a3293cfe3b",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/script/variant.rs",
+      "sha256": "176965b8335fe4c697842f4554486ae1ae1814c9247e97a6c6feceb8104a6b9d"
+    },
+    {
+      "bytes": 8513,
+      "donor_path": "chronik/bitcoinsuite-core/src/ser.rs",
+      "git_blob": "3a070852786dd9c2987bac82e7bf167f3b1c177e",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/ser.rs",
+      "sha256": "db2966c82dcfff501da15f10aec09a5aa70754fcf4e20d4823ad22a3070e1fd4"
+    },
+    {
+      "bytes": 337,
+      "donor_path": "chronik/bitcoinsuite-core/src/tx/mod.rs",
+      "git_blob": "3d8faa64c61e141a969dc084bc1a435da956b264",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/tx/mod.rs",
+      "sha256": "ce7eb5c44e4bcc48b68639b5c1376232dda89f885c19aec762f02f1b5391fdfc"
+    },
+    {
+      "bytes": 9702,
+      "donor_path": "chronik/bitcoinsuite-core/src/tx/tx.rs",
+      "git_blob": "0314d0c09a4924e776f6765e86dd27531c51ec7b",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/tx/tx.rs",
+      "sha256": "8d914f99949c6f4d8cf78899e584a46aa54c00b6df879c0d91589eb850111c21"
+    },
+    {
+      "bytes": 6406,
+      "donor_path": "chronik/bitcoinsuite-core/src/tx/txid.rs",
+      "git_blob": "2aa521ea7822ee96984e92c63982c3b4bfae010c",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-core/src/tx/txid.rs",
+      "sha256": "9d1aec6ac46a6927cc57e3bf6c1b3c5ffb10c224dbaa29b74606ac6ee5bc085e"
+    },
+    {
+      "bytes": 672,
+      "donor_path": "chronik/bitcoinsuite-slp/Cargo.toml",
+      "git_blob": "b4b0d31b51bb17d5f286c6a26f665bf72732a8bf",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/Cargo.toml",
+      "sha256": "468d79e15ec0b85f41b9f39bbb40adcf69f019268ff604afad41ce00e359e173"
+    },
+    {
+      "bytes": 3824,
+      "donor_path": "chronik/bitcoinsuite-slp/src/alp/build.rs",
+      "git_blob": "a12fe29453f758856c250b9c2d14c7a0189f30b4",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/alp/build.rs",
+      "sha256": "16b6708835f928c94c2438a1686c4c3fd2f29e8a18c2d00520774f56345b2b1d"
+    },
+    {
+      "bytes": 884,
+      "donor_path": "chronik/bitcoinsuite-slp/src/alp/consts.rs",
+      "git_blob": "1f92dacd12fe74bb199affd445247f852e4cb4c6",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/alp/consts.rs",
+      "sha256": "08588538d7095730ca84d07a5e5169ddb8789aebafe3f5be5ccffc6689d427e0"
+    },
+    {
+      "bytes": 444,
+      "donor_path": "chronik/bitcoinsuite-slp/src/alp/mod.rs",
+      "git_blob": "a592bacac3c6aa41ffe5c3bdd6aeaf2891be66b0",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/alp/mod.rs",
+      "sha256": "32d59bf5556690ba0f70569f97b9f117534fb8c8f529e442c1f5995d1b8c5705"
+    },
+    {
+      "bytes": 9374,
+      "donor_path": "chronik/bitcoinsuite-slp/src/alp/parse.rs",
+      "git_blob": "19f21046741fdc85d3ca8954e4f9c512fb80b6c9",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/alp/parse.rs",
+      "sha256": "268d5163afacad6bae830411b75e9e68e22d22d2890160ea4cd418aed10f9236"
+    },
+    {
+      "bytes": 10140,
+      "donor_path": "chronik/bitcoinsuite-slp/src/burn_summary.rs",
+      "git_blob": "07f30a1235d8cdded80f2afffc63ce3920fe5b69",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/burn_summary.rs",
+      "sha256": "a802115728db027a72758f2c311da7498182058a96d57f9e11cb40cc98c49bdf"
+    },
+    {
+      "bytes": 20021,
+      "donor_path": "chronik/bitcoinsuite-slp/src/color.rs",
+      "git_blob": "bba1436520cab3530f322986404dcc69d6d15f54",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/color.rs",
+      "sha256": "ec3dbaae5de2e39d05429aed797b959ffb46583ce97d0239f9e9b009697cc6ad"
+    },
+    {
+      "bytes": 584,
+      "donor_path": "chronik/bitcoinsuite-slp/src/consts.rs",
+      "git_blob": "889d89a800d371e151921bac2c7d15e1067e58b2",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/consts.rs",
+      "sha256": "daf6935528967b69ce22dbdeae10bc847fffa2ad7dbc51e0c0d7d1a639c4b93c"
+    },
+    {
+      "bytes": 1982,
+      "donor_path": "chronik/bitcoinsuite-slp/src/empp/mod.rs",
+      "git_blob": "912be4e06584f964611f49e032a892832e519e1c",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/empp/mod.rs",
+      "sha256": "77f9373fb0a725a7ee285998bd0c2813a9121ca6e1f1446aa74a7f274b0fdf6f"
+    },
+    {
+      "bytes": 8447,
+      "donor_path": "chronik/bitcoinsuite-slp/src/empp/parse.rs",
+      "git_blob": "fbe25874a1fd5d6351e64eaaeb16281b8aa5aa4c",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/empp/parse.rs",
+      "sha256": "8202f02aa267a4eccdd0b61abdf52990a594945f0b5e6b959ebc6a8ed51c026f"
+    },
+    {
+      "bytes": 500,
+      "donor_path": "chronik/bitcoinsuite-slp/src/lib.rs",
+      "git_blob": "49212af3f1be836dea01e014d6c28020acee3e9f",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/lib.rs",
+      "sha256": "6c0b0f8f3744473a8f1b22413bf956045a9a572693a3dafbb8dc46501e790117"
+    },
+    {
+      "bytes": 10572,
+      "donor_path": "chronik/bitcoinsuite-slp/src/lokad_id.rs",
+      "git_blob": "3939c058e83eb2242a5b51ddf870471650a19d16",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/lokad_id.rs",
+      "sha256": "e36a1a47958dbcf3b6d5c574911fa4ea28c3451ead8c3c871d42310efb3a6d9a"
+    },
+    {
+      "bytes": 2621,
+      "donor_path": "chronik/bitcoinsuite-slp/src/parsed.rs",
+      "git_blob": "5cc1f40193c27d0d8a468a522e1eace9d3ff94a4",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/parsed.rs",
+      "sha256": "89956765003a2cb964cb6508d5538ed3568e593eba4afe65bce8ea6d58fd29c8"
+    },
+    {
+      "bytes": 4715,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/build.rs",
+      "git_blob": "6b33ecc69abf2beb1d79e68f1623114fa0dee6da",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/build.rs",
+      "sha256": "f5ab79064a9f88ddd4c28dc890370cee4ea5921a33146c442fa4d5165744fa18"
+    },
+    {
+      "bytes": 1366,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/burn.rs",
+      "git_blob": "e321fa8535bf93610127677f0bf28eecdd60b73c",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/burn.rs",
+      "sha256": "1f7ad13d359843d9a9d8716186855ebc619d80ada14fa419147ba33340daee3e"
+    },
+    {
+      "bytes": 1061,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/common.rs",
+      "git_blob": "1041343d9844c7c769d66878fb567c2afeebdbcc",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/common.rs",
+      "sha256": "915eb2fa3eeeef3dd293a9dca6d7ccb6372e4e98d6c1a103af5208a7d46cdfb6"
+    },
+    {
+      "bytes": 870,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/consts.rs",
+      "git_blob": "702d914ec464a61a7d447de33edbc730ebb29521",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/consts.rs",
+      "sha256": "37935e82d1d10ed2115a76ed32aab543252ab8a70d80f2b88f430a81e97ef879"
+    },
+    {
+      "bytes": 4497,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/error.rs",
+      "git_blob": "31b396c10a93d65c729a3b21607275090e77d085",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/error.rs",
+      "sha256": "6f75b6a50afc408ec61962ba12ac0a8ac685511d064ee6254d88b394f1dcbeb1"
+    },
+    {
+      "bytes": 5234,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/genesis.rs",
+      "git_blob": "27ed84faa96074cb11e20a4f0ef956feedbf2546",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/genesis.rs",
+      "sha256": "3f11f2f5089dc59a5dc5127075d2d1d62a62a01667d72f31309e80872aaf8c9a"
+    },
+    {
+      "bytes": 2465,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/mint.rs",
+      "git_blob": "55066c07ba3e0aaf449ba6b930e4266c02573347",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/mint.rs",
+      "sha256": "c3a17eba507d50071ad8a32165aa75bf98c2eb222a555d670d1aeba2baf05629"
+    },
+    {
+      "bytes": 2399,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/mint_vault.rs",
+      "git_blob": "907a46fc11590d9e4e0ba378d7306cd256c0fdd5",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/mint_vault.rs",
+      "sha256": "907a5ea31cd153315574d99f270d71be1bff0228da8b468bcdf8f1fdca7d7037"
+    },
+    {
+      "bytes": 545,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/mod.rs",
+      "git_blob": "816b31c6340f834116db3fd536ead63e657ebecf",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/mod.rs",
+      "sha256": "1eb7848fa32950c0743a29633c84c5b391fac40308f3af97414b7b778dd670c8"
+    },
+    {
+      "bytes": 6206,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/parse.rs",
+      "git_blob": "3f39e0dab3af8f9fabc19281e90a28ac74c94480",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/parse.rs",
+      "sha256": "1a8bdd0d784d792ee19ad7c599f890d36a1c47860021aa91286ee86c8053b8a2"
+    },
+    {
+      "bytes": 2369,
+      "donor_path": "chronik/bitcoinsuite-slp/src/slp/send.rs",
+      "git_blob": "e4c919bfbdd30facff2d434d7688b87df76707bf",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/slp/send.rs",
+      "sha256": "72c8fa1f23716341ab77ff8bd479f9ecf0a7a588acb011cf9ad6138b9cd686c4"
+    },
+    {
+      "bytes": 6007,
+      "donor_path": "chronik/bitcoinsuite-slp/src/structs.rs",
+      "git_blob": "4de6b9141ffe033aaff4f40c99593d5bc1befa30",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/structs.rs",
+      "sha256": "30c6268acc3a12f80b2e31a9106fcccd9863cd30d5b74310c3834deca02b41c0"
+    },
+    {
+      "bytes": 5627,
+      "donor_path": "chronik/bitcoinsuite-slp/src/test_helpers.rs",
+      "git_blob": "2fb21f1ba671c1cc1008fd23b9e267dc1954e55b",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/test_helpers.rs",
+      "sha256": "bba52f80b3c18a8cf385be88a5a95a85e4b05772a760decde38158119f1b8c8d"
+    },
+    {
+      "bytes": 1993,
+      "donor_path": "chronik/bitcoinsuite-slp/src/token_id.rs",
+      "git_blob": "3059f3e693e22d5ef909e2b3e4b0a21bfcbaf389",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/token_id.rs",
+      "sha256": "7ec0a30995caaca589c53ffa837a20b043fe22c085a3375e083bbd1b7ecbb3ec"
+    },
+    {
+      "bytes": 3900,
+      "donor_path": "chronik/bitcoinsuite-slp/src/token_tx.rs",
+      "git_blob": "a0ba664272d55d7d23d2bb3b9fcc29ae7485184b",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/token_tx.rs",
+      "sha256": "23c18ecced06859f044f59615fcec6655dc3115ae329cc5735d1f4b54a024a94"
+    },
+    {
+      "bytes": 5842,
+      "donor_path": "chronik/bitcoinsuite-slp/src/token_type.rs",
+      "git_blob": "81a015b89511a7ba695e03c5ab379e1b5ac0fc99",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/token_type.rs",
+      "sha256": "0c2d74847bca414b42dab409f5951b7bc50ed514d9399c1aae5c839c271c1e05"
+    },
+    {
+      "bytes": 16072,
+      "donor_path": "chronik/bitcoinsuite-slp/src/verify.rs",
+      "git_blob": "6e5aa82eaa00df6071d3c4adfe437034b978abe8",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/src/verify.rs",
+      "sha256": "0df014c19dc559377b8021de39cc0534aaa7c43f94c01f0e14bcffa38769c424"
+    },
+    {
+      "bytes": 2011,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_burn.rs",
+      "git_blob": "c09363595ba11eb34ca7d36074a7f85626293ca3",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_burn.rs",
+      "sha256": "3637412ecfed4dff546d0ec5feb0d245ef9bacb994ed8d6809b2f85c17dea0f1"
+    },
+    {
+      "bytes": 2605,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_common.rs",
+      "git_blob": "a5d482a31720916bbf1087ff1403fc77ea0f0c59",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_common.rs",
+      "sha256": "89fec95120ef5fc5e12c58bad5358c0c9035798015111a492b51915dbce80d71"
+    },
+    {
+      "bytes": 9603,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_genesis.rs",
+      "git_blob": "b967aeb67ee205e8647aef0bd5a919921ba15c2e",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_genesis.rs",
+      "sha256": "e3d92ffb197b9c813ee9f2a2a78bde9d2531c9430cfbbcb2b2e50e4438561495"
+    },
+    {
+      "bytes": 4266,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_mint.rs",
+      "git_blob": "0d436e35dc29c78742b7349268ce9f17e61388ea",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_mint.rs",
+      "sha256": "22282cb15513fa049cb6c985b425901665ae6df70cf80a21f4219c52f1945477"
+    },
+    {
+      "bytes": 2799,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_send.rs",
+      "git_blob": "d7fb2e7ca1d38aa454e4d4bcd163ae2212e55bca",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_alp_parse_send.rs",
+      "sha256": "af4add40545b1f0b80a90150cecf1a7f51b7573f02b31c0a9bac6ee32cb6ae44"
+    },
+    {
+      "bytes": 11936,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_alp_all_the_things.rs",
+      "git_blob": "4b4ee25ab301b36e8360b79cc052bd41840a2691",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_alp_all_the_things.rs",
+      "sha256": "3fa9e9b98587bb5aaab5d0764562f0c6ede99900a281aa1a17d69668d0108078"
+    },
+    {
+      "bytes": 3462,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_alp_burn.rs",
+      "git_blob": "cd2e245936e308ec93943b528f583eeac6bed6ea",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_alp_burn.rs",
+      "sha256": "629fe43bc308f9d28a2e00de18f9dfe8869031a825b7e6c4c0da69cefd500687"
+    },
+    {
+      "bytes": 6651,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_alp_genesis.rs",
+      "git_blob": "f0be8e1c0495b44d3502edbb8af789df057eda82",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_alp_genesis.rs",
+      "sha256": "0025a80fbdec3e3fb1e727a36c59d5c42685b5708a2556c8af0faab215fb6fcb"
+    },
+    {
+      "bytes": 10142,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_alp_mint.rs",
+      "git_blob": "8ffdbb4d0a09ce702efd1ef52e621ef8f101c05a",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_alp_mint.rs",
+      "sha256": "76bcf346b2d21885ee88e2b574c07e9a5bc2b03565c934e871895e64958f17d8"
+    },
+    {
+      "bytes": 5906,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_alp_send.rs",
+      "git_blob": "35ca7c16fbd7c42a1bfcfff3b0e7351fd7bc05e1",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_alp_send.rs",
+      "sha256": "f3817f01660b1db8b60406b72208486a0e84d6e3ba31f1f4bce1d314714a7334"
+    },
+    {
+      "bytes": 2827,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_common.rs",
+      "git_blob": "81649daab7b23791e0e7dc2b0d35a908aa089525",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_common.rs",
+      "sha256": "14ead24ef1d91f33ceff1f073a32aed25cf7de419796e861de30ea093af502f9"
+    },
+    {
+      "bytes": 16664,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_color_slp.rs",
+      "git_blob": "28dc2edb46fa983cf1ef83c1fe0a6291c92843b3",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_color_slp.rs",
+      "sha256": "f7b8e07988f09727c190bdae2f5f5ccadcdc07ee6ac114cc0207715c6251293e"
+    },
+    {
+      "bytes": 3616,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_burn.rs",
+      "git_blob": "10c40b28e95825894cae935fcb1aed4ac8f07b5f",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_burn.rs",
+      "sha256": "e6bd4ae9d42babd60564e008e645f8da3fdb45e7d29cda9717395217ae27ed8c"
+    },
+    {
+      "bytes": 8587,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_common.rs",
+      "git_blob": "d4b00e5858d0f8bc907dd6d3c81c3158e0a3cbb8",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_common.rs",
+      "sha256": "e6ef4094623073c993491755a2f164341b98ee3ae0b23825b647f16843ce71d3"
+    },
+    {
+      "bytes": 11246,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_genesis.rs",
+      "git_blob": "b0d468f89affef12ba33a9133275e7df5f897ab4",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_genesis.rs",
+      "sha256": "a492a4de052584f29543098d4dc54ac5bfe69e0ab40f01e8b3cda79827838312"
+    },
+    {
+      "bytes": 11899,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_mint.rs",
+      "git_blob": "8c2248ce30a67c7d758c8429b4af03e24de3d12f",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_mint.rs",
+      "sha256": "279153ea60785dee9c628866d69047621122d082d06b33609ebbaff7445db263"
+    },
+    {
+      "bytes": 6297,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_send.rs",
+      "git_blob": "9cdd6501aa5ab298a1a80c412b7558d923d6f567",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_send.rs",
+      "sha256": "7bbc8e43cfd0de42d32a32933a517a8a520f05bebfac0df68c3d31f80219c05a"
+    },
+    {
+      "bytes": 1438,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_unknown.rs",
+      "git_blob": "cf3cb927222b6dbaec8ab6759b2c2b9c8e88e881",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_slp_parse_unknown.rs",
+      "sha256": "2859550b1d178d0947868aebc5e6f8dce8d0258300db5f5c23f3b3ec2249d567"
+    },
+    {
+      "bytes": 7719,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_all_the_things.rs",
+      "git_blob": "96f05f740884117aec2be8dbef090b6725c7093b",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_all_the_things.rs",
+      "sha256": "d413459e4a13608472e798cb2a38a30b9064981d1bed308d9b58ada53577a3e8"
+    },
+    {
+      "bytes": 7585,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_burn.rs",
+      "git_blob": "2ad634566eb918e8b07cde9a5fba47b640821d66",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_burn.rs",
+      "sha256": "670bc7457a4f80f7ca7895a0e382e7fb447c014d5dd10300a238102af19a3cd3"
+    },
+    {
+      "bytes": 4280,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_common.rs",
+      "git_blob": "48fae2ae247e24299bd6078acd9b2e1b5edf569f",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_common.rs",
+      "sha256": "74e1b0355fb01d3d4a3ad3bc4ed74e6d44f795a582f934d3b02738bd30af9884"
+    },
+    {
+      "bytes": 3395,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_genesis.rs",
+      "git_blob": "93b4030b8c5d2a61e1da32fd70a20576564c1513",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_genesis.rs",
+      "sha256": "ab06f8349039e259caf81758169d7d1cc072e6a3d2c49301d8abe02a660f2389"
+    },
+    {
+      "bytes": 4281,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_mint.rs",
+      "git_blob": "c113c34fb5931df755c787b6d1b99c23034afc75",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_mint.rs",
+      "sha256": "65b67a7b3d31b4f6445af0ba63a38f649cf937097b5590995a67070f2e644662"
+    },
+    {
+      "bytes": 6291,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_send.rs",
+      "git_blob": "c022c5b514400acb8b678e36dadc429e71932c61",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_alp_send.rs",
+      "sha256": "d21a5ac6e361e0ea0fb9e470368c95d2d60297e364f811aa293d97f5cb682bc3"
+    },
+    {
+      "bytes": 5037,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_burn.rs",
+      "git_blob": "0d5a03fe6362e2d0725bd954fbb33aa9177acc92",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_burn.rs",
+      "sha256": "7d00441764d4284b396a98e8242020620a7de69cd7ee12e35736b352f106df79"
+    },
+    {
+      "bytes": 2767,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_common.rs",
+      "git_blob": "c2d69b61289eefd1e23d1dd718962e098c0e2cbf",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_common.rs",
+      "sha256": "02632703f4bd834f7ced4d82e253e9716af2d2a41450fe5230554dc4282e6046"
+    },
+    {
+      "bytes": 8011,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_genesis.rs",
+      "git_blob": "9b87922314250d9b36965f5034d0f3ff3021337d",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_genesis.rs",
+      "sha256": "e93903734da025d5a765097166223563ccd6a2431f3b4b788a238189014e958a"
+    },
+    {
+      "bytes": 7457,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_mint.rs",
+      "git_blob": "395648560757340016c5c412c898ed1668768101",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_mint.rs",
+      "sha256": "99085556198b4f1af4a2605a42bbf515a99379ec8fd376fbccef3f261e4fb5f9"
+    },
+    {
+      "bytes": 6733,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_mint_vault.rs",
+      "git_blob": "077cc8d1f2b4779101cf7167a521582017b39244",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_mint_vault.rs",
+      "sha256": "ab2ba87583b3a60b571db3b5d3613d7880c0113f6bd8c5bdf6af211025793253"
+    },
+    {
+      "bytes": 15502,
+      "donor_path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_send.rs",
+      "git_blob": "b484f3092a6f39c31e3e8dc557b549202dc210ec",
+      "mode": "100644",
+      "path": "chronik/bitcoinsuite-slp/tests/test_verify_slp_send.rs",
+      "sha256": "e49cf65577c20e6cde750f24fb31f3980e7bee421cb698a661bc90b1885a00f9"
+    },
+    {
+      "bytes": 380,
+      "donor_path": "chronik/chronik-bridge/Cargo.toml",
+      "git_blob": "267e49072b8f7809c5424495bca7887e92154f9d",
+      "mode": "100644",
+      "path": "chronik/chronik-bridge/Cargo.toml",
+      "sha256": "45273f8113b8a639fcf24865e634257273fbe22d7914f4d0ec7343f13ad2753a"
+    },
+    {
+      "bytes": 368,
+      "donor_path": "chronik/chronik-bridge/build.rs",
+      "git_blob": "e58cf7d7f1d5cca272c9d859a8eea89d4604d792",
+      "mode": "100644",
+      "path": "chronik/chronik-bridge/build.rs",
+      "sha256": "545a78d36b902cf0387f65bbddca9fdfb6f1af0a68593f26bf5d4686d2b0b4df"
+    },
+    {
+      "bytes": 14206,
+      "donor_path": "chronik/chronik-bridge/src/ffi.rs",
+      "git_blob": "974323c11728bd5d1eb713ec53b035bb53476830",
+      "mode": "100644",
+      "path": "chronik/chronik-bridge/src/ffi.rs",
+      "sha256": "2c89fea3d0c3d9bdd0d8e3293429f3786ef3609a58c4386bd95baaf6215fb207"
+    },
+    {
+      "bytes": 655,
+      "donor_path": "chronik/chronik-bridge/src/lib.rs",
+      "git_blob": "51c7f102b2331cd8196eff78e944b785dff9a90a",
+      "mode": "100644",
+      "path": "chronik/chronik-bridge/src/lib.rs",
+      "sha256": "d60050387b4f6da9659bcaabccae6a34ba437f61fae01282e566b97675283c10"
+    },
+    {
+      "bytes": 3361,
+      "donor_path": "chronik/chronik-bridge/src/util.rs",
+      "git_blob": "162f2ad66cf5cae7701db902a7e5050850143bc5",
+      "mode": "100644",
+      "path": "chronik/chronik-bridge/src/util.rs",
+      "sha256": "83b3204e1b4e404f89925f389513e5269dc1b48becc470b56bdaddf23c92c6af"
+    },
+    {
+      "bytes": 1299,
+      "donor_path": "chronik/chronik-db/Cargo.toml",
+      "git_blob": "93ea2cc96152b96faa420adf6785b703f6071811",
+      "mode": "100644",
+      "path": "chronik/chronik-db/Cargo.toml",
+      "sha256": "8197386a0e97e52650210211d34bb9a635977559ef83eee9c7b5eaa7d8d4d65e"
+    },
+    {
+      "bytes": 665,
+      "donor_path": "chronik/chronik-db/src/data.rs",
+      "git_blob": "bfc4e55e95ccadfb4ec0762912e447fd7848ce29",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/data.rs",
+      "sha256": "157a029fa62e58c39c350ea0808ddc0392b4c520ce85c1231876ac1e38b84f71"
+    },
+    {
+      "bytes": 9686,
+      "donor_path": "chronik/chronik-db/src/db.rs",
+      "git_blob": "00641f46db7967900a73edc3ae9656605675fae3",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/db.rs",
+      "sha256": "74b46c7309f2da5ecf0f31a658d36c09f0eff726b20abadf94eedfaff64e9413"
+    },
+    {
+      "bytes": 5808,
+      "donor_path": "chronik/chronik-db/src/group.rs",
+      "git_blob": "3843d5056747a4536bf42c8df5d0641f3c2509a4",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/group.rs",
+      "sha256": "e9255aafb0b57fdec2d48a1ae63e7efe79f30430855a4579a937aa46b3b435d9"
+    },
+    {
+      "bytes": 2901,
+      "donor_path": "chronik/chronik-db/src/groups/lokad_id.rs",
+      "git_blob": "e83227f81adbe98f47ac8adc35cc8d31dfa0bdfb",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/groups/lokad_id.rs",
+      "sha256": "8b25110a8b50ea4fcacdcf89681c90a98dd43bc6008ac589572b518142850a53"
+    },
+    {
+      "bytes": 419,
+      "donor_path": "chronik/chronik-db/src/groups/mod.rs",
+      "git_blob": "2b82aad787f7cec8113cf70025242987264063c1",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/groups/mod.rs",
+      "sha256": "6b3ae248d5df173df21b61d4b506e33183027a30addb3fdeedbd855cc6749222"
+    },
+    {
+      "bytes": 7252,
+      "donor_path": "chronik/chronik-db/src/groups/script.rs",
+      "git_blob": "81d4078c39db40eaa925c0a2d79be9db694d0aee",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/groups/script.rs",
+      "sha256": "bd748bdc249e0b9c59631006d6d272334b8e287f110116cd17eaf156c7ca63ff"
+    },
+    {
+      "bytes": 8785,
+      "donor_path": "chronik/chronik-db/src/groups/token_id.rs",
+      "git_blob": "8c5679cb6df24a71c3474082509f23d182c807f2",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/groups/token_id.rs",
+      "sha256": "ac9cdc45fc254a22c5ffdfa5cd38b697fa4699a4b15883dc640579602cbbbba1"
+    },
+    {
+      "bytes": 1592,
+      "donor_path": "chronik/chronik-db/src/groups/txid.rs",
+      "git_blob": "62ca36b615828133446d582045e7942ec21f736f",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/groups/txid.rs",
+      "sha256": "802a2c7cb749609f6f7ff68577f997c296ab2f0f1909f7f1f61e74282d16640e"
+    },
+    {
+      "bytes": 14649,
+      "donor_path": "chronik/chronik-db/src/index_tx.rs",
+      "git_blob": "e588843941ac2dd2e56a390306e64c48b8703ddc",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/index_tx.rs",
+      "sha256": "0b4a61f3639ee88db749f7f833ecbe7b4ee9add07dc1727d3de40fcd3bded641"
+    },
+    {
+      "bytes": 8323,
+      "donor_path": "chronik/chronik-db/src/io/block_stats.rs",
+      "git_blob": "42cb878c440a1e9c1437fecaf769efd2216a6dc8",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/block_stats.rs",
+      "sha256": "386dcbc533f0a811c3182cb0de597f097d650c641569855f28ee6ec47092b82b"
+    },
+    {
+      "bytes": 14545,
+      "donor_path": "chronik/chronik-db/src/io/blocks.rs",
+      "git_blob": "e38d2981d476706db358012824ce4deb74982bb5",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/blocks.rs",
+      "sha256": "15c408ca4debe4c59b2dba09441bd657ef4ba5ab43eafd611a6be692d42ad493"
+    },
+    {
+      "bytes": 29426,
+      "donor_path": "chronik/chronik-db/src/io/group_history.rs",
+      "git_blob": "62dcd31edaf47f880251b0df14aeee37be64b772",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/group_history.rs",
+      "sha256": "a463207c044210815fbd56ea3a989ffeb820a1714aef60fa498d25f83c74c3b3"
+    },
+    {
+      "bytes": 20762,
+      "donor_path": "chronik/chronik-db/src/io/group_utxos.rs",
+      "git_blob": "3b4e40fb61c991e4945a76533cae7eef07f15315",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/group_utxos.rs",
+      "sha256": "b4893797211dde4e1d7f91fe1c430c9d0a400b1d00591373665f53ff9b6519a6"
+    },
+    {
+      "bytes": 8427,
+      "donor_path": "chronik/chronik-db/src/io/merge.rs",
+      "git_blob": "633a9fb24394fc1361a003324c6c892a4cc0b1e9",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/merge.rs",
+      "sha256": "f67642f7f9c0f4a228e4efe4b04c0599da2d555e9e9b336b4942b6a4e81ca656"
+    },
+    {
+      "bytes": 5296,
+      "donor_path": "chronik/chronik-db/src/io/metadata.rs",
+      "git_blob": "a51cb6c9768241a2bddfe8a03440222ef5079c46",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/metadata.rs",
+      "sha256": "f198c95e2e1275459baf6fac1e5541ae1810e36d73abc0a3a7930673c5a48d26"
+    },
+    {
+      "bytes": 627,
+      "donor_path": "chronik/chronik-db/src/io/mod.rs",
+      "git_blob": "caa5dbff71b8f784dadb226e0a7b377284889509",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/mod.rs",
+      "sha256": "b046beaa03cf2926b3b86a768499dc876242be89c3a090cd3fa203cea3e76ca6"
+    },
+    {
+      "bytes": 23087,
+      "donor_path": "chronik/chronik-db/src/io/spent_by.rs",
+      "git_blob": "619e19bfafcf8e53fb9c6898cc78c4791148bb16",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/spent_by.rs",
+      "sha256": "5bc8f0d9ca37e62bc89ba946a45b2c040043f21e1780059c956b0548087629b3"
+    },
+    {
+      "bytes": 16831,
+      "donor_path": "chronik/chronik-db/src/io/token/batch.rs",
+      "git_blob": "5878c8f2a9e3a12facb8495aa04d2281627d9d3f",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/batch.rs",
+      "sha256": "c199a7664341043c120feb75cbac5a1c345faa32de6d796c5f07f8d51678f847"
+    },
+    {
+      "bytes": 5659,
+      "donor_path": "chronik/chronik-db/src/io/token/data.rs",
+      "git_blob": "bd1f6d4c428c889ef141be6ac562767ae8d1b59b",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/data.rs",
+      "sha256": "9f85a0e106d45629df109237b36686ce68ab46c37d71fa75f96829025f50d512"
+    },
+    {
+      "bytes": 20456,
+      "donor_path": "chronik/chronik-db/src/io/token/io.rs",
+      "git_blob": "539b3d0745f91dd695c4c2129cc330e3f922be48",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/io.rs",
+      "sha256": "aeb5770e04720c561f3f4fbefdf4ed3a0fecbdb2fd74076835d9ba01578c044e"
+    },
+    {
+      "bytes": 404,
+      "donor_path": "chronik/chronik-db/src/io/token/mod.rs",
+      "git_blob": "4bf2e6f9de1c4c07016eceb86f4dc3eb746f2c55",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/mod.rs",
+      "sha256": "795af926c47258b5de428921b4dcc7095687739e37cff6c47cacec3d0905dde2"
+    },
+    {
+      "bytes": 5312,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/mock.rs",
+      "git_blob": "93e6c5d697ef21451d713eeaa6abead29bf856c1",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/mock.rs",
+      "sha256": "65b7ab8aa2dc4628d17b8a51f607dd3d97359d9557904fd2c4ee3ffbdc6aeb66"
+    },
+    {
+      "bytes": 393,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/mod.rs",
+      "git_blob": "8d8ceacf80c4514aa22e94dc7ba3da2fb2c77f6a",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/mod.rs",
+      "sha256": "3d9c98e6cf18adf31d15e7fb43bc23899f0e7b60fdf777727e26ae4f042ee4e1"
+    },
+    {
+      "bytes": 5519,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_alp.rs",
+      "git_blob": "6221daafa95997e9f8b370e9e4867d2541e46b95",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_alp.rs",
+      "sha256": "1db7f44e1e5efe64f76c080acdc213133ae78a1ce4507da62f89b2254e782a0c"
+    },
+    {
+      "bytes": 2931,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_burn.rs",
+      "git_blob": "3ea721630db064ed3d59a8eb39549e26c3f6b21f",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_burn.rs",
+      "sha256": "4dabb787f5773c1b213bfc6c34245c1555558dd6ed92ddaa302c90a42be5c64c"
+    },
+    {
+      "bytes": 6437,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_common.rs",
+      "git_blob": "d1163d600a42bef4c67e227008ab911955abd1be",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_common.rs",
+      "sha256": "1e95d784cbfd4cfa03c94b35dcfb2af07e100bdf3af2bd330543aebb88ec833a"
+    },
+    {
+      "bytes": 4842,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_disconnect_block.rs",
+      "git_blob": "0e0134da84d493fd38d6adcb6fa5a4f9e1cd57c4",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_disconnect_block.rs",
+      "sha256": "aa9dcc0a1fca2dee14bc4eb72516dce2a1fe8a2609ccdae7cfa4c77bb4794555"
+    },
+    {
+      "bytes": 3691,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_genesis.rs",
+      "git_blob": "e8163cd6ba1da1a61f5c2a32430a91962f2c9da8",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_genesis.rs",
+      "sha256": "f18c3cc1af93d80b288df9ae60fb77aea32f4e4f39c5ffa6bd340a83e4162e41"
+    },
+    {
+      "bytes": 5594,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_nft.rs",
+      "git_blob": "991b09b98e190ba9d0909a7940b5d6e0f2c0e462",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_nft.rs",
+      "sha256": "913de178d8144b5de0aa07d56980f919abacdba842f3d1dfb4312c1388f31757"
+    },
+    {
+      "bytes": 3098,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_unknown.rs",
+      "git_blob": "0e8a162fb8a69433aa056ebae77a72ba9aefd21a",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_unknown.rs",
+      "sha256": "6aa23af349a2dc2d377ae4776975007aec475e9251a28d143021af2b2d6136a1"
+    },
+    {
+      "bytes": 4126,
+      "donor_path": "chronik/chronik-db/src/io/token/tests/test_batch_vault.rs",
+      "git_blob": "18b9fcb1c36172eb009e5ea57ced1449232865f1",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/token/tests/test_batch_vault.rs",
+      "sha256": "6c9b84a45647b9a6b1bb7690f78137367c9aeaf7116fa810baf9a79ed2d943f9"
+    },
+    {
+      "bytes": 26285,
+      "donor_path": "chronik/chronik-db/src/io/txs.rs",
+      "git_blob": "be185a7ae4f85570cb76e8c436729288376ede8a",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/txs.rs",
+      "sha256": "593df0d4478f8058a218075b107b81e5dfee1ba450bcb6d2ac9edeacffb87aa2"
+    },
+    {
+      "bytes": 17239,
+      "donor_path": "chronik/chronik-db/src/io/upgrade.rs",
+      "git_blob": "91ddb96279426be0079911733dd8bb73af17791c",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/io/upgrade.rs",
+      "sha256": "e9a29c380101f1f2aa4a259c5f0cb757a986a8a2a699987ffde057a4578b0346"
+    },
+    {
+      "bytes": 489,
+      "donor_path": "chronik/chronik-db/src/lib.rs",
+      "git_blob": "b6c0927d2fcbc827155409b219cdd51a1cf692c0",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/lib.rs",
+      "sha256": "d97b5142243be8c5da92d3ea7e766ab0e35297ea5bb50021828e4a4d425d84b1"
+    },
+    {
+      "bytes": 2387,
+      "donor_path": "chronik/chronik-db/src/mem/data.rs",
+      "git_blob": "d64296c7d1df80f617f560709a17cef7b84d6b20",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/data.rs",
+      "sha256": "84b3190e1557ea88a4ec889f46c2077e5510835b4d41ffca17be81e3a41e0b39"
+    },
+    {
+      "bytes": 6826,
+      "donor_path": "chronik/chronik-db/src/mem/group_history.rs",
+      "git_blob": "015c63045bed6344b972006e185e5209aa48fa65",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/group_history.rs",
+      "sha256": "a7449647549ff76bf604db2b934cdc15e98582da4742aa0cfddb88e2d79ef62e"
+    },
+    {
+      "bytes": 15022,
+      "donor_path": "chronik/chronik-db/src/mem/group_utxos.rs",
+      "git_blob": "cbe76cd75f41dafe73be42c435bc0de64ff6816d",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/group_utxos.rs",
+      "sha256": "b997f5a503a41c8e0148d6cae79370d5e175c2b59d4f546a418c897589e077c1"
+    },
+    {
+      "bytes": 10629,
+      "donor_path": "chronik/chronik-db/src/mem/mempool.rs",
+      "git_blob": "00360e2870d8038207b78508a765586371ac5414",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/mempool.rs",
+      "sha256": "aed97375af1f19b9670b70fae5ec4e6943a57dbc41b7a2f48de667b7d19e3f3c"
+    },
+    {
+      "bytes": 487,
+      "donor_path": "chronik/chronik-db/src/mem/mod.rs",
+      "git_blob": "2c025cabc0f536b9373a874763a78e44f0848f7e",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/mod.rs",
+      "sha256": "6e6cdbc585ec7bcbd4db3c9d1d41d944f4a21e827298392aa4d35f6215d0c646"
+    },
+    {
+      "bytes": 10610,
+      "donor_path": "chronik/chronik-db/src/mem/spent_by.rs",
+      "git_blob": "d0445ce9e0bf9dcc7fec98570f3587f90892b619",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/spent_by.rs",
+      "sha256": "1d5ac4608f058245b01ce1935c37ccb95140fbc4a22f2d58b390b3b9d437a26f"
+    },
+    {
+      "bytes": 34477,
+      "donor_path": "chronik/chronik-db/src/mem/tokens.rs",
+      "git_blob": "9315626ef164fb21eed03bce833571aa4d3f3b25",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/mem/tokens.rs",
+      "sha256": "91e9df4186e505114b88265b14191d52182305c0d33c88a6895e2f8ee8a6c6a0"
+    },
+    {
+      "bytes": 4451,
+      "donor_path": "chronik/chronik-db/src/plugins/group.rs",
+      "git_blob": "8c99cf458eba3eee227e747b6139b78310659319",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/plugins/group.rs",
+      "sha256": "2bd271fe7ad9f854d2db481bc25d7069205741fb5794fe9280ae46065bf96c18"
+    },
+    {
+      "bytes": 31385,
+      "donor_path": "chronik/chronik-db/src/plugins/io.rs",
+      "git_blob": "4e48db0ccfc4aefb3050c072f878361982a61fcb",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/plugins/io.rs",
+      "sha256": "18a5b0af446bfbcde7ffe2dfc88045577723959ef820fb3da2074372b02f3725"
+    },
+    {
+      "bytes": 8448,
+      "donor_path": "chronik/chronik-db/src/plugins/mem.rs",
+      "git_blob": "fe5230f80d424614d6336e1ffdeeec9051b9972e",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/plugins/mem.rs",
+      "sha256": "b83c9c654ff15749a53c393061f06c331fd2478a450a1368d2e30d65ee80bb92"
+    },
+    {
+      "bytes": 344,
+      "donor_path": "chronik/chronik-db/src/plugins/mod.rs",
+      "git_blob": "03ec11f97322afcf5a22fb2c8af0fbec4bba0d20",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/plugins/mod.rs",
+      "sha256": "a8322d721eb682b6b83f9c5b54416a6401f53840ae8add7379827ee8f672272c"
+    },
+    {
+      "bytes": 22801,
+      "donor_path": "chronik/chronik-db/src/reverse_lookup.rs",
+      "git_blob": "02c38f3c23f9510f72a422b8e3a2b21bac48ce09",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/reverse_lookup.rs",
+      "sha256": "c1fd0c51d771142b89013e13388566bff9d9553a85a9aa0d7427a0a20fdbd585"
+    },
+    {
+      "bytes": 8015,
+      "donor_path": "chronik/chronik-db/src/ser.rs",
+      "git_blob": "24846d95edb7e55754297949dc6a8ff7c19f5de6",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/ser.rs",
+      "sha256": "6a6b134f0e03e0470d06fc082c78bc4855a2fa01fddb524e1053210bbc18337e"
+    },
+    {
+      "bytes": 261,
+      "donor_path": "chronik/chronik-db/src/test/mod.rs",
+      "git_blob": "d9622d86db0fb7ef9c39895ab4190f9568f68c53",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/test/mod.rs",
+      "sha256": "5d28c7e9a3c16ffe6412ffa4aab4ed9c7afaf5f9674942f4ccd7413364100a3d"
+    },
+    {
+      "bytes": 665,
+      "donor_path": "chronik/chronik-db/src/test/utxo.rs",
+      "git_blob": "acaf0446f65351f74c9f4ad1d2817f1778ab3807",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/test/utxo.rs",
+      "sha256": "b5c48a24f479a68826f63cfc7fe1ee50fcbf99878c3399d1ac7f7d26ca28be3b"
+    },
+    {
+      "bytes": 3977,
+      "donor_path": "chronik/chronik-db/src/test/value_group.rs",
+      "git_blob": "fd163fe313efedffd023abd781666abe1cf20d3b",
+      "mode": "100644",
+      "path": "chronik/chronik-db/src/test/value_group.rs",
+      "sha256": "126ed8fd533d0d1ea61b8aa5d715b2100283692ba02f16292e8f557bb795f033"
+    },
+    {
+      "bytes": 107231,
+      "donor_path": "chronik/chronik-http/src/electrum.rs",
+      "git_blob": "704ff1dfdcdc313e9970d076ed0032d1f06f9e4f",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/electrum.rs",
+      "sha256": "98fb4bc6a4e7eb3a740a90cb29e6f8c14cc516c3d8ff68583c6402d190cfa75e"
+    },
+    {
+      "bytes": 3524,
+      "donor_path": "chronik/chronik-http/src/electrum_codec.rs",
+      "git_blob": "ce8f9b50030a9988773d522cefd865d37d5a833a",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/electrum_codec.rs",
+      "sha256": "4bdf25a9abbfe812d12246d7764200d76a3a9d7f6c0a93d94943cae5f1b94945"
+    },
+    {
+      "bytes": 4698,
+      "donor_path": "chronik/chronik-http/src/error.rs",
+      "git_blob": "ca2207b1a81ebeaf8cf657b5922d74ea6f4ae0c0",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/error.rs",
+      "sha256": "c68e1763e5a0eb8ff29cc3a01865c69628e8338f4372b60e7747343a525b2feb"
+    },
+    {
+      "bytes": 20740,
+      "donor_path": "chronik/chronik-http/src/handlers.rs",
+      "git_blob": "ee4b908f64499e50bb1ced49708c28af7514df6d",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/handlers.rs",
+      "sha256": "6dc3bdc98314b5c3ee6fe8422abcda42b757372352da7e0e11b519d1997785cb"
+    },
+    {
+      "bytes": 495,
+      "donor_path": "chronik/chronik-http/src/lib.rs",
+      "git_blob": "a8373cd0d576c74a4f1d69131f42cc127725ba81",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/lib.rs",
+      "sha256": "f0f67f7957191d5cc79ec609fb0a44a3f146d6adf70c4a00ee0c02b6267ce543"
+    },
+    {
+      "bytes": 2199,
+      "donor_path": "chronik/chronik-http/src/parse.rs",
+      "git_blob": "ce1b720311a45f1e567648dac098284788f026d2",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/parse.rs",
+      "sha256": "2b9c0a4684669c41ed5546a710e5c12ac7ca4f12ad44c355cda7fdaa67d25028"
+    },
+    {
+      "bytes": 9719,
+      "donor_path": "chronik/chronik-http/src/protobuf.rs",
+      "git_blob": "a07ee56249e280ed0c978fe06c9b5c37853e6509",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/protobuf.rs",
+      "sha256": "7ce7ae078830abc0fffee60ff62f9f3e8af8299394ccc383fa9dc7580c59252e"
+    },
+    {
+      "bytes": 28586,
+      "donor_path": "chronik/chronik-http/src/server.rs",
+      "git_blob": "bf7b4604d2e49d66bd85256468e186d7fed05fd6",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/server.rs",
+      "sha256": "900a035097b3a799701eb026e713698332ffa10b38aedad2a07bc98037ebb3ba"
+    },
+    {
+      "bytes": 8585,
+      "donor_path": "chronik/chronik-http/src/subscription_limits.rs",
+      "git_blob": "51ef45c4e7886a3967de13776f3f920ee561b433",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/subscription_limits.rs",
+      "sha256": "a66259def940c949ff2e0a009f86574f683be8cb353c75b0f52ed32c4a10bab1"
+    },
+    {
+      "bytes": 1522,
+      "donor_path": "chronik/chronik-http/src/validation.rs",
+      "git_blob": "c89553ff8e52254df0228e07a41bca8cdf24c93c",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/validation.rs",
+      "sha256": "320f8ae548d34b62e7a101c09d95c1e148499a93a71050276700c959e2425c21"
+    },
+    {
+      "bytes": 22906,
+      "donor_path": "chronik/chronik-http/src/ws.rs",
+      "git_blob": "65be63e8af6059305a144580ee7ee9af2256b3e7",
+      "mode": "100644",
+      "path": "chronik/chronik-http/src/ws.rs",
+      "sha256": "23b6c6d53bc663ec4b7c35d710bde031aa34abf6c8add296778c62c0c76a723d"
+    },
+    {
+      "bytes": 1373,
+      "donor_path": "chronik/chronik-indexer/Cargo.toml",
+      "git_blob": "01de0747234a9347f242087c0e1772f58ca2c2fe",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/Cargo.toml",
+      "sha256": "6698ab79c4c6abed5ceda96e3bf057eedad975ed06f8c82eb20addc9ecf92a0b"
+    },
+    {
+      "bytes": 3179,
+      "donor_path": "chronik/chronik-indexer/src/avalanche.rs",
+      "git_blob": "890a8d813b9a61a544b47d0b77407234bfebe6e0",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/avalanche.rs",
+      "sha256": "f8a70a2c08a1e363b33d57d1b3186cfab1f00e07976832178273303f6665dc6c"
+    },
+    {
+      "bytes": 72374,
+      "donor_path": "chronik/chronik-indexer/src/indexer.rs",
+      "git_blob": "f1625893b4edb34a2601b509919a02ed17e69dd4",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/indexer.rs",
+      "sha256": "de53218f77472dea37567ef9c001783f9da492a9cefb02dbaef7551987135888"
+    },
+    {
+      "bytes": 435,
+      "donor_path": "chronik/chronik-indexer/src/lib.rs",
+      "git_blob": "1c7e3a47d56b483862d6506faa44b28f8634605f",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/lib.rs",
+      "sha256": "a5e5f3564c21db2b1fc163eb65c842b94c83a93c020c50753d73cada63af62a6"
+    },
+    {
+      "bytes": 17126,
+      "donor_path": "chronik/chronik-indexer/src/merkle.rs",
+      "git_blob": "c556ceccfdc9bfb2abf10e256f62d4169a2e3540",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/merkle.rs",
+      "sha256": "7d86e9e99bb5dd201ffec76ed584e99cfcfd7f66adcf5b5c0a0cd526c73a79cd"
+    },
+    {
+      "bytes": 3307,
+      "donor_path": "chronik/chronik-indexer/src/pause.rs",
+      "git_blob": "e7170d9c94aa5f154985964588754a001ace06f6",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/pause.rs",
+      "sha256": "58daa5b4e6ffbab380acc0d8008980ab7594b0201bc97125ddc1bbc67932d3ed"
+    },
+    {
+      "bytes": 15858,
+      "donor_path": "chronik/chronik-indexer/src/query/blocks.rs",
+      "git_blob": "1cd6aff02c6aea4cd7cf54328d4c9f9e5d87c9dc",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/blocks.rs",
+      "sha256": "164dbc2b9b82388f7bfa0848608c90266d89efa94bf22de3342fcddce233224d"
+    },
+    {
+      "bytes": 10094,
+      "donor_path": "chronik/chronik-indexer/src/query/broadcast.rs",
+      "git_blob": "19b5b9ab3174fbfee15be428287a8dd6b0314c19",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/broadcast.rs",
+      "sha256": "0ae836248ad2e3b0b98568336ac99f1211c780ce280b3911b61960e1927b7a01"
+    },
+    {
+      "bytes": 22283,
+      "donor_path": "chronik/chronik-indexer/src/query/group_history.rs",
+      "git_blob": "f149baf46dd53687707a6209239b228fc936c965",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/group_history.rs",
+      "sha256": "7f98de1926843395b1c5ebb1daf2c7f5885c74d6cdafe9d8b81afeb05c71f950"
+    },
+    {
+      "bytes": 11472,
+      "donor_path": "chronik/chronik-indexer/src/query/group_utxos.rs",
+      "git_blob": "9d1fa4f2d24ec632bfc5ecb26cd084c4f5413181",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/group_utxos.rs",
+      "sha256": "3953c8c40162922c5aa7dd912f46076f4d05429b811972f0f9aab092b6ebd8df"
+    },
+    {
+      "bytes": 572,
+      "donor_path": "chronik/chronik-indexer/src/query/mod.rs",
+      "git_blob": "685013f691aa8b85613002de37a828f1c6d580af",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/mod.rs",
+      "sha256": "ffa920f69cdbffdf72168e7a77eabbadae4e243a98161372b7fee35e313584ea"
+    },
+    {
+      "bytes": 12021,
+      "donor_path": "chronik/chronik-indexer/src/query/plugins.rs",
+      "git_blob": "47fdfabf0bbbcc957d4578f83ee15821eca0961d",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/plugins.rs",
+      "sha256": "9b5f4a42c4c86432c15e6d2b07930a2079c861c743eb172596d7f6967544523b"
+    },
+    {
+      "bytes": 15879,
+      "donor_path": "chronik/chronik-indexer/src/query/tx_token_data.rs",
+      "git_blob": "0d8aad1df8958d29739d3f6fae4dd1fad844d16c",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/tx_token_data.rs",
+      "sha256": "ccea622b039889ee59d81f39824558b4a20e9afd13db2bcf7e575da2a2051c3e"
+    },
+    {
+      "bytes": 9077,
+      "donor_path": "chronik/chronik-indexer/src/query/txs.rs",
+      "git_blob": "8351544c5894c335932adab1170308708b88cae5",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/txs.rs",
+      "sha256": "06861177012c2448f61d079b4a3405c2dd912ba299b391dd8afcc647f99e5f19"
+    },
+    {
+      "bytes": 9578,
+      "donor_path": "chronik/chronik-indexer/src/query/util.rs",
+      "git_blob": "d14a8e702cea1048e94fbdfee7b1786a0c26e6dc",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/query/util.rs",
+      "sha256": "583a8265a5ad8a3258596f3907e86172a9d3e384293dfa0371fbb6e9690aa9f3"
+    },
+    {
+      "bytes": 5984,
+      "donor_path": "chronik/chronik-indexer/src/subs.rs",
+      "git_blob": "bdf6dfed9b6ba97aff53f5505bc8e5eb98976b16",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/subs.rs",
+      "sha256": "7cc058be4b83d9a4f4c2de3656af3820b7b9e3fb6f5e75c3fdae23e66882f8f2"
+    },
+    {
+      "bytes": 5908,
+      "donor_path": "chronik/chronik-indexer/src/subs_group.rs",
+      "git_blob": "675a30676e03145de17e8c276a2087dd42d7920f",
+      "mode": "100644",
+      "path": "chronik/chronik-indexer/src/subs_group.rs",
+      "sha256": "901a291cf7c1c4f1c5aaa0457cf7d52f56d3c80cc86a96543520495a73e06eef"
+    },
+    {
+      "bytes": 1036,
+      "donor_path": "chronik/chronik-lib/Cargo.toml",
+      "git_blob": "456ee6311981b3dbab366bbfcb2e7bbbb2c4ee4f",
+      "mode": "100644",
+      "path": "chronik/chronik-lib/Cargo.toml",
+      "sha256": "3bfe71c25e463e90650eae0271b9a5297e08fb9a3c90db6f9e94e29f9163e8a9"
+    },
+    {
+      "bytes": 368,
+      "donor_path": "chronik/chronik-lib/build.rs",
+      "git_blob": "e58cf7d7f1d5cca272c9d859a8eea89d4604d792",
+      "mode": "100644",
+      "path": "chronik/chronik-lib/build.rs",
+      "sha256": "545a78d36b902cf0387f65bbddca9fdfb6f1af0a68593f26bf5d4686d2b0b4df"
+    },
+    {
+      "bytes": 18642,
+      "donor_path": "chronik/chronik-lib/src/bridge.rs",
+      "git_blob": "3a5ec142e989d67b0e22ab493d81d764e24d8831",
+      "mode": "100644",
+      "path": "chronik/chronik-lib/src/bridge.rs",
+      "sha256": "43b9543bf2b0c8c834273296633a88c9dfadfefec271630869f0a4a03a1806c3"
+    },
+    {
+      "bytes": 6366,
+      "donor_path": "chronik/chronik-lib/src/ffi.rs",
+      "git_blob": "e576797add16b089caa508f1728e339c6f40e08b",
+      "mode": "100644",
+      "path": "chronik/chronik-lib/src/ffi.rs",
+      "sha256": "d489ceb91ebc5d74b3991a95644bd72820bdf17e035276ed3448eb56c9a9ebe9"
+    },
+    {
+      "bytes": 744,
+      "donor_path": "chronik/chronik-lib/src/lib.rs",
+      "git_blob": "7476d9d6517c626fe0f657bd2c15b18e4917316c",
+      "mode": "100644",
+      "path": "chronik/chronik-lib/src/lib.rs",
+      "sha256": "4fe06a1300da5b0e76f7c2f82b48acbbc804977831956f2603cd1545ee25148d"
+    },
+    {
+      "bytes": 493,
+      "donor_path": "chronik/chronik-plugin-common/Cargo.toml",
+      "git_blob": "1689728a0a2fe93b2ae8ce7ff7de0b91d7c01ff4",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-common/Cargo.toml",
+      "sha256": "8388fde390434f0e5d7837ec0e89448e437a3171997aa7ddd66e2bac0486a286"
+    },
+    {
+      "bytes": 2451,
+      "donor_path": "chronik/chronik-plugin-common/src/data.rs",
+      "git_blob": "12e79493dee077a59ecf05d641afd871583eadcf",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-common/src/data.rs",
+      "sha256": "a59ba76d03947900b2f36095db517fac541e3b2fa4b07339ab5e442e98fdb491"
+    },
+    {
+      "bytes": 319,
+      "donor_path": "chronik/chronik-plugin-common/src/lib.rs",
+      "git_blob": "dd378c118667eaf9bc0e3f4f6cc4870f5acf4580",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-common/src/lib.rs",
+      "sha256": "f5ef5f21872c56a70e56eb7448a421209a85b88d8618cc062d0b0f47590c1f1e"
+    },
+    {
+      "bytes": 565,
+      "donor_path": "chronik/chronik-plugin-common/src/params.rs",
+      "git_blob": "ac56737e2d8323be9d477f4ba8e2714518f6393c",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-common/src/params.rs",
+      "sha256": "0247ea6ff35c685245fb32e0300aa3d939be52fc452a24d8c31897194e355863"
+    },
+    {
+      "bytes": 606,
+      "donor_path": "chronik/chronik-plugin-common/src/plugin.rs",
+      "git_blob": "af2fe9f3ebfdd423739b4090cb06d2db58a8d2f5",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-common/src/plugin.rs",
+      "sha256": "6d4bf881a95d07f92ca2e4ce1d1ba287191b5fb2d3d092bd8a411cfcd1e91788"
+    },
+    {
+      "bytes": 25934,
+      "donor_path": "chronik/chronik-plugin-impl/src/context.rs",
+      "git_blob": "a65d1abf86de9a1225e446d1f311cc892ec4c30b",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/context.rs",
+      "sha256": "8b890b1b1bf9df86a0ee901179886a9295269a4ad665d80d4a405b054fe7436f"
+    },
+    {
+      "bytes": 2775,
+      "donor_path": "chronik/chronik-plugin-impl/src/etoken.py",
+      "git_blob": "fb707dec57b4710a58d49ab74b91ce3869e750ec",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/etoken.py",
+      "sha256": "3e01c911673afefe2eacfb668453bdc2fef63203734433b8691bd2d4d068c8a3"
+    },
+    {
+      "bytes": 4741,
+      "donor_path": "chronik/chronik-plugin-impl/src/etoken.rs",
+      "git_blob": "ff3990766a834f243364f1dc15114e763b970838",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/etoken.rs",
+      "sha256": "e287077b8871fc0d02766b4828a5a6481b4576c50fe9e2381f110d474df96696"
+    },
+    {
+      "bytes": 461,
+      "donor_path": "chronik/chronik-plugin-impl/src/lib.rs",
+      "git_blob": "69c1959d271fe7abe1ff91b0dcf58dd6153aa869",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/lib.rs",
+      "sha256": "e7d7a98b7e8b751dbdd2df8ab97809c8acb837ebfede71491c665dd4ccb014a1"
+    },
+    {
+      "bytes": 2456,
+      "donor_path": "chronik/chronik-plugin-impl/src/module.rs",
+      "git_blob": "81f1980c285ac856050a952c9c1004c3aaecf957",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/module.rs",
+      "sha256": "dee5163ded088509f6e53dcec1957a5bea0bc1c561df865b45893849b032b4ef"
+    },
+    {
+      "bytes": 924,
+      "donor_path": "chronik/chronik-plugin-impl/src/plugin.py",
+      "git_blob": "fa282fb6a2051c30673b4fd7bf3094beb006bf36",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/plugin.py",
+      "sha256": "96d2d30825a3fb431a75c775c1ed3286785d292c70324ca9ac0be771ac441b3a"
+    },
+    {
+      "bytes": 3418,
+      "donor_path": "chronik/chronik-plugin-impl/src/plugin.rs",
+      "git_blob": "7b1b3e4dcb74ecb697015e8341f99bb2bd08c65e",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/plugin.rs",
+      "sha256": "bcc74729d27cd82a0f74d74fbfdddf826791a75ab9da9abe6462665bd0f71aa2"
+    },
+    {
+      "bytes": 1641,
+      "donor_path": "chronik/chronik-plugin-impl/src/tx.py",
+      "git_blob": "5b1d1bf43c01a3174b6a42f3f54829d855b766a1",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/tx.py",
+      "sha256": "c58a5ceff58e86e454b36112c5682c3f8bc4ac9931f0dda999c31a9e4eefd560"
+    },
+    {
+      "bytes": 9648,
+      "donor_path": "chronik/chronik-plugin-impl/src/tx.rs",
+      "git_blob": "ce74573781c11fe94ecdc48ab04e46d0b4009351",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/tx.rs",
+      "sha256": "f14e1da52cef323cb85da94581d2254d6c27eedc2351ab768c524a1ebeb27207"
+    },
+    {
+      "bytes": 366,
+      "donor_path": "chronik/chronik-plugin-impl/src/util.rs",
+      "git_blob": "9d4c65e2fa570927c9e4898759ec1397175870f9",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/src/util.rs",
+      "sha256": "7065b5ebf27efcdc0b1136907d455104235ac71aa709b0267ad9c83c659185d9"
+    },
+    {
+      "bytes": 13060,
+      "donor_path": "chronik/chronik-plugin-impl/tests/test_tx_to_py.py",
+      "git_blob": "e610d9c4304d89cf64bd24805581b24355916ae6",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/tests/test_tx_to_py.py",
+      "sha256": "1116c609f85b090a5b28ca44e19267ba0e5e9e509834eb48fb2b251370ae8325"
+    },
+    {
+      "bytes": 16938,
+      "donor_path": "chronik/chronik-plugin-impl/tests/test_tx_to_py.rs",
+      "git_blob": "ab45fcab8cb6541b04f5d8f80e4176ddc2f750ee",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin-impl/tests/test_tx_to_py.rs",
+      "sha256": "464f808c0b338e925ce2765d82343a5a1a6d93d3b5f6399d88aa2356f076624a"
+    },
+    {
+      "bytes": 567,
+      "donor_path": "chronik/chronik-plugin/Cargo.toml",
+      "git_blob": "a3c0613f16678942cd3e6e05ce43988b8190aca5",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin/Cargo.toml",
+      "sha256": "f41ca49a3f186d98ac8eec853fd4a88c766efa11a4ae8f4ea92b172219bc8ac5"
+    },
+    {
+      "bytes": 1990,
+      "donor_path": "chronik/chronik-plugin/src/context.rs",
+      "git_blob": "3bd50fc92d4c8af59a3177e836610375a0ef0d00",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin/src/context.rs",
+      "sha256": "39bff442ee42d6cbed7ba9da803846e55473585595c8850735d2e18eeb737dd3"
+    },
+    {
+      "bytes": 632,
+      "donor_path": "chronik/chronik-plugin/src/lib.rs",
+      "git_blob": "44b882395e5e98f796c030de75d25beb23779f8c",
+      "mode": "100644",
+      "path": "chronik/chronik-plugin/src/lib.rs",
+      "sha256": "66c26b72ca7444c67e03c74f5ee1eec465ee3e5c06d52d3ec0c788103aaf2f5e"
+    },
+    {
+      "bytes": 362,
+      "donor_path": "chronik/chronik-proto/Cargo.toml",
+      "git_blob": "0f6e5965576b6d7ab92cd3bf9428a970e2d40368",
+      "mode": "100644",
+      "path": "chronik/chronik-proto/Cargo.toml",
+      "sha256": "55555cecb37937c259d554ff283a95c20e26e355cd47df5a9bf105b3174f4cd9"
+    },
+    {
+      "bytes": 365,
+      "donor_path": "chronik/chronik-proto/build.rs",
+      "git_blob": "1a9c44611bf1d88d6243bc1695f5582219d022d6",
+      "mode": "100644",
+      "path": "chronik/chronik-proto/build.rs",
+      "sha256": "8a23985500e6f5be7c169c3415d625962c76736b201966508d7c107d4f7894ee"
+    },
+    {
+      "bytes": 412,
+      "donor_path": "chronik/chronik-proto/src/lib.rs",
+      "git_blob": "16acc1426a513e12561623954df38c0b2e97eaa9",
+      "mode": "100644",
+      "path": "chronik/chronik-proto/src/lib.rs",
+      "sha256": "9dcc6a7c73bb03625360e773f2dc8e10186fc8dfc4807689a375eb207149e055"
+    },
+    {
+      "bytes": 220,
+      "donor_path": "chronik/chronik-util/Cargo.toml",
+      "git_blob": "3a2c2c0909d2034572972caaa78f7f23ff13a7ab",
+      "mode": "100644",
+      "path": "chronik/chronik-util/Cargo.toml",
+      "sha256": "c930437ebca5248c4580ba9a68121df87d022c08a6623fdf7e042fa7615801a9"
+    },
+    {
+      "bytes": 296,
+      "donor_path": "chronik/chronik-util/src/lib.rs",
+      "git_blob": "5dcdfbefce73763e5302725391fb3c916351c50d",
+      "mode": "100644",
+      "path": "chronik/chronik-util/src/lib.rs",
+      "sha256": "ea8794a402067c6cfd05528b9e0557ece10a3b5915cd5af9a7f87003be97a5a1"
+    },
+    {
+      "bytes": 2896,
+      "donor_path": "chronik/chronik-util/src/log.rs",
+      "git_blob": "9a6a08d43830d7fc6f0b9fc24504ca1254e1ebd0",
+      "mode": "100644",
+      "path": "chronik/chronik-util/src/log.rs",
+      "sha256": "0c0138efa8167eb6d5508af0850355277698f9f2a3f9347b2ff5b291a9e26f81"
+    }
+  ],
+  "schema": "ergon-chronik-donor-import/v1",
+  "scope": {
+    "adapted_donor_files": 3,
+    "consensus_authority": false,
+    "exact_donor_files": 206,
+    "excluded_runtime_members": [
+      "chronik-bridge",
+      "chronik-http",
+      "chronik-indexer",
+      "chronik-lib"
+    ],
+    "executable_packages": [
+      "bitcoinsuite-core",
+      "bitcoinsuite-slp",
+      "chronik-db",
+      "chronik-proto"
+    ],
+    "node_runtime_linked": false,
+    "runtime_status": "dormant-until-lot-b"
+  },
+  "workspace": {
+    "cargo_lock_sha256": "7af496d774c6180ed13a935b8c8080b0394fe5720697231aabbcc0b2cfaaf689",
+    "default_members": [
+      "bitcoinsuite-core",
+      "bitcoinsuite-slp",
+      "chronik-db",
+      "chronik-proto"
+    ],
+    "excluded": [
+      "chronik-bridge",
+      "chronik-http",
+      "chronik-indexer",
+      "chronik-lib"
+    ],
+    "members": [
+      "abc-rust-error",
+      "abc-rust-lint",
+      "bitcoinsuite-core",
+      "bitcoinsuite-slp",
+      "chronik-db",
+      "chronik-observer",
+      "chronik-plugin",
+      "chronik-plugin-common",
+      "chronik-plugin-impl",
+      "chronik-proto",
+      "chronik-util"
+    ],
+    "rust_version": "1.85.0"
+  }
+}

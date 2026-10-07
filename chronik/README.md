@@ -2,16 +2,18 @@
 
 # Chronik boundaries
 
-Chronik remains optional and outside node consensus. Both build options default
-to `OFF`:
+Chronik remains optional and outside node consensus. All three build options
+default to `OFF`:
 
 - `BUILD_CHRONIK_BUILD_ONLY` compiles and tests isolated Rust primitives. It
   does not link them into the node.
+- `BUILD_CHRONIK_PORT_CORE` compiles and tests the dormant token, database and
+  protobuf port core. It does not link them into the node or start a service.
 - `BUILD_CHRONIK_OBSERVER` links a small Rust/C++ block-event observer into
   `bitcoind`. Its runtime flag also defaults to off and is accepted only on the
   exact local `regtest` profile.
 
-With both options off, CMake does not enter this directory, discover Rust,
+With all three options off, CMake does not enter this directory, discover Rust,
 invoke Cargo, add a node definition, or change an executable link graph. The
 node remains correct and standalone with Chronik compiled out.
 
@@ -28,6 +30,23 @@ only these dormant packages:
 The observer crate is explicitly excluded from this target. No C++ bridge,
 callback, thread, socket, database, data path, HTTP or WebSocket server,
 protobuf API, or plugin is built or linked.
+
+## Dormant port core
+
+`BUILD_CHRONIK_PORT_CORE=ON` adds a separate executable corpus for the next
+Chronik integration stage. It builds and tests exactly these default packages:
+
+- `bitcoinsuite-core`
+- `bitcoinsuite-slp`, including the complete imported ALP/SLP test corpus
+- `chronik-db`, including token ancestry, UTXO, mempool and rollback units
+- `chronik-proto`, generated from the pinned `chronik.proto` input
+
+The database's default-disabled plugin facade and supporting utility crates are
+workspace dependencies. The imported bridge, indexer, HTTP, service library and
+Python plugin implementation are deliberately excluded from the executable Lot
+A workspace. Their donor-bound sources are present for review and the later
+host adapter, but no current CMake target builds or links them. In particular, Lot A
+creates no RocksDB path, listener, API, callback or node dependency at runtime.
 
 ## Bounded block projection
 
@@ -109,17 +128,32 @@ still-readable heights 714 through 1001.
 
 ## Provenance
 
-The four foundation-crate source sets are exact regular-file bytes from the
-public Bitcoin ABC commit
-`38a7a4dc23a574f2747265fcdf33242648dd2ce1`, tree
-`68d559f78c90ed38066283dc87f8652258a1415a`, under preserved MIT notices. The
-donor MIT terms remain verbatim in `COPYING`.
+The import contains 206 exact regular-file bytes from the public Bitcoin ABC
+commit
+`784d83de2e19eab726898d77bfe7465410d27a9c`, tree
+`763739eb3c255e90a6122a2679c667089f9efad2`, under preserved MIT notices. This
+coherently rebases the four earlier foundation crates and adds the reviewed
+Chronik source set and missing ALP/SLP corpus from one donor identity. The donor
+MIT terms remain verbatim in `COPYING`.
 
-The workspace manifest, lockfile, CMake adapters, observer crate, C++ adapter,
-tests, and this README are independently authored MIT files. `Cargo.lock` is
-generated from this reduced public workspace and contains no Git or external
-path dependency. No private history, operator material, or unrelated private
-product code is part of this boundary.
+Three additional donor files are bound by exact preimage and postimage while
+removing four trailing ASCII spaces from comments. No executable token,
+database, protobuf or runtime semantics change in those adaptations.
+
+`docs/engineering/chronik/chronik-port-lot-a-donor-v1.json` binds every local
+destination to its donor path, Git blob, mode, byte count and raw SHA-256. The
+dependency-free checker rejects path, byte, mode, workspace, lockfile or build
+boundary drift:
+
+```sh
+python3 -B tools/engineering/check_chronik_port_core.py check
+```
+
+The reduced workspace manifest, lockfile, CMake adapters, observer crate, C++
+adapter, checker, tests and this README are independently authored MIT files.
+`Cargo.lock` is generated from the public workspace and contains no Git or
+external path dependency. No private history, operator material or unrelated
+private product code is part of this boundary.
 
 ## Build and test
 
@@ -140,6 +174,26 @@ cmake -S . -B /absolute/path/build-only -GNinja \
 cmake --build /absolute/path/build-only --target chronik_build_only
 cmake --build /absolute/path/build-only --target check-chronik-build-only
 ```
+
+Dormant token/DB/protobuf port core:
+
+```sh
+cmake -S . -B /absolute/path/build-port-core -GNinja \
+  -DBUILD_CHRONIK_PORT_CORE=ON \
+  -DCHRONIK_CARGO_HOME=/absolute/path/cargo-home \
+  -DCHRONIK_LIBCLANG_DIR=/absolute/path/to/libclang
+cmake --build /absolute/path/build-port-core --target chronik_port_core
+cmake --build /absolute/path/build-port-core --target check-chronik-port-core
+```
+
+`CHRONIK_LIBCLANG_DIR` is needed only when the native RocksDB binding cannot
+discover `libclang` itself. Protobuf generation uses the exact `protoc` selected
+by CMake. The reduced D1 lock resolves RocksDB 0.24.0 and
+`librocksdb-sys` 0.17.3+10.4.2, whose declared minimum supported Rust version
+is 1.85.0. That dependency constraint supersedes the donor workspace's stale
+1.80.0 declaration for this port. The CI job installs Rust 1.85.0 explicitly,
+fails if Cargo, rustc or the sysroot drift, fetches the committed lock once and
+then runs the governed test phase offline.
 
 Compiled-in observer, runtime disabled by default:
 

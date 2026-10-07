@@ -37,3 +37,9 @@ jobs:
 
       - name: Validate sources and generated outputs
         run: python3 tools/cockpit/cockpit.py check
+
+      - name: Validate engineering change records
+        run: |
+          python3 -m py_compile tools/engineering/check_change.py
+          python3 tools/engineering/check_change.py self-test
+          python3 tools/engineering/check_change.py check
