@@ -151,9 +151,15 @@
       "kind": "gate",
       "workstream": "build-operate",
       "title": "Verify optional indexing",
-      "summary": "Begin the optional-indexing phase by proving unchanged standalone-node behavior with indexing compiled out versus compiled in but disabled; runtime opt-in and bounded reconstruction gates remain later work.",
-      "delivery_state": "active",
-      "knowledge_status": "Open Question",
+      "summary": "Close the optional-indexing delivery gate on the accepted public persistent Chronik runtime: default-OFF builds and execution remain standalone, explicit local-regtest opt-in indexes node-accepted ALP/SLP data, and restart, reindex, pruning and reorganization boundaries fail closed without granting node authority.",
+      "delivery_state": "verified",
+      "knowledge_status": "Observed",
+      "verification_evidence": [
+        "ERGON-CHANGE-0037 is merged as public commit 52e2ed14b14cecbb6498695e38ac004542dadb2c with tree a9416fd88e87a1b179d04fcddd7a3ca0a4b4a724; its direct signed review commit cfa7d858ceeeb504046260f7c6787fe3678e2f48 has the same tree.",
+        "The public Chronik port-core workflow passed on pull request run 37672865745 and again on main push run 37702577318, covering the governed Rust corpus, compiled node adapter, C++ event boundary, ALP/SLP observation, restart, full reindex, chainstate reindex, deep reorganization and pruned-datadir failure isolation.",
+        "The public publication workflow passed on pull request run 37672865628 and main push run 37702577799; the portable metadata record is docs/engineering/evidence/ergon-change-0038/optional-indexing-ci.json.",
+        "This delivery verification is Observed at component level. It excludes independent reproduction, deterministic builds, served API compatibility, mempool indexing, production deployment, mainnet operation and every consensus activation claim."
+      ],
       "roadmap": {
         "lane": "Build / Operate",
         "order": 70,
