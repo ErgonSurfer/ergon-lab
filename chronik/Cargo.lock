@@ -231,7 +231,10 @@ dependencies = [
  "bitcoinsuite-core",
  "bitcoinsuite-slp",
  "bytes",
+ "chronik-proto",
  "chronik-runtime",
+ "prost",
+ "tempdir",
 ]
 
 [[package]]
@@ -297,6 +300,7 @@ dependencies = [
  "bitcoinsuite-slp",
  "bytes",
  "chronik-db",
+ "chronik-proto",
  "tempdir",
  "thiserror",
 ]

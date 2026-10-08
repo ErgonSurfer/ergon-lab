@@ -82,7 +82,12 @@ jobs:
       - name: Run the governed corpus offline
         env:
           CARGO_NET_OFFLINE: "true"
-        run: cargo test --manifest-path chronik/Cargo.toml --locked --offline
+        run: |
+          cargo test --manifest-path chronik/Cargo.toml --locked --offline
+          cargo test --manifest-path chronik/Cargo.toml \
+            --package chronik-observer \
+            --locked \
+            --offline
 
       - name: Configure the optional node adapter
         shell: bash

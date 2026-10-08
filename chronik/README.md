@@ -65,6 +65,17 @@ selection, socket, HTTP handler or consensus decision. The optional node
 adapter described below supplies accepted active-chain blocks and owns startup,
 restart, reindex and reorganization reconciliation.
 
+The runtime also exposes a read-only confirmed-token query core derived from
+Chronik's upstream query representation. Given a token genesis transaction ID,
+it reads the accepted database and produces the canonical Chronik `TokenInfo`
+protobuf, including token type, genesis fields and confirmed block metadata.
+Non-genesis and unknown transaction IDs return no result. The node-linked C ABI
+uses a bounded two-pass contract: first obtain the exact protobuf size, then
+copy into a caller-owned buffer. It writes nothing when the buffer is too
+small, retains no caller pointer and carries no path or host metadata in the
+payload. This is an internal service boundary only; no socket or public route
+is registered yet.
+
 ## Optional node adapter
 
 When `BUILD_CHRONIK_OBSERVER=ON`, `bitcoind` contains the bounded observer and
@@ -141,8 +152,10 @@ still-readable heights 714 through 1001.
 - Indexed or reconstructed data: the node-linked runtime stores active-chain
   block and transaction identities plus verified ALP/SLP token ancestry,
   metadata, genesis payloads, mint, send and burn state. It survives restart
-  and applies exact-tip rollback. The separate 288-block projection remains a
-  bounded diagnostic view. Neither is exposed through a public query API yet.
+  and applies exact-tip rollback. Confirmed token-genesis metadata is readable
+  through an internal protobuf query boundary; no public route or socket is
+  registered yet. The separate 288-block projection remains a bounded
+  diagnostic view.
 - Authoritative token validation or token state: none. Chronik resolves and
   verifies ALP/SLP ancestry for its own accepted-block index, but that result
   cannot accept or reject a node transaction or block, alter chain selection,

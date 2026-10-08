@@ -9,6 +9,8 @@
 //! supplying only active-chain blocks and for treating every runtime error as
 //! an indexing failure, never as a consensus decision.
 
+mod query;
+
 use std::path::Path;
 
 use abc_rust_error::Result;
@@ -33,6 +35,8 @@ use chronik_db::{
 };
 use thiserror::Error;
 
+pub use query::TokenQueryError;
+
 /// One fully accepted block presented by the node host adapter.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AcceptedBlock {
@@ -42,6 +46,8 @@ pub struct AcceptedBlock {
     pub prev_hash: BlockHash,
     /// Active-chain height, with genesis at zero.
     pub height: i32,
+    /// Header timestamp committed by the accepted block.
+    pub timestamp: i64,
     /// Transactions in their exact block order.
     pub txs: Vec<Tx>,
 }
@@ -240,6 +246,14 @@ impl PersistentTokenIndexer {
         }))
     }
 
+    /// Read canonical Chronik protobuf metadata for one confirmed token ID.
+    pub fn token_info(
+        &self,
+        token_id_txid: &TxId,
+    ) -> Result<Option<chronik_proto::proto::TokenInfo>> {
+        query::token_info(&self.db, token_id_txid)
+    }
+
     /// Flush the database before orderly shutdown.
     pub fn close(&self) -> Result<()> {
         self.db.close()
@@ -287,6 +301,7 @@ pub fn decode_accepted_block(
         hash,
         prev_hash: BlockHash::from(prev_hash),
         height,
+        timestamp: i64::from(u32::from_le_bytes(raw_block[68..72].try_into()?)),
         txs,
     })
 }
@@ -296,6 +311,7 @@ fn db_block(block: &AcceptedBlock) -> DbBlock {
         hash: block.hash.clone(),
         prev_hash: block.prev_hash.clone(),
         height: block.height,
+        timestamp: block.timestamp,
         ..Default::default()
     }
 }
@@ -387,6 +403,7 @@ mod tests {
             hash: BlockHash::from([hash; 32]),
             prev_hash: BlockHash::from([prev_hash; 32]),
             height,
+            timestamp: i64::from(height.max(0)) + 1_700_000_000,
             txs,
         }
     }
@@ -474,6 +491,21 @@ mod tests {
             assert!(genesis_record.genesis_info.is_some());
             assert!(runtime.token_record(&mint)?.is_some());
             assert!(runtime.token_record(&send)?.is_some());
+            let token_info = runtime.token_info(&genesis)?.unwrap();
+            assert_eq!(token_info.token_id, TokenId::new(genesis).to_string());
+            assert_eq!(
+                token_info.token_type.unwrap().token_type,
+                Some(chronik_proto::proto::token_type::TokenType::Alp(
+                    chronik_proto::proto::AlpTokenType::Standard as i32,
+                )),
+            );
+            let block = token_info.block.unwrap();
+            assert_eq!(block.height, 0);
+            assert_eq!(block.hash, block0.hash.to_vec());
+            assert_eq!(block.timestamp, block0.timestamp);
+            assert!(!block.is_final);
+            assert!(token_info.genesis_info.is_some());
+            assert_eq!(runtime.token_info(&mint)?, None);
             runtime.close()?;
         }
 
@@ -492,6 +524,7 @@ mod tests {
             runtime.disconnect_block(&block0)?;
             assert_eq!(runtime.tip()?, None);
             assert_eq!(runtime.token_record(&genesis)?, None);
+            assert_eq!(runtime.token_info(&genesis)?, None);
         }
         Ok(())
     }
@@ -564,9 +597,21 @@ mod tests {
             TokenType::Slp(SlpTokenType::Fungible),
         );
         assert!(runtime.token_record(&send_txid)?.is_some());
+        let token_info = runtime.token_info(&genesis_txid)?.unwrap();
+        assert_eq!(token_info.token_id, token_id.to_string());
+        assert_eq!(
+            token_info.token_type.unwrap().token_type,
+            Some(chronik_proto::proto::token_type::TokenType::Slp(
+                chronik_proto::proto::SlpTokenType::Fungible as i32,
+            )),
+        );
+        assert_eq!(token_info.block.unwrap().timestamp, accepted.timestamp);
+        assert!(token_info.genesis_info.is_some());
+        assert_eq!(runtime.token_info(&send_txid)?, None);
         runtime.disconnect_block(&accepted)?;
         assert_eq!(runtime.token_record(&genesis_txid)?, None);
         assert_eq!(runtime.token_record(&send_txid)?, None);
+        assert_eq!(runtime.token_info(&genesis_txid)?, None);
         Ok(())
     }
 
@@ -634,6 +679,7 @@ mod tests {
         assert_eq!(block.hash, BlockHash::from(hash));
         assert_eq!(block.prev_hash, BlockHash::from([7; 32]));
         assert_eq!(block.height, 9);
+        assert_eq!(block.timestamp, 0);
         assert_eq!(block.txs, vec![transaction]);
         Ok(())
     }
