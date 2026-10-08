@@ -10,8 +10,9 @@ on:
       - "chronik/**"
       - "src/CMakeLists.txt"
       - "src/init.cpp"
-      - "test/functional/feature_chronik_*_observer.py"
+      - "test/functional/feature_chronik_*.py"
       - "docs/engineering/changes/ergon-change-0037.json"
+      - "docs/engineering/changes/ergon-change-0040.json"
       - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
       - "tools/engineering/check_chronik_port_core.py"
   push:
@@ -23,8 +24,9 @@ on:
       - "chronik/**"
       - "src/CMakeLists.txt"
       - "src/init.cpp"
-      - "test/functional/feature_chronik_*_observer.py"
+      - "test/functional/feature_chronik_*.py"
       - "docs/engineering/changes/ergon-change-0037.json"
+      - "docs/engineering/changes/ergon-change-0040.json"
       - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
       - "tools/engineering/check_chronik_port_core.py"
   workflow_dispatch:
@@ -118,13 +120,14 @@ jobs:
             --log_level=message \
             --color_output=no
 
-      - name: Run restart, reindex, asset and pruned matrices
+      - name: Run restart, reindex, asset, HTTP and pruned matrices
         shell: bash
         run: |
           set -euo pipefail
           for test_name in \
             feature_chronik_block_observer \
             feature_chronik_asset_observer \
+            feature_chronik_token_http \
             feature_chronik_pruned_observer
           do
             python3 "test/functional/${test_name}.py" \

@@ -8,8 +8,9 @@
 
 namespace chronik {
 
-/** Register the opt-in observer and persistent token runtime. */
-bool StartNodeObserver(const std::string &runtime_path, bool reset_runtime);
+/** Register the opt-in observer, persistent runtime and optional HTTP route. */
+bool StartNodeObserver(const std::string &runtime_path, bool reset_runtime,
+                       const std::string &token_service_address);
 
 /** Unregister and destroy the observer after its callback queue is drained. */
 void StopNodeObserver();

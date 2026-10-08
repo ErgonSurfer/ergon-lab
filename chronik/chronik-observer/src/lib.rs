@@ -29,6 +29,7 @@ use bitcoinsuite_slp::{color::ColoredTx, token_type::TokenType};
 use bytes::Bytes;
 
 mod persistent;
+mod token_service;
 
 const CONNECTED: u8 = 1;
 const DISCONNECTED: u8 = 2;
