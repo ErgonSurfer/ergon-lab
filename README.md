@@ -121,19 +121,30 @@ indexing** → **Mainnet-compatible deployment** → **Separate research** →
 **Activatable testnet fork** → **Testnet validation** → **Mainnet preparation**
 → **Distinct future activation**
 
-The baseline is verified, and the bounded legacy phase is `verified` /
+The baseline is verified, and bounded legacy compatibility is `verified` /
 `Reproduced`. [ERGON-CHANGE-0015](docs/engineering/changes/ergon-change-0015.json)
 binds the locked public reproduction of synchronization, cross-mining, clean
 restart, full reindex, chainstate reindex, physical pruning, and protected
-reorganization under unchanged consensus. Optional indexing is now `active` /
-`Open Question`; no indexing implementation bytes or evidence are accepted by
-that state change, and its first gate is compiled-out versus
-compiled-in-disabled parity. Mainnet-compatible deployment remains `blocked` /
-`Open Question`: [ERGON-CHANGE-0021](docs/engineering/changes/ergon-change-0021.json)
-records a bounded H288 `Observed` result, while workflow run `33978461669`
-reached the H250000 candidate timeout path and remains inconclusive, with no
-artifact, rerun, or divergence claim. Research, testnet work, mainnet
-preparation, and any future activation remain separately governed.
+reorganization under unchanged consensus.
+
+Optional indexing is now `verified` / `Observed`.
+[ERGON-CHANGE-0037](docs/engineering/changes/ergon-change-0037.json) and public
+main commit `52e2ed14b14cecbb6498695e38ac004542dadb2c` bind a default-OFF Chronik
+runtime that is inert when compiled out or disabled, and explicitly opt-in on
+local regtest. Public Chronik workflow runs `37672865745` and `37702577318`
+verified the persistent ALP/SLP index across restart, full reindex, chainstate
+reindex, protected reorganization, and pruned-history failure isolation. The
+[public CI evidence record](docs/engineering/evidence/ergon-change-0038/optional-indexing-ci.json)
+keeps this claim at component observation: it is not an independent
+reproduction, a served API, mempool indexing, or any testnet/mainnet
+activation.
+
+Mainnet-compatible deployment remains `blocked` / `Open Question`:
+[ERGON-CHANGE-0021](docs/engineering/changes/ergon-change-0021.json) records a
+bounded H288 `Observed` result, while workflow run `33978461669` reached the
+H250000 candidate timeout path and remains inconclusive, with no artifact,
+rerun, or divergence claim. Research, testnet work, mainnet preparation, and
+any future activation remain separately governed.
 
 [See the complete node journey&nbsp;↗](node/README.md) ·
 [Open the engineering ledger&nbsp;↗](docs/engineering/changes/README.md)

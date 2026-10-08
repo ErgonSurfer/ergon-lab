@@ -116,6 +116,17 @@
         "gates.verify-optional-indexing.delivery_state",
         "gates.verify-optional-indexing.roadmap.order"
       ]
+    },
+    {
+      "id": "ROADMAP-0009",
+      "sequence": 9,
+      "effective_date": "2026-10-08",
+      "previous_projection_sha256": "b45e8cc9c7d2203b14c7e1572e7adcfd9e758d47fd4413c8d53b1251585e56f1",
+      "projection_sha256": "420d3399e7d6445bda61258dc00e141a5f84e61f2f1e2ad2474b2325b874eae8",
+      "reason": "Close optional indexing on the accepted persistent Chronik runtime and its successful pull-request and main-branch public CI observations while retaining local-regtest scope, default-OFF behavior and the standalone node authority boundary.",
+      "changes": [
+        "gates.verify-optional-indexing.delivery_state"
+      ]
     }
   ]
 }

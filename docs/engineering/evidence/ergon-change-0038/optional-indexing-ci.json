@@ -1,0 +1,137 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-optional-indexing-public-ci/v1",
+  "change_id": "ERGON-CHANGE-0038",
+  "result": "pass",
+  "knowledge_status": "Observed",
+  "evidence_ceiling": "component-observation",
+  "target": {
+    "repository": "https://github.com/ErgonSurfer/ergon-lab",
+    "pull_request": 43,
+    "pull_request_commit": "cfa7d858ceeeb504046260f7c6787fe3678e2f48",
+    "main_commit": "52e2ed14b14cecbb6498695e38ac004542dadb2c",
+    "shared_tree": "a9416fd88e87a1b179d04fcddd7a3ca0a4b4a724",
+    "integration_parent": "1e7e7d7a3d9e9605592c45b62a64b0ef0ada3eaf",
+    "parent_law": "direct-child",
+    "pull_request_signature": {
+      "format": "ssh",
+      "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+      "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+      "status": "verified"
+    },
+    "main_signature": {
+      "verification_source": "GitHub commit API",
+      "verified": true,
+      "reason": "valid"
+    }
+  },
+  "workflows": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "mode": "100644",
+      "bytes": 4370,
+      "git_blob": "a103d8e08815c77f68eb62ff877d0d75725978ab",
+      "sha256": "2a924e0ebf0131dd0447b1cc78be36094a415956e1483bda239766729766ef81",
+      "runs": [
+        {
+          "event": "pull_request",
+          "run_id": 37672865745,
+          "job_id": 112968806988,
+          "head_sha": "cfa7d858ceeeb504046260f7c6787fe3678e2f48",
+          "platform": "ubuntu-24.04",
+          "attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-07T19:13:40Z",
+          "completed_at": "2026-10-07T19:36:36Z",
+          "url": "https://github.com/ErgonSurfer/ergon-lab/actions/runs/37672865745"
+        },
+        {
+          "event": "push",
+          "run_id": 37702577318,
+          "job_id": 113069281493,
+          "head_sha": "52e2ed14b14cecbb6498695e38ac004542dadb2c",
+          "platform": "ubuntu-24.04",
+          "attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-07T23:29:38Z",
+          "completed_at": "2026-10-07T23:46:57Z",
+          "url": "https://github.com/ErgonSurfer/ergon-lab/actions/runs/37702577318"
+        }
+      ],
+      "successful_steps": [
+        "Check out the reviewed tree",
+        "Validate the donor and workspace inventory",
+        "Install native build prerequisites",
+        "Select the declared Rust toolchain",
+        "Fetch the exact locked public dependency set",
+        "Run the governed corpus offline",
+        "Configure the optional node adapter",
+        "Build the node adapter and C++ boundary tests",
+        "Run the C++ event-envelope boundary",
+        "Run restart, reindex, asset and pruned matrices"
+      ]
+    },
+    {
+      "path": ".github/workflows/publication-gates.yml",
+      "mode": "100644",
+      "bytes": 1230,
+      "git_blob": "ce543902803317fda6e3817530dce37f65bdc7da",
+      "sha256": "7a5f5133a96d9f870f532148d230acc853d8c9f4e3262a3391cd5667f54322aa",
+      "runs": [
+        {
+          "event": "pull_request",
+          "run_id": 37672865628,
+          "job_id": 112968805828,
+          "head_sha": "cfa7d858ceeeb504046260f7c6787fe3678e2f48",
+          "platform": "ubuntu-24.04",
+          "attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-07T19:13:40Z",
+          "completed_at": "2026-10-07T19:13:47Z",
+          "url": "https://github.com/ErgonSurfer/ergon-lab/actions/runs/37672865628"
+        },
+        {
+          "event": "push",
+          "run_id": 37702577799,
+          "job_id": 113069282649,
+          "head_sha": "52e2ed14b14cecbb6498695e38ac004542dadb2c",
+          "platform": "ubuntu-24.04",
+          "attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-07T23:29:38Z",
+          "completed_at": "2026-10-07T23:29:43Z",
+          "url": "https://github.com/ErgonSurfer/ergon-lab/actions/runs/37702577799"
+        }
+      ],
+      "successful_steps": [
+        "Compile the dependency-free gate",
+        "Exercise fail-closed policy cases",
+        "Validate sources and generated outputs",
+        "Validate engineering change records"
+      ]
+    }
+  ],
+  "claims": [
+    "The exact implementation tree passed the complete Chronik port-core workflow both before and after merge.",
+    "The public cockpit, generated roadmap and engineering change records passed their publication gate both before and after merge.",
+    "The optional index remains compile-time default OFF, runtime default OFF and explicit local-regtest opt-in only.",
+    "Chronik remains observe-and-index infrastructure without consensus, validation, mempool, activation or chain-selection authority."
+  ],
+  "limitations": [
+    "This record binds public GitHub Actions metadata and conclusions, not raw logs, binaries, runner images or an independently reproduced environment.",
+    "Ubuntu package resolution outside the locked Cargo graph is not byte-pinned.",
+    "The result establishes a component observation, not deterministic builds, production readiness, mainnet operation or API compatibility.",
+    "No served API, mempool index, wallet integration, testnet activation or mainnet activation is included."
+  ],
+  "privacy": {
+    "raw_logs_included": false,
+    "raw_output_included": false,
+    "host_paths_included": false,
+    "operator_data_included": false,
+    "secrets_included": false
+  }
+}

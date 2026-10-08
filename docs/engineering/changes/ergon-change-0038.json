@@ -1,0 +1,442 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0038",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0038.json",
+  "purpose": {
+    "summary": "Bind the successful public review and main-branch CI for the accepted optional Chronik indexing implementation and advance its public delivery gate from active to verified without overstating the evidence.",
+    "scope": [
+      "Record the exact reviewed and merged commits, shared tree, workflow identities, run identities, job identities and successful public conclusions for ERGON-CHANGE-0037.",
+      "Advance only the optional-indexing delivery gate to verified while keeping its knowledge status at Observed and its evidence ceiling at component observation.",
+      "Regenerate the visual roadmap from the machine-readable cockpit event and correct the public README to describe the accepted implementation and its remaining limits."
+    ],
+    "exclusions": [
+      "No node, Chronik, consensus, validation, mempool, API, wallet, P2P, activation, network-identity or mainnet parameter code is changed.",
+      "No raw CI log, runner image, binary, build output, private path, operator data or secret is included.",
+      "No independent reproduction, deterministic build, production readiness, testnet activation or mainnet activation is claimed."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "52e2ed14b14cecbb6498695e38ac004542dadb2c",
+      "tree": "a9416fd88e87a1b179d04fcddd7a3ca0a4b4a724"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 10540,
+        "git_blob": "244988cc44c11d4efb2c1a3b9e9a3c59183cc19f",
+        "sha256": "47add7059499d422c60170e7ceacee91618a90cc2a646f62c9036af94b3618be"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11112,
+        "git_blob": "9580b851962538cee19086dcb37559f44de6ee96",
+        "sha256": "ed1d0da4292ef670cf120ee2595bb79c8898d7265a8338f9a4d2233d5d90a191"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; public editorial summary only.",
+      "test_reachability": "Checked by publication, provenance and diff gates."
+    },
+    {
+      "path": "cockpit/cockpit.yaml",
+      "action": "modify",
+      "role": "data",
+      "before": {
+        "mode": "100644",
+        "bytes": 29315,
+        "git_blob": "67656e5a55fab76defa39903ed450af3c6854751",
+        "sha256": "62bf6cf6ece13a451d802e5240024a9e963d32607ef30681f3e80420d4912a7a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 30500,
+        "git_blob": "a28340d96ce4480b1881fc981e7de69894e67861",
+        "sha256": "5bed20dac652b1b63db9ffb9f9bc9f0492c98e1688e496eb61fb3dad009c0d7e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; canonical public cockpit state only.",
+      "test_reachability": "Validated by the cockpit checker and publication gate."
+    },
+    {
+      "path": "cockpit/events/roadmap-events.yaml",
+      "action": "modify",
+      "role": "data",
+      "before": {
+        "mode": "100644",
+        "bytes": 6121,
+        "git_blob": "17e3346297a37896280d389d08b5bb6b7e4d4324",
+        "sha256": "3bfeaab57f245a3d979c32c96eec42c4e55a8b531a1abc5d5598f06b0794b678"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6762,
+        "git_blob": "131cc8569be26b6208a2db1d254cd9de06554ff8",
+        "sha256": "2589db51f891480fc7330f74dfbd7b641916c06ac806414bddead6a5c9b77938"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; append-only public roadmap event only.",
+      "test_reachability": "Validated against the prior and current cockpit projection digests."
+    },
+    {
+      "path": "cockpit/generated/roadmap-manifest.json",
+      "action": "modify",
+      "role": "data",
+      "before": {
+        "mode": "100644",
+        "bytes": 554,
+        "git_blob": "623c057e3677e95f335b409068d88f261d414a61",
+        "sha256": "24bfce86a3c5acd7230557088c30652eef8152e5b6eada1d80d0dbf61e4788b8"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 554,
+        "git_blob": "7a042cf4338ac37b7062bfe5495e242e619cbe19",
+        "sha256": "3afb6a10197c9452cf5d74117bb97392b1d213ab89fe544f5a41452682900af3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1-GENERATED",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; generated roadmap binding only.",
+      "test_reachability": "Regenerated and compared by the cockpit checker."
+    },
+    {
+      "path": "docs/engineering/changes/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 4176,
+        "git_blob": "c78069d676e779fa281f6e92f21c07896038094f",
+        "sha256": "4dfe2b7dd9c2aabe4b3f4f19fd85912aa1921ef635cd09c5ada8624d9960d670"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4322,
+        "git_blob": "0f3cef5e00099c9e0a5e4e30f7e3c1e5aeaf23da",
+        "sha256": "8712dc0b82f25074f6c2683c07a63da5f33c9e68206bf6453ab4fbb156e06db0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; reader-facing engineering ledger only.",
+      "test_reachability": "Checked by publication, provenance and diff gates."
+    },
+    {
+      "path": "docs/engineering/evidence/ergon-change-0038/optional-indexing-ci.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5564,
+        "git_blob": "8f8d983064b35b83fa57bd2a55b9109255f16de1",
+        "sha256": "7fb07373e3e8a98d46cd132fa92217ab252143e9c973b89e67a06e007c9dcfcc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; portable public CI metadata and claim-boundary record only.",
+      "test_reachability": "JSON structure, referenced workflow identities and privacy exclusions are checked before publication."
+    },
+    {
+      "path": "docs/roadmap.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 2868,
+        "git_blob": "ea7a777b9da0c1aec79d99b7a066c48f63c78839",
+        "sha256": "19370a577c4638b2d9a1cfb123223cb1d76e15ca92345c3ab6d13ea92d09d535"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2870,
+        "git_blob": "89fe6eb3ed044b248d30556c1fd8a252e6ff3756",
+        "sha256": "2df48a2fdeb748de881721ee1e41ac3dc06bb3e0bb7f2eed6958feb18ce16f3c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1-GENERATED",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None; generated public roadmap only.",
+      "test_reachability": "Regenerated and compared by the cockpit checker."
+    }
+  ],
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "8a7883699510ceaa442bd53df5c366ca975f29dd9f89e8d575950ec14cb1a8ef",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": false,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": false,
+    "ui": false,
+    "build_release": false,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Bind successful public Chronik workflow runs 37672865745 and 37702577318 to the exact reviewed and merged trees and inspect the compiled-out build step."
+        ],
+        "expected_results": [
+          "The accepted standalone node builds and remains independent of the optional Chronik runtime when compiled out."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Bind the same public workflow runs to their compiled-in node-adapter and C++ event-envelope steps with runtime opt-in absent."
+        ],
+        "expected_results": [
+          "The accepted bridge and runtime build, their boundary tests pass, and the disabled runtime remains non-authoritative."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Bind the same public workflow runs to their restart, reindex, asset and pruned functional matrix step."
+        ],
+        "expected_results": [
+          "The accepted explicit local-regtest persistent ALP/SLP index passes its public component matrix."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Inspect the successful asset-observer execution recorded by the exact public Chronik workflow runs.",
+        "expected_results": [
+          "Explicit local-regtest opt-in creates and updates the accepted persistent ALP/SLP runtime."
+        ],
+        "failure_conditions": [
+          "Missing or unsuccessful bound workflow conclusion, tree mismatch, implicit enablement or authority expansion."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Inspect the successful restart execution recorded by the exact public Chronik workflow runs.",
+        "expected_results": [
+          "The accepted persistent runtime resumes consistently at the indexed tip."
+        ],
+        "failure_conditions": [
+          "Missing or unsuccessful bound workflow conclusion, tree mismatch or claim beyond component observation."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Inspect the successful full-reindex execution recorded by the exact public Chronik workflow runs.",
+        "expected_results": [
+          "The accepted runtime reconstructs from accepted ordered block callbacks after full reindex."
+        ],
+        "failure_conditions": [
+          "Missing or unsuccessful bound workflow conclusion, tree mismatch or stale-state claim."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Inspect the successful chainstate-reindex execution recorded by the exact public Chronik workflow runs.",
+        "expected_results": [
+          "The accepted runtime reconstructs without changing chain selection after chainstate reindex."
+        ],
+        "failure_conditions": [
+          "Missing or unsuccessful bound workflow conclusion, tree mismatch or node-authority effect."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Inspect the successful pruned-history execution recorded by the exact public Chronik workflow runs.",
+        "expected_results": [
+          "Unavailable historical data disables only persistent indexing while the standalone node continues."
+        ],
+        "failure_conditions": [
+          "Missing or unsuccessful bound workflow conclusion, tree mismatch or node shutdown."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Inspect the successful protected-reorganization execution recorded by the exact public Chronik workflow runs.",
+        "expected_results": [
+          "The accepted index reverses exact-tip state and isolates contradictions from node correctness."
+        ],
+        "failure_conditions": [
+          "Missing or unsuccessful bound workflow conclusion, tree mismatch, silent corruption or node-authority effect."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "planned",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "The evidence record binds public GitHub Actions metadata and successful conclusions, not raw logs, binaries, runner images or an independently reproduced environment.",
+    "Ubuntu package resolution outside the locked Cargo graph is not byte-pinned, so this closure cannot claim deterministic builds or Reproduced knowledge.",
+    "Optional indexing remains explicit local-regtest-only and has no served API, mempool index, wallet integration or production deployment contract."
+  ],
+  "counterevidence": [
+    "The accepted implementation previously required several public CI portability corrections before the complete workflow passed; the closure preserves the exact successful workflow identities instead of erasing that history.",
+    "Publication-gate success establishes repository consistency, not runtime behavior; runtime claims are limited to the separate successful Chronik workflow runs.",
+    "No different reviewer or environment has independently rebuilt and rerun the accepted tree, so the knowledge status remains Observed."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

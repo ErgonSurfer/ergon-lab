@@ -57,9 +57,8 @@ Machine-readable records use IDs such as `ERGON-CHANGE-0001` or
   counterevidence; and
 - the review decision and public commit once known.
 
-For the future optional-indexing stage, the build roles are shown below.
-Current public node work remains legacy-only until its compatibility gate is
-closed:
+The accepted optional-indexing stage uses three deliberately separated build
+and runtime roles:
 
 ```text
 compiled-out
@@ -67,9 +66,12 @@ compiled-in-disabled
 local-regtest-indexing
 ```
 
-The 288-block checks cover restart, full reindex, chainstate reindex, a pruned
+The optional-indexing delivery gate is now `verified` / `Observed`. Its public
+component checks cover restart, full reindex, chainstate reindex, a pruned
 datadir, and deep-reorganization failure behavior. Chronik remains optional,
-off by default, local-regtest opt-in only, and observe/index-only.
+off by default, local-regtest opt-in only, and observe/index-only. Served
+queries, mempool indexing, independent reproduction, production deployment,
+and every consensus activation remain later work.
 
 ## Validation
 
