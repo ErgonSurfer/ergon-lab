@@ -11,8 +11,9 @@ default to `OFF`:
   and persistent runtime core. It does not link them into the node or start a
   service.
 - `BUILD_CHRONIK_OBSERVER` links the Rust/C++ block-event observer and the
-  persistent ALP/SLP token runtime into `bitcoind`. Its runtime flag also
-  defaults to off and is accepted only on the exact local `regtest` profile.
+  persistent ALP/SLP token runtime into `bitcoind`. Its runtime and narrow HTTP
+  flags also default to off and are accepted only on the exact local `regtest`
+  profile.
 
 With all three options off, CMake does not enter this directory, discover Rust,
 invoke Cargo, add a node definition, or change an executable link graph. The
@@ -73,8 +74,9 @@ Non-genesis and unknown transaction IDs return no result. The node-linked C ABI
 uses a bounded two-pass contract: first obtain the exact protobuf size, then
 copy into a caller-owned buffer. It writes nothing when the buffer is too
 small, retains no caller pointer and carries no path or host metadata in the
-payload. This is an internal service boundary only; no socket or public route
-is registered yet.
+payload. The optional node adapter can expose those same canonical bytes at the
+upstream-compatible `GET /token/:txid` route. No second token representation is
+introduced.
 
 ## Optional node adapter
 
@@ -82,6 +84,15 @@ When `BUILD_CHRONIK_OBSERVER=ON`, `bitcoind` contains the bounded observer and
 persistent token runtime and exposes the debug-only `-chronikobserver` flag.
 Launching without that flag registers no callback and creates no Chronik state.
 Launching with it is fail-closed outside the exact local `regtest` profile.
+
+The separate `-chronikbind=<ip:port>` flag enables one narrow HTTP surface and
+requires `-chronikobserver`. It accepts loopback addresses only and has no
+default port, so compiling or enabling the observer alone opens no socket. The
+route and response contract match upstream Chronik: `GET /token/:txid` returns
+`application/x-protobuf` with canonical `TokenInfo`; malformed transaction IDs
+return protobuf error 400, and unknown or non-genesis IDs return protobuf error
+404. The initial surface is confirmed-state only. It contains no mempool,
+transaction, UTXO, history, WebSocket, plugin, wallet or consensus API.
 
 For each accepted block-connected callback, C++ serializes the immutable
 `CBlock` once with the canonical network serializer. The C ABI copies those
@@ -129,16 +140,18 @@ payload contradiction or RocksDB error disables only the persistent runtime;
 the node and bounded observer continue, and recovery requires reindex. Runtime
 failure never returns a validation decision.
 
-This boundary creates no Chronik socket, API, or service. The event backlog is
-bounded and payload ownership remains explicit. Shutdown drains the validation
-callback queue before unregistering the observer, closes the command channel,
-joins the Rust worker, flushes RocksDB, and destroys both Rust handles. Dedicated
-`-reindex-chainstate` and actually pruned-datadir canaries exercise the same
-reconstruction boundary without adding a second state path. The chainstate
-canary replays genesis through height 288 and checks the unchanged active tip
-and UTXO-set hash. The pruning canary physically removes an old block file at
-height 1001, proves the old body unavailable, and then reconstructs exactly the
-still-readable heights 714 through 1001.
+The HTTP service shares the accepted runtime handle instead of reopening or
+copying the database. Runtime failure stops the service before closing RocksDB,
+so it cannot continue serving stale state. The event backlog is bounded and
+payload ownership remains explicit. Shutdown drains the validation callback
+queue before unregistering the observer, closes the command channel, joins the
+HTTP and Rust workers, flushes RocksDB, and destroys both Rust handles.
+Dedicated `-reindex-chainstate` and actually pruned-datadir canaries exercise
+the same reconstruction boundary without adding a second state path. The
+chainstate canary replays genesis through height 288 and checks the unchanged
+active tip and UTXO-set hash. The pruning canary physically removes an old
+block file at height 1001, proves the old body unavailable, and then
+reconstructs exactly the still-readable heights 714 through 1001.
 
 ## Native-assets boundary
 
@@ -153,9 +166,9 @@ still-readable heights 714 through 1001.
   block and transaction identities plus verified ALP/SLP token ancestry,
   metadata, genesis payloads, mint, send and burn state. It survives restart
   and applies exact-tip rollback. Confirmed token-genesis metadata is readable
-  through an internal protobuf query boundary; no public route or socket is
-  registered yet. The separate 288-block projection remains a bounded
-  diagnostic view.
+  through both the bounded C ABI and the opt-in, loopback-only upstream
+  `GET /token/:txid` protobuf route. The separate 288-block projection remains
+  a bounded diagnostic view.
 - Authoritative token validation or token state: none. Chronik resolves and
   verifies ALP/SLP ancestry for its own accepted-block index, but that result
   cannot accept or reject a node transaction or block, alter chain selection,
@@ -256,6 +269,10 @@ python3 test/functional/feature_chronik_asset_observer.py \
   --configfile=/absolute/path/build-observer/test/config.ini \
   --hermetic-child-env
 
+python3 test/functional/feature_chronik_token_http.py \
+  --configfile=/absolute/path/build-observer/test/config.ini \
+  --hermetic-child-env
+
 python3 test/functional/feature_chronik_pruned_observer.py \
   --configfile=/absolute/path/build-observer/test/config.ini \
   --hermetic-child-env
@@ -271,5 +288,6 @@ Build directories, Cargo caches, and test datadirs belong outside the source
 tree. Peak parsing memory includes the C++ serialization, one Rust-owned block
 buffer per caller that has crossed the C ABI, and parsed transaction structures;
 startup reconstruction and the bounded event worker are asynchronous from
-validation callbacks. Compiling or enabling this runtime proves neither served
-API compatibility, native-asset consensus activation nor production readiness.
+validation callbacks. This slice tests one served route; it does not claim the
+rest of Chronik's API, native-asset consensus activation or production
+readiness.

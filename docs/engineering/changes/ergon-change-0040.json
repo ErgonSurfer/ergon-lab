@@ -1,0 +1,372 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0040",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0040.json",
+  "purpose": {
+    "summary": "Expose the first upstream-compatible Chronik HTTP token route over the accepted confirmed-token index, on explicit loopback-only local-regtest opt-in.",
+    "scope": [
+      "Serve GET /token/:txid with the canonical application/x-protobuf TokenInfo representation and upstream-compatible protobuf errors.",
+      "Own the HTTP service inside the default-off persistent runtime and stop it before the database closes.",
+      "Bind the listener to an explicit loopback address and keep all node validation and chain-selection authority outside Chronik.",
+      "Exercise confirmed ALP metadata, malformed and missing queries, rollback, reconsideration and restart persistence in a native functional test."
+    ],
+    "exclusions": [
+      "No full Chronik server, transaction route, mempool query, UTXO query, history, websocket, plugin, wallet or public-network service is added.",
+      "No consensus, validation, activation, chain-selection, P2P, network-identity or mainnet parameter behavior changes.",
+      "No private source, history, operator data, incoming evidence, binary, cache, build output or host-specific path is tracked."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "6552858466cadcecc69d209b3c03ced92ce5901f",
+      "tree": "3bca45e5b368682a680e843ce1f09979223b43fc"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "b3eea6f030d1eb7358089ae15478e60d9fa9bd19cb677a408067992e126b3851",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 4526, "git_blob": "0cf938c97a768101e5f712d9f4b067bfc0c2386a", "sha256": "83489d4f11e1cc4e1aa60119efb6adab93e68e0ab94eb2a3ec68e1728da1c002"},
+      "after": {"mode": "100644", "bytes": 4671, "git_blob": "7bdf2c40134b9ee09beb839022a2ff8d1745b630", "sha256": "d27aeb488586b20219f30000d136b2173a23d4a93a0307edf6ae9edfdac07ddd"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; CI coverage for the optional default-off Chronik package and native adapter.",
+      "test_reachability": "Builds bitcoind and runs Rust, C++ and functional token-route tests."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 38063, "git_blob": "aef3b7afcd891f467588eefe401793d15e23077c", "sha256": "f01427630ec343bdc857b8b4e6eaf4b08fca915a93eaaf2f80377b36a9adfe85"},
+      "after": {"mode": "100644", "bytes": 46798, "git_blob": "ca7ff27a1d672c2023e4f5369c7a0dd6e2f4889a", "sha256": "849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1-GENERATED", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Locked HTTP and async-runtime dependency graph for the default-off Chronik build profile.",
+      "test_reachability": "Validated by locked Cargo tests and the Chronik port checker."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {"mode": "100644", "bytes": 14139, "git_blob": "89fe56be4d1f558569ee270df082e30892fbae9d", "sha256": "6a158d225b046fe56097bf2ec86019b6a0727daffec4897abfc0e4dca35c1d72"},
+      "after": {"mode": "100644", "bytes": 15163, "git_blob": "0910fa7d7e94bf6ad7f59d1b08280a7ae65c9ce2", "sha256": "b9339c3c59e6f4b3d3ed3f22aaefa627b86ef8f7ac273b1718ee7cabf0dc66d4"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public route, lifecycle and exclusion documentation.",
+      "test_reachability": "Documents the exact native functional command and observable contract."
+    },
+    {
+      "path": "chronik/chronik-observer/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 508, "git_blob": "f29d7078631a49740e5df8b9f4f59a68167ece6d", "sha256": "f365eabc394a3f02a7667307b593101ad84ded6b2b276ddcba2df8e4fb6579eb"},
+      "after": {"mode": "100644", "bytes": 597, "git_blob": "f31986269a012450a6c92bc19b43865be77a48a9", "sha256": "67982e5ba50958c574cf3e91fac3335864d96f8cf737ed92ffaf9225fb7fdb7d"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Build metadata for the optional node-linked Axum service.",
+      "test_reachability": "Provides the locked Tokio network runtime and canonical protobuf encoding."
+    },
+    {
+      "path": "chronik/chronik-observer/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 64582, "git_blob": "c6cb04b7ca71d27afdbf87f39da9e913829daaaf", "sha256": "4f1a4731605583da3ea7b548f39046c5a4b42e91f108257a357b618d17715116"},
+      "after": {"mode": "100644", "bytes": 64601, "git_blob": "df1852ba445076323cac2b33e18e6b9b96cc8d1a", "sha256": "9afec3e5745b9296643ce92d474f39677a6dd3c7731fe15644d0cae9abe73b11"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Registers the private token-service module only in compiled observer builds.",
+      "test_reachability": "Makes the service available to the persistent runtime unit boundary."
+    },
+    {
+      "path": "chronik/chronik-observer/src/persistent.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 14723, "git_blob": "3461864f829f5e9b23af10709e23d9265e40dccd", "sha256": "387b48901bf7a20d41ee5c95370310e2ce73060e7ee9c633217da85b8dc1c3fb"},
+      "after": {"mode": "100644", "bytes": 21242, "git_blob": "a400a5d04b87f064aea2f62c8a718b331e85cd85", "sha256": "0a1d4c961a2ff4cb43cd4b117f2b88fce565e008e55d147d57f1945ec27ca840"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Owns the explicit service lifecycle and shares read-only confirmed index access.",
+      "test_reachability": "Covers non-loopback rejection, duplicate start, protobuf success and 400/404 responses."
+    },
+    {
+      "path": "chronik/chronik-observer/src/token_service.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {"mode": "100644", "bytes": 4593, "git_blob": "0a095bf6b8c40583d073a5489e7eb6827a14c0fa", "sha256": "8777e07071d908fd344a593f08f24efce4f9c99a3b476978cae91c70842d3fa8"},
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784D+A1",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-http/src/server.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Loopback-only GET /token/:txid service reachable only in the compiled and explicit local-regtest profile.",
+      "test_reachability": "Unit and native functional tests decode canonical TokenInfo and Error protobufs."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 30490, "git_blob": "adebd5a4b4bddb1fd1306d484fc19ba8f41e555c", "sha256": "938b5d150eb4f2b7290ae9c8c6621e682c4b9e80de7db4061ae6385eef9c7be2"},
+      "after": {"mode": "100644", "bytes": 32164, "git_blob": "baae9bd0818a5c5a268447612e950d8fd064c397", "sha256": "d9b8282e628c1015403f04346d751a4e7aa1321cb0d331c4f1bb42cd38b2dfa0"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Starts the optional service after a successful index bootstrap; service failure cannot stop the node.",
+      "test_reachability": "Compiled into the native bitcoind tested by the HTTP functional scenario."
+    },
+    {
+      "path": "chronik/node-observer.h",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 513, "git_blob": "8e63c2d0ded95435596a06bb308d1cc3cb0d8b52", "sha256": "b7ce4a3903addd92d7d834c708f880269eec51a1797f99661ab31e87aa578dc7"},
+      "after": {"mode": "100644", "bytes": 593, "git_blob": "3034ab0cb33b8d9571666d0ece20b08f9f39a4f5", "sha256": "c69de8158aa2b32432e20acbde87a444291b05ef178ab7cd991b3cbc03747588"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Carries the optional bind value into the default-off observer adapter.",
+      "test_reachability": "Native compilation binds the C++ and Rust lifecycle contracts."
+    },
+    {
+      "path": "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json",
+      "action": "modify",
+      "role": "provenance",
+      "before": {"mode": "100644", "bytes": 71233, "git_blob": "3303ac993d15b8858eb96beb93a47f0bf3ae122c", "sha256": "354ad7775188245afee5609a2632f68bc953714477104c2b10a0c7accbc2ca70"},
+      "after": {"mode": "100644", "bytes": 71233, "git_blob": "a3578b9534030e56502b954cb3f9d73a97253f91", "sha256": "821041df4043c707a31106b69f2653d08bbbd95eae4c5163b0586e972a3ea1ab"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; updates the governed Cargo lock digest.",
+      "test_reachability": "Validated by check_chronik_port_core.py."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {"mode": "100644", "bytes": 117020, "git_blob": "3c47c3f59f9d9f00bfc098dd57bbef9a6452db15", "sha256": "a20da0ed08852db38271f4185312e8bdd2296bdf648237074270ef3b958f43b3"},
+      "after": {"mode": "100644", "bytes": 117834, "git_blob": "e0213bf045a4c6c8d09ad6b9e3c12c11c3261bad", "sha256": "d3e76a3f9c778aca976684df1905b48c8f2097b9c01ff4a1b43a74f4d98ceba9"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Adds -chronikbind only to the already explicit local-regtest observer profile.",
+      "test_reachability": "Rejects the bind option without observer opt-in and passes it to the native adapter otherwise."
+    },
+    {
+      "path": "test/functional/feature_chronik_token_http.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {"mode": "100755", "bytes": 6308, "git_blob": "588858f359bb3696b8a3076fe0992daa6341aaba", "sha256": "c001f784612672d257a05e266b24cd0e06aaccbf565af89c2822aeafaeeb1958"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; native functional test only.",
+      "test_reachability": "Mines ALP metadata and checks success, error, rollback, reconsider and restart behavior over HTTP."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": ["Build the standalone node with all Chronik options OFF."],
+        "expected_results": ["No Chronik listener or route is linked or registered and node behavior remains unchanged."]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": ["Build bitcoind with BUILD_CHRONIK_OBSERVER=ON and leave runtime observer opt-in disabled."],
+        "expected_results": ["No database or listening socket is opened."]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": ["Run the locked Rust corpus and feature_chronik_token_http.py against a native observer build."],
+        "expected_results": ["The explicit loopback route serves canonical confirmed token metadata and remains isolated from node correctness."]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the asset observer and token HTTP scenarios with explicit local-regtest observer opt-in and an explicit loopback -chronikbind.",
+        "expected_results": ["ALP genesis returns canonical TokenInfo and malformed or missing token IDs return canonical protobuf errors."],
+        "failure_conditions": ["Implicit listener, non-loopback listener, incorrect content type, wrong protobuf, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Restart the explicit local-regtest index and repeat the confirmed HTTP token query.",
+        "expected_results": ["The token and canonical block metadata remain readable after restart."],
+        "failure_conditions": ["Missing token, metadata drift, listener failure, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the existing full-reindex observer scenario before querying confirmed metadata.",
+        "expected_results": ["A rebuilt index returns the same canonical confirmed token representation."],
+        "failure_conditions": ["Stale state, incomplete rebuild, query divergence, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the existing chainstate-reindex observer scenario before querying confirmed metadata.",
+        "expected_results": ["Ordered callbacks rebuild queryable state without changing chain selection."],
+        "failure_conditions": ["Stale state, node-authority effect, query divergence, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the existing pruned-datadir observer scenario.",
+        "expected_results": ["Unavailable history disables only persistence and cannot leave a contradictory served view."],
+        "failure_conditions": ["Node shutdown, silent stale query, validation effect, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Invalidate and reconsider the token block, then exercise the existing deep-reorganization failure boundary.",
+        "expected_results": ["Rolled-back token metadata is absent, restored metadata returns exactly and deeper contradictions remain isolated to indexing."],
+        "failure_conditions": ["Stale token response, missing restored response, node-authority effect, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": ["ubuntu-24.04", "macos-26-arm64-local-observation"],
+      "lock_reference": "chronik/Cargo.lock SHA-256 849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Only confirmed token genesis metadata is served; mempool state, transaction queries, UTXOs, histories, websockets and plugins remain outside this slice.",
+    "The listener is intentionally restricted to explicit loopback local-regtest use and is not a deployment contract.",
+    "The local macOS run is a component observation only; public CI and review are still pending."
+  ],
+  "counterevidence": [
+    "The first native configuration encountered an inherited MiniUPnPc 2.3.3 API incompatibility; the governed wallet-, ZMQ- and UPnP-off Chronik CI profile built successfully without changing production source for that unrelated dependency.",
+    "The linker reported that locally compiled RocksDB objects target macOS 26.5 while the node target is macOS 26.0; linking completed and the native functional tests passed, but public Ubuntu CI remains authoritative for this change.",
+    "A requested token service that cannot bind is deliberately disabled without affecting validation or node startup, preserving observer isolation."
+  ],
+  "decision": {"status": "pending"}
+}

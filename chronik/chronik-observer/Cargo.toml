@@ -12,12 +12,14 @@ license = "MIT"
 crate-type = ["staticlib"]
 
 [dependencies]
+axum = "0.7"
 bitcoinsuite-core = { path = "../bitcoinsuite-core" }
 bitcoinsuite-slp = { path = "../bitcoinsuite-slp" }
 bytes = "1.4"
+chronik-proto = { path = "../chronik-proto" }
 chronik-runtime = { path = "../chronik-runtime" }
 prost = "0.11"
+tokio = { version = "1.25", features = ["net", "rt-multi-thread", "sync"] }
 
 [dev-dependencies]
-chronik-proto = { path = "../chronik-proto" }
 tempdir = "0.3"

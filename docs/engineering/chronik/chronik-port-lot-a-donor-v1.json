@@ -1736,7 +1736,7 @@
     "runtime_status": "lot-b-local-regtest-node-adapter"
   },
   "workspace": {
-    "cargo_lock_sha256": "f01427630ec343bdc857b8b4e6eaf4b08fca915a93eaaf2f80377b36a9adfe85",
+    "cargo_lock_sha256": "849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17",
     "default_members": [
       "bitcoinsuite-core",
       "bitcoinsuite-slp",

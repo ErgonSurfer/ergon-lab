@@ -433,6 +433,10 @@ void SetupServerArgs() {
                  "Enable volatile block observation on local regtest "
                  "(default: 0)",
                  true, OptionsCategory::DEBUG_TEST);
+    gArgs.AddArg("-chronikbind=<ip:port>",
+                 "Bind the local-regtest Chronik token endpoint to a loopback "
+                 "address (requires -chronikobserver; default: disabled)",
+                 false, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-chronikobserverfailpoint=<n>",
                  "Inject a Chronik observer startup failure for tests "
                  "(1=construction, 2=bootstrap, 3=envelope; default: 0)",
@@ -1665,6 +1669,15 @@ bool AppInitParameterInteraction(Config &config) {
         return InitError("-chronikobserverfailpoint requires "
                          "-chronikobserver on local regtest");
     }
+    if (gArgs.IsArgSet("-chronikbind") &&
+        !gArgs.GetBoolArg("-chronikobserver", false)) {
+        return InitError("-chronikbind requires -chronikobserver on local "
+                         "regtest");
+    }
+    if (gArgs.IsArgSet("-chronikbind") &&
+        gArgs.GetArg("-chronikbind", "").empty()) {
+        return InitError("-chronikbind requires a loopback ip:port value");
+    }
 #endif
 
     // also see: InitParameterInteraction()
@@ -2595,11 +2608,14 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
     const std::string chronik_runtime_path =
         (GetIndexDir() / "chronik").string();
     const bool chronik_runtime_reset = fReindex || fReindexChainState;
+    const std::string chronik_token_service_address =
+        gArgs.GetArg("-chronikbind", "");
     const bool chronik_observer_started =
         !gArgs.GetBoolArg("-chronikobserver", false) ||
         (chronik_observer_failpoint == 0
              ? chronik::StartNodeObserver(chronik_runtime_path,
-                                          chronik_runtime_reset)
+                                          chronik_runtime_reset,
+                                          chronik_token_service_address)
              : chronik::StartNodeObserverForTest(
                    chronik_observer_failpoint, chronik_runtime_path,
                    chronik_runtime_reset));

@@ -87,6 +87,14 @@ struct ChronikRuntimeMutation {
 
 static_assert(sizeof(ChronikRuntimeMutation) == 6 * sizeof(uint64_t));
 
+struct ChronikRuntimeServiceStart {
+    uint64_t success;
+    uint64_t error_code;
+    uint64_t port;
+};
+
+static_assert(sizeof(ChronikRuntimeServiceStart) == 3 * sizeof(uint64_t));
+
 // Match the active-chain suffix that the legacy node guarantees to retain.
 constexpr int32_t CHRONIK_OBSERVER_RETAINED_BLOCKS = MIN_BLOCKS_TO_KEEP;
 // Cover the governed 288-block observer window plus callback bursts while
@@ -114,6 +122,8 @@ void *chronik_runtime_create(const uint8_t *path, size_t path_size,
                              uint64_t reset);
 uint64_t chronik_runtime_destroy(void *runtime);
 ChronikRuntimeTip chronik_runtime_tip(const void *runtime);
+ChronikRuntimeServiceStart chronik_runtime_start_token_service(
+    const void *runtime, const uint8_t *address, size_t address_size);
 ChronikRuntimeMutation chronik_runtime_connect(
     const void *runtime, const uint8_t *hash, int32_t height,
     const uint8_t *raw_block, size_t raw_block_size);
@@ -318,6 +328,33 @@ public:
 
     bool RuntimeActive() const noexcept {
         return m_runtime_active->load(std::memory_order_acquire);
+    }
+
+    bool StartTokenService(const std::string &address) noexcept {
+        if (address.empty()) {
+            return true;
+        }
+        if (!m_runtime || !RuntimeActive()) {
+            LogPrintf("Chronik token service state=disabled "
+                      "reason=runtime-unavailable node_continues=1\n");
+            return false;
+        }
+        const ChronikRuntimeServiceStart service =
+            chronik_runtime_start_token_service(
+                m_runtime->Get(),
+                reinterpret_cast<const uint8_t *>(address.data()),
+                address.size());
+        if (service.success == 0) {
+            LogPrintf("Chronik token service state=disabled "
+                      "reason=startup-failure error=%u node_continues=1 "
+                      "runtime_continues=1\n",
+                      service.error_code);
+            return false;
+        }
+        LogPrintf("Chronik token service started address=%s port=%u "
+                  "route=/token/:txid content_type=application/x-protobuf\n",
+                  address, service.port);
+        return true;
     }
 
     bool Bootstrap() {
@@ -655,6 +692,7 @@ bool g_chronik_node_observer_registered{false};
 
 bool StartNodeObserverWithFailurePoint(const std::string &runtime_path,
                                        bool reset_runtime,
+                                       const std::string &token_service_address,
                                        uint8_t test_failure_point) noexcept {
     if (g_chronik_node_observer) {
         return false;
@@ -671,6 +709,7 @@ bool StartNodeObserverWithFailurePoint(const std::string &runtime_path,
             !observer->StartEnvelope()) {
             return false;
         }
+        observer->StartTokenService(token_service_address);
         const bool runtime_active = observer->RuntimeActive();
         registered_observer = observer.get();
         RegisterValidationInterface(registered_observer);
@@ -703,21 +742,22 @@ bool StartNodeObserverWithFailurePoint(const std::string &runtime_path,
 
 namespace chronik {
 
-bool StartNodeObserver(const std::string &runtime_path, bool reset_runtime) {
+bool StartNodeObserver(const std::string &runtime_path, bool reset_runtime,
+                       const std::string &token_service_address) {
     return StartNodeObserverWithFailurePoint(
-        runtime_path, reset_runtime, TEST_FAILURE_NONE);
+        runtime_path, reset_runtime, token_service_address, TEST_FAILURE_NONE);
 }
 
 bool StartNodeObserverForTest(uint8_t test_failure_point) noexcept {
     return StartNodeObserverWithFailurePoint(
-        std::string{}, false, test_failure_point);
+        std::string{}, false, std::string{}, test_failure_point);
 }
 
 bool StartNodeObserverForTest(uint8_t test_failure_point,
                               const std::string &runtime_path,
                               bool reset_runtime) noexcept {
     return StartNodeObserverWithFailurePoint(
-        runtime_path, reset_runtime, test_failure_point);
+        runtime_path, reset_runtime, std::string{}, test_failure_point);
 }
 
 bool NodeObserverActiveForTest() noexcept {
