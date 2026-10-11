@@ -4,6 +4,8 @@
 #include <chronik/node-observer.h>
 
 #include <chronik/event-envelope.h>
+#include <chronik/confirmed-tx-bridge.h>
+#include <chronik/query-admission.h>
 
 #include <chain.h>
 #include <chainparams.h>
@@ -22,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -124,6 +127,10 @@ uint64_t chronik_runtime_destroy(void *runtime);
 ChronikRuntimeTip chronik_runtime_tip(const void *runtime);
 ChronikRuntimeServiceStart chronik_runtime_start_token_service(
     const void *runtime, const uint8_t *address, size_t address_size);
+ChronikRuntimeServiceStart chronik_runtime_start_query_service(
+    const void *runtime, const uint8_t *address, size_t address_size,
+    chronik::HostTxQueryFn query, chronik::HostTxReleaseFn release,
+    uintptr_t context);
 ChronikRuntimeMutation chronik_runtime_connect(
     const void *runtime, const uint8_t *hash, int32_t height,
     const uint8_t *raw_block, size_t raw_block_size);
@@ -161,14 +168,108 @@ public:
 
     void *Get() const noexcept { return m_runtime; }
 
+    void CloseQueries() noexcept {
+        m_admission.Close();
+    }
+
+    template <typename Callable> auto Mutate(Callable callable) {
+        auto lock = m_admission.Mutation();
+        if (m_closing.load(std::memory_order_acquire) || !m_runtime) {
+            return decltype(callable(m_runtime)){};
+        }
+        return callable(m_runtime);
+    }
+
+    chronik::HostTxResponse Query(const uint8_t *txid_bytes) noexcept {
+        try {
+            auto lock = m_admission.TryQuery();
+            if (!lock.owns_lock() || !txid_bytes || !m_runtime ||
+                !m_admission.IsOpen()) {
+                return {503, nullptr, 0};
+            }
+            // The worker may lag the node. A matching accepted tip is required
+            // before and after disk I/O; queries never advance the index.
+            const auto tip = chronik_runtime_tip(m_runtime);
+            if (!TipIsCurrent(tip)) {
+                return {503, nullptr, 0};
+            }
+            const auto location =
+                chronik::chronik_runtime_tx_location(m_runtime, txid_bytes);
+            if (location.success != 1 || location.error_code != 0) {
+                return {503, nullptr, 0};
+            }
+            if (location.present == 0) {
+                return {TipIsCurrent(tip) ? uint64_t(404) : uint64_t(503),
+                        nullptr, 0};
+            }
+            uint256 hash_bytes;
+            std::copy(location.hash.begin(), location.hash.end(),
+                      hash_bytes.begin());
+            TxId txid;
+            std::copy(txid_bytes, txid_bytes + 32, txid.begin());
+            std::string error;
+            auto confirmed = chronik::ReadConfirmedTx(
+                BlockHash(hash_bytes), txid, error);
+            if (!confirmed) {
+                return {503, nullptr, 0};
+            }
+            auto payload = chronik::EncodeConfirmedTxProto(
+                m_runtime, *confirmed, error);
+            if (!payload) {
+                return {503, nullptr, 0};
+            }
+            auto owned = std::make_unique<uint8_t[]>(payload->size());
+            std::copy(payload->begin(), payload->end(), owned.get());
+            // Linearization boundary: the complete response belongs to the
+            // same active/indexed tip. A later reorg can invalidate any snapshot.
+            if (!TipIsCurrent(tip)) {
+                return {503, nullptr, 0};
+            }
+            return {200, owned.release(), payload->size()};
+        } catch (...) {
+            return {503, nullptr, 0};
+        }
+    }
+
     uint64_t Destroy() noexcept {
-        void *runtime = std::exchange(m_runtime, nullptr);
+        CloseQueries();
+        m_closing.store(true, std::memory_order_release);
+        void *runtime = nullptr;
+        {
+            auto lock = m_admission.Mutation();
+            runtime = std::exchange(m_runtime, nullptr);
+        }
+        // Stop/join outside the gate: HTTP callbacks must be able to reject
+        // closed admission without a worker -> service -> query deadlock.
         return runtime == nullptr ? 0 : chronik_runtime_destroy(runtime);
     }
 
 private:
+    bool TipIsCurrent(const ChronikRuntimeTip &tip) const {
+        LOCK(cs_main);
+        const auto *active = ChainActive().Tip();
+        return m_admission.IsOpen() &&
+               tip.success == 1 && tip.error_code == 0 && tip.present == 1 &&
+               active && active->nHeight == tip.height &&
+               std::equal(tip.hash.begin(), tip.hash.end(),
+                          active->GetBlockHash().begin());
+    }
+    chronik::QueryAdmission m_admission;
+    std::atomic<bool> m_closing{false};
     void *m_runtime;
 };
+
+extern "C" chronik::HostTxResponse QueryConfirmedTx(
+    uintptr_t context, const uint8_t *txid) noexcept {
+    if (context == 0) {
+        return {503, nullptr, 0};
+    }
+    return reinterpret_cast<RustRuntimeHandle *>(context)->Query(txid);
+}
+
+extern "C" void ReleaseConfirmedTx(uintptr_t, uint8_t *payload) noexcept {
+    delete[] payload;
+}
 
 std::array<uint8_t, 32> CopyHash(const uint256 &hash) {
     std::array<uint8_t, 32> result{};
@@ -296,6 +397,9 @@ public:
     }
 
     ~ChronikNodeObserver() {
+        if (m_runtime) {
+            m_runtime->CloseQueries();
+        }
         chronik::EnvelopeSnapshot snapshot;
         bool drained = true;
         if (m_envelope) {
@@ -310,8 +414,11 @@ public:
             observations = m_observer->Destroy();
         }
         m_observer.reset();
+        // Even a detached indexing worker may not leave host queries alive
+        // across node-global teardown. Destroy waits for the admission gate,
+        // closes the service, and makes any later worker mutation reject.
         const uint64_t runtime_closed =
-            drained && m_runtime ? m_runtime->Destroy() : 0;
+            m_runtime ? m_runtime->Destroy() : 0;
         m_runtime.reset();
         LogPrintf("Chronik observer stopped observations=%u accepted=%u "
                   "processed=%u degraded=%d rebuild_required=%d "
@@ -340,10 +447,11 @@ public:
             return false;
         }
         const ChronikRuntimeServiceStart service =
-            chronik_runtime_start_token_service(
+            chronik_runtime_start_query_service(
                 m_runtime->Get(),
                 reinterpret_cast<const uint8_t *>(address.data()),
-                address.size());
+                address.size(), QueryConfirmedTx, ReleaseConfirmedTx,
+                reinterpret_cast<uintptr_t>(m_runtime.get()));
         if (service.success == 0) {
             LogPrintf("Chronik token service state=disabled "
                       "reason=startup-failure error=%u node_continues=1 "
@@ -352,7 +460,8 @@ public:
             return false;
         }
         LogPrintf("Chronik token service started address=%s port=%u "
-                  "route=/token/:txid content_type=application/x-protobuf\n",
+                  "route=/token/:txid tx_route=/tx/:txid "
+                  "tx_scope=confirmed-only content_type=application/x-protobuf\n",
                   address, service.port);
         return true;
     }
@@ -552,16 +661,19 @@ public:
                 }
                 if (runtime &&
                     runtime_active->load(std::memory_order_acquire)) {
-                    const ChronikRuntimeMutation mutation =
+                    const ChronikRuntimeMutation mutation = runtime->Mutate(
+                      [&](void *handle) {
+                        return
                         event.kind == chronik::EventKind::BLOCK_CONNECTED
                             ? chronik_runtime_connect(
-                                  runtime->Get(), event.hash.data(),
+                                  handle, event.hash.data(),
                                   event.height, event.payload.data(),
                                   event.payload.size())
                             : chronik_runtime_disconnect(
-                                  runtime->Get(), event.hash.data(),
+                                  handle, event.hash.data(),
                                   event.height, event.payload.data(),
                                   event.payload.size());
+                      });
                     if (mutation.success == 0) {
                         runtime_active->store(false, std::memory_order_release);
                         runtime->Destroy();
@@ -590,9 +702,15 @@ public:
                 }
                 if (observation.sequence == 0 ||
                     observation.sequence != event.sequence) {
+                    if (runtime) {
+                        runtime->CloseQueries();
+                    }
                     return false;
                 }
                 if (chronik_observer_requires_rebuild(observer->Get()) != 0) {
+                    if (runtime) {
+                        runtime->CloseQueries();
+                    }
                     if (!rebuild_logged->exchange(true)) {
                         LogPrintf("Chronik observer state=rebuild-required "
                                   "hash=%s reason=retained-anchor-disconnected "
@@ -614,6 +732,9 @@ protected:
         override {
         (void)transactions_conflicted;
         if (!m_envelope || block == nullptr || index == nullptr) {
+            if (m_runtime) {
+                m_runtime->CloseQueries();
+            }
             if (m_envelope) {
                 m_envelope->MarkDegraded();
             }
@@ -634,7 +755,13 @@ protected:
                                    CopyHash(hash), index->nHeight,
                                    std::move(payload));
             }
+            if (m_envelope->Snapshot().degraded && m_runtime) {
+                m_runtime->CloseQueries();
+            }
         } catch (...) {
+            if (m_runtime) {
+                m_runtime->CloseQueries();
+            }
             m_envelope->MarkDegraded();
         }
     }
@@ -642,6 +769,9 @@ protected:
     void BlockDisconnected(
         const std::shared_ptr<const CBlock> &block) noexcept override {
         if (!m_envelope || block == nullptr) {
+            if (m_runtime) {
+                m_runtime->CloseQueries();
+            }
             if (m_envelope) {
                 m_envelope->MarkDegraded();
             }
@@ -661,7 +791,13 @@ protected:
                                    CopyHash(block->GetHash()), -1,
                                    std::move(payload));
             }
+            if (m_envelope->Snapshot().degraded && m_runtime) {
+                m_runtime->CloseQueries();
+            }
         } catch (...) {
+            if (m_runtime) {
+                m_runtime->CloseQueries();
+            }
             m_envelope->MarkDegraded();
         }
     }

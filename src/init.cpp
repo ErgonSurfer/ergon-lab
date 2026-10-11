@@ -434,7 +434,7 @@ void SetupServerArgs() {
                  "(default: 0)",
                  true, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-chronikbind=<ip:port>",
-                 "Bind the local-regtest Chronik token endpoint to a loopback "
+                 "Bind confirmed Chronik token/transaction endpoints to a loopback "
                  "address (requires -chronikobserver; default: disabled)",
                  false, OptionsCategory::DEBUG_TEST);
     gArgs.AddArg("-chronikobserverfailpoint=<n>",

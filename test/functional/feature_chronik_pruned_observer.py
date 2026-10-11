@@ -4,16 +4,18 @@
 """Exercise bounded Chronik reconstruction from a truly pruned datadir."""
 
 import os
+import threading
 
 from feature_chronik_block_observer import ChronikBlockObserverTest
 from feature_pruning import mine_large_blocks
+from feature_chronik_token_http import ChronikTokenHttpTest, chronik_port, parse_protobuf
 from test_framework.util import assert_equal, assert_raises_rpc_error, wait_until
 
 
 class ChronikPrunedObserverTest(ChronikBlockObserverTest):
     def set_test_params(self):
         self.setup_clean_chain = True
-        self.num_nodes = 1
+        self.num_nodes = 2
         self.rpc_timeout = 300
         self.extra_args = [[
             "-connect=0",
@@ -21,8 +23,76 @@ class ChronikPrunedObserverTest(ChronikBlockObserverTest):
             "-prune=1",
             "-blockmaxsize=999000",
         ]]
+        self.extra_args.append(list(self.extra_args[0]))
+
+    def exercise_indexed_pruning(self):
+        """Existing index metadata must not disguise unavailable node bodies."""
+        self.chronik_port = chronik_port()
+        self.restart_node(1, extra_args=[
+            "-connect=0", "-disablewallet", "-prune=1", "-blockmaxsize=999000",
+            "-chronikobserver", f"-chronikbind=127.0.0.1:{self.chronik_port}",
+        ])
+        node = self.nodes[1]
+        def request(txid):
+            return ChronikTokenHttpTest.request(self, f"/tx/{txid}")
+
+        def wait_for_tip():
+            node.syncwithvalidationinterfacequeue()
+            txid = node.getblock(node.getbestblockhash())["tx"][0]
+            wait_until(lambda: request(txid)[0] == 200, timeout=180)
+            return txid
+
+        mine_large_blocks(node, 150, coinbase_value=0)
+        wait_for_tip()
+        # This is a storage-pruning canary, not an event-envelope overflow
+        # stress test. Let the asynchronous index catch up between bounded
+        # batches so slower CI machines exercise the intended boundary.
+        for offset in range(0, 851, 100):
+            node.generatetoaddress(min(100, 851 - offset), node.get_deterministic_priv_key().address)
+            tip_txid = wait_for_tip()
+        old_hash = node.getblockhash(1)
+        old_txid = node.getblock(old_hash)["tx"][0]
+        assert_equal(request(old_txid)[0], 200)
+        stop = threading.Event()
+        ready = threading.Event()
+        statuses = []
+        errors = []
+
+        def query_during_prune():
+            try:
+                for _ in range(100):
+                    if stop.is_set():
+                        break
+                    status, _ = request(old_txid)
+                    statuses.append(status)
+                    assert status in (200, 503)
+                    if status == 200:
+                        ready.set()
+            except Exception as error:
+                errors.append(error)
+                ready.set()
+
+        reader = threading.Thread(target=query_during_prune)
+        reader.start()
+        try:
+            assert ready.wait(10), "concurrent query did not complete"
+            assert_equal(node.pruneblockchain(713), 713)
+        finally:
+            stop.set()
+            reader.join(10)
+        assert not reader.is_alive(), "concurrent query did not stop"
+        assert not errors, errors
+        assert 200 in statuses
+        wait_until(lambda: not os.path.exists(os.path.join(node.datadir, "regtest", "blocks", "blk00000.dat")), timeout=30)
+        status, body = request(old_txid)
+        assert_equal(status, 503)
+        assert_equal(parse_protobuf(body)[2][0][1].decode(), "503: Confirmed transaction data unavailable")
+        assert_equal(request(tip_txid)[0], 200)
+        assert_equal(node.getblockcount(), 1001)
+        self.stop_node(1)
 
     def run_test(self):
+        self.exercise_indexed_pruning()
         node = self.nodes[0]
         address = node.get_deterministic_priv_key().address
         assert "Chronik observer" not in self.read_log()

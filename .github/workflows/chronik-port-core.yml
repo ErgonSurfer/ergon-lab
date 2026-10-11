@@ -115,6 +115,11 @@ jobs:
       - name: Run the C++ node-storage and event-envelope boundaries
         run: |
           build-chronik-node/src/test/test_bitcoin \
+            --run_test=chronik_query_admission_tests \
+            --report_level=short \
+            --log_level=message \
+            --color_output=no
+          build-chronik-node/src/test/test_bitcoin \
             --run_test=chronik_confirmed_tx_bridge_tests \
             --report_level=short \
             --log_level=message \

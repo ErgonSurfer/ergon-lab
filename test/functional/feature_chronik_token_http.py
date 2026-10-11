@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 The Ergon developers
-"""Serve confirmed ALP metadata through the upstream Chronik token route."""
+"""Serve confirmed ALP metadata and canonical transactions on local regtest."""
 
 from http.client import HTTPConnection
 
 from feature_chronik_block_observer import ChronikBlockObserverTest
 from test_framework.blocktools import create_block, create_coinbase
-from test_framework.messages import ToHex
-from test_framework.script import CScript, OP_RESERVED, OP_RETURN
+from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut, ToHex
+from test_framework.script import CScript, OP_RESERVED, OP_RETURN, OP_TRUE
+from test_framework.txtools import pad_tx
 from test_framework.util import PORT_MIN, PORT_RANGE, PortSeed, assert_equal, wait_until
 
 
@@ -106,6 +107,7 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         coinbase = create_coinbase(height)
         coinbase.vout[0].nValue = 0
         coinbase.vout[0].scriptPubKey = self.alp_genesis_script()
+        self.genesis_coinbase = coinbase
         token_id = coinbase.rehash()
         block = create_block(int(previous_hash, 16), coinbase, previous_time + 1)
         block.solve()
@@ -136,6 +138,87 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         error = parse_protobuf(body)[2][0][1].decode()
         assert_equal(error, f"404: Token {token_id} not found in the index")
 
+    def assert_confirmed_tx(self, txid, block_hash, timestamp):
+        result = None
+
+        def query_ready():
+            nonlocal result
+            result = self.request(f"/tx/{txid}")
+            assert result[0] in (200, 503)
+            return result[0] == 200
+
+        wait_until(query_ready)
+        tx = parse_protobuf(result[1])
+        assert_equal(tx[1][0][1], bytes.fromhex(txid)[::-1])
+        assert_equal(tx[11][0][1], len(bytes.fromhex(ToHex(self.genesis_coinbase))))
+        assert_equal(tx[12][0][1], 1)
+        block = parse_protobuf(tx[8][0][1])
+        assert_equal(block[1][0][1], 1)
+        assert_equal(block[2][0][1], bytes.fromhex(block_hash)[::-1])
+        assert_equal(block[3][0][1], timestamp)
+        output = parse_protobuf(tx[4][0][1])
+        assert_equal(output[2][0][1], bytes(self.alp_genesis_script()))
+        entry = parse_protobuf(tx[13][0][1])
+        assert_equal(entry[1][0][1].decode(), txid)
+        # Confirmed-only route does not pretend to expose spend/finality state.
+        assert 4 not in output  # spent_by
+        assert 16 not in tx  # is_final defaults false
+        return result[1]
+
+    def assert_tx_missing(self, txid):
+        status, body = self.request(f"/tx/{txid}")
+        assert_equal(status, 404)
+        assert_equal(parse_protobuf(body)[2][0][1].decode(),
+                     f"404: Transaction {txid} not found in the confirmed index")
+
+    def exercise_spent_coin_read(self):
+        node = self.nodes[0]
+        height = node.getblockcount() + 1
+        previous = node.getbestblockhash()
+        funding = create_coinbase(height)
+        funding.vout[0].nValue = 0
+        funding.vout[0].scriptPubKey = CScript([OP_TRUE])
+        funding.rehash()
+        block = create_block(int(previous, 16), funding, node.getblockheader(previous)["time"] + 1)
+        block.solve()
+        assert_equal(node.submitblock(ToHex(block)), None)
+        node.generatetoaddress(100, node.get_deterministic_priv_key().address)
+
+        spend = CTransaction()
+        spend.vin = [CTxIn(COutPoint(funding.sha256, 0))]
+        spend.vout = [CTxOut(0, CScript([OP_TRUE]))]
+        pad_tx(spend)
+        spend.rehash()
+        node.syncwithvalidationinterfacequeue()
+        wait_until(lambda: self.request(f"/tx/{funding.hash}")[0] == 200)
+        self.assert_tx_missing(spend.hash)
+
+        previous = node.getbestblockhash()
+        coinbase = create_coinbase(node.getblockcount() + 1)
+        coinbase.vout[0].nValue = 0
+        coinbase.rehash()
+        block = create_block(int(previous, 16), coinbase, node.getblockheader(previous)["time"] + 1)
+        block.vtx.append(spend)
+        block.hashMerkleRoot = block.calc_merkle_root()
+        block.solve()
+        assert_equal(node.submitblock(ToHex(block)), None)
+        node.syncwithvalidationinterfacequeue()
+        wait_until(lambda: self.request(f"/tx/{spend.hash}")[0] == 200)
+        status, body = self.request(f"/tx/{spend.hash}")
+        assert_equal(status, 200)
+        tx = parse_protobuf(body)
+        assert_equal(tx[1][0][1], bytes.fromhex(spend.hash)[::-1])
+        assert 12 not in tx  # non-coinbase
+        source = parse_protobuf(tx[3][0][1])
+        assert_equal(parse_protobuf(source[1][0][1])[1][0][1], bytes.fromhex(funding.hash)[::-1])
+        assert_equal(source[3][0][1], bytes(CScript([OP_TRUE])))
+        assert 4 not in source  # zero previous amount, protobuf default
+        assert_equal(parse_protobuf(tx[4][0][1])[2][0][1], bytes(CScript([OP_TRUE])))
+        node.invalidateblock(block.hash)
+        node.syncwithvalidationinterfacequeue()
+        wait_until(lambda: self.request(f"/tx/{spend.hash}")[0] == 404)
+        self.assert_tx_missing(spend.hash)
+
     def run_test(self):
         self.chronik_port = chronik_port()
         node = self.nodes[0]
@@ -159,9 +242,14 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
 
         block_hash, token_id, timestamp = self.mine_genesis()
         self.assert_token_info(token_id, timestamp)
+        canonical_tx = self.assert_confirmed_tx(token_id, block_hash, timestamp)
 
         missing = "99" * 32
         self.assert_token_missing(missing)
+        self.assert_tx_missing(missing)
+        status, body = self.request("/tx/not-a-txid")
+        assert_equal(status, 400)
+        assert_equal(parse_protobuf(body)[2][0][1].decode(), "400: Not a txid: not-a-txid")
         status, body = self.request("/token/not-a-txid")
         assert_equal(status, 400)
         assert_equal(
@@ -172,13 +260,26 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         node.invalidateblock(block_hash)
         node.syncwithvalidationinterfacequeue()
         self.assert_token_missing(token_id)
+        wait_until(lambda: self.request(f"/tx/{token_id}")[0] == 404)
+        self.assert_tx_missing(token_id)
 
         node.reconsiderblock(block_hash)
         node.syncwithvalidationinterfacequeue()
         self.assert_token_info(token_id, timestamp)
+        assert_equal(self.assert_confirmed_tx(token_id, block_hash, timestamp), canonical_tx)
 
         self.restart_node(0, extra_args=args)
         self.assert_token_info(token_id, timestamp)
+        assert_equal(self.assert_confirmed_tx(token_id, block_hash, timestamp), canonical_tx)
+
+        self.restart_node(0, extra_args=args + ["-reindex=1"])
+        node.syncwithvalidationinterfacequeue()
+        assert_equal(self.assert_confirmed_tx(token_id, block_hash, timestamp), canonical_tx)
+
+        self.restart_node(0, extra_args=args + ["-reindex-chainstate=1"])
+        node.syncwithvalidationinterfacequeue()
+        assert_equal(self.assert_confirmed_tx(token_id, block_hash, timestamp), canonical_tx)
+        self.exercise_spent_coin_read()
 
 
 if __name__ == "__main__":

@@ -62,6 +62,9 @@ std::optional<ConfirmedTx> ReadConfirmedTx(const BlockHash &block_hash,
                                            const TxId &txid,
                                            std::string &error) {
     const CBlockIndex *block_index = nullptr;
+    FlatFilePos block_position;
+    CBlockIndex undo_snapshot;
+    int32_t block_height = -1;
     {
         LOCK(cs_main);
         const auto it = mapBlockIndex.find(block_hash);
@@ -71,10 +74,20 @@ std::optional<ConfirmedTx> ReadConfirmedTx(const BlockHash &block_hash,
             return std::nullopt;
         }
         block_index = it->second;
+        block_position = block_index->GetBlockPos();
+        block_height = block_index->nHeight;
+        // UndoReadFromDisk reads nStatus/nFile/nUndoPos without taking
+        // cs_main. Pruning can change those fields; give it a detached
+        // read-only snapshot instead of the live index. The predecessor's
+        // hash is immutable and index entries outlive observer shutdown.
+        undo_snapshot.nStatus = block_index->nStatus;
+        undo_snapshot.nFile = block_index->nFile;
+        undo_snapshot.nUndoPos = block_index->nUndoPos;
+        undo_snapshot.pprev = block_index->pprev;
     }
 
     CBlock block;
-    if (!ReadBlockFromDisk(block, block_index,
+    if (!ReadBlockFromDisk(block, block_position,
                            Params().GetConsensus())) {
         error = "block data is unavailable";
         return std::nullopt;
@@ -82,8 +95,9 @@ std::optional<ConfirmedTx> ReadConfirmedTx(const BlockHash &block_hash,
 
     CBlockUndo block_undo;
     const CBlockUndo *block_undo_ptr = nullptr;
-    if (block_index->nHeight > 0) {
-        if (!UndoReadFromDisk(block_undo, block_index)) {
+    if (block_height > 0) {
+        if (!undo_snapshot.pprev ||
+            !UndoReadFromDisk(block_undo, &undo_snapshot)) {
             error = "block undo data is unavailable";
             return std::nullopt;
         }
@@ -91,7 +105,7 @@ std::optional<ConfirmedTx> ReadConfirmedTx(const BlockHash &block_hash,
     }
 
     auto confirmed = SelectConfirmedTx(block, block_undo_ptr, block_hash,
-                                       block_index->nHeight, txid, error);
+                                       block_height, txid, error);
     if (!confirmed) {
         return std::nullopt;
     }

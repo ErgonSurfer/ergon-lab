@@ -32,6 +32,15 @@ struct RuntimeTxQuery {
   uint64_t present;
   uint64_t payload_len;
 };
+/** Owned HTTP callback result; release is mandatory for non-null payloads. */
+struct HostTxResponse {
+  uint64_t status;
+  uint8_t *payload;
+  size_t payload_len;
+};
+using HostTxQueryFn = HostTxResponse (*)(uintptr_t, const uint8_t *);
+using HostTxReleaseFn = void (*)(uintptr_t, uint8_t *);
+static_assert(sizeof(HostTxResponse) == 24);
 static_assert(sizeof(RuntimeTxLocation) == 80);
 static_assert(sizeof(RuntimeSpentCoin) == 32);
 static_assert(sizeof(RuntimeTxQuery) == 32);

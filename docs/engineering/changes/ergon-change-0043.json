@@ -1,0 +1,624 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0043",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0043.json",
+  "purpose": {
+    "summary": "Serve canonical confirmed transactions through the optional loopback Chronik HTTP surface with runtime admission, active-tip binding and explicit ownership.",
+    "scope": [
+      "Register GET /tx/:txid only through the new host-query ABI; preserve the existing token-only ABI.",
+      "Serialize accepted-index mutations against nonblocking query leases without blocking validation callbacks or holding cs_main across disk I/O.",
+      "Reject stale, degraded, busy or pruned-storage reads; bind successful responses to the same accepted and active tip.",
+      "Release C++ payloads exactly once and retain one transaction permit through the HTTP body lifetime.",
+      "Extend public CI with ownership, shutdown, query-admission, rollback, restart, reindex, spent-coin and pruning falsification scenarios."
+    ],
+    "exclusions": [
+      "No mempool, history, UTXO, spent-by lookup, websocket, plugin, wallet or full SDK compatibility claim.",
+      "No consensus, validation, activation, chain-selection, P2P, network identity or mainnet parameter change.",
+      "No duplicate transaction-body store, incoming evidence, private history, host-specific path, binary or cache."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "51fbbf1c1ec6feb64a034047bfb0a95dd86b4d21",
+      "tree": "994efb519ccb8b370f56e09d40d4d95865e7930a"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "c15948d65b99710aa7f61fae1112d17ab2a6039e37a254398d7275e8502e0ab7",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 5112,
+        "git_blob": "51adb177ecfab73764495fa42cc816275f931088",
+        "sha256": "222819ac848b18fbf924f914d51ec07dcc84a5b108f829995e191c7a6a55c70b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5319,
+        "git_blob": "d5838c20715622be478921241fc75a001375c092",
+        "sha256": "4aa9fcd94d73ecfa0eb188e430efc8fae538ac89bb86870504a82f2ccfb05133"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Run the query-admission suite alongside the existing native and functional CI boundaries."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 18380,
+        "git_blob": "158a574b897774d568ffb18dad138848d870cabb",
+        "sha256": "9512d7bd70eb0b6bd1f20f791d7a288ef40ef2c2e8814c1c3fc45ee4f68270f3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20301,
+        "git_blob": "6c435aab0a76afdfb8a52e2ce02b587d4163751e",
+        "sha256": "346182bcc90c08035365ba35c646a6aae2ec047dd9b6712a69c0dd86cabafdaf"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Describe HTTP status, snapshot, ownership, resource and shutdown contracts and explicit limitations."
+    },
+    {
+      "path": "chronik/chronik-observer/src/persistent.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 21420,
+        "git_blob": "64552c59e99b43e31420394157e74b34b9bf71a8",
+        "sha256": "92f82c264e5fad00390aaedf3aaa8637572939efb5833f6bfa17ed760b00a87f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 30144,
+        "git_blob": "d840a6108299c210d54bbd8ea0276df958911bcb",
+        "sha256": "660e61b283fb1db02735d07beed0cea60a77cd872a26652f05a2ade85f6842f3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Register a distinct host-query service ABI and test live HTTP ownership, busy rejection and shutdown lifetime."
+    },
+    {
+      "path": "chronik/chronik-observer/src/token_service.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 4593,
+        "git_blob": "0a095bf6b8c40583d073a5489e7eb6827a14c0fa",
+        "sha256": "8777e07071d908fd344a593f08f24efce4f9c99a3b476978cae91c70842d3fa8"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13806,
+        "git_blob": "996574a1d8af28276d9f78684e90ec73fe02ed6b",
+        "sha256": "c86d6ef61258ec28b79cde331aa7ec41bb0b6267f81e43a462548636ed05b317"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Serve confirmed Tx protobufs through bounded host callbacks; retain admission through body ownership."
+    },
+    {
+      "path": "chronik/confirmed-tx-bridge.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2074,
+        "git_blob": "840e6a8545c37a38832d778c1f3be18d9baae17c",
+        "sha256": "5b2a5a51304231519f97cadcbf884a053d7b68dc44100254faffa46bdc5d7874"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2412,
+        "git_blob": "b82dd8b12f96c2cf4ca90c8bb7490ea1fbc7b28f",
+        "sha256": "5b7fa68514a98318d8ed4bdda617bdd58bc1ce4e3fc9d8371b1c3aeb36453b93"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Declare the host-owned response and query/release ABI without changing existing layouts."
+    },
+    {
+      "path": "chronik/confirmed-tx-reader.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3622,
+        "git_blob": "22569e7913739a8cf0dc3cb407a74ea404559efa",
+        "sha256": "6b2bd8f26e16b52ebd566af8c2958ce0b0bcaee223a1f72300a8e5ef8405b24d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4343,
+        "git_blob": "09df141f22446beaf8c03b9adaefb73c0dd68250",
+        "sha256": "46aa34b95d645520bd59d0af8a144e82fd77a0b76926cefb4c72e00e168ed432"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Capture block and undo file metadata under cs_main; supply a detached undo index snapshot outside the lock during concurrent pruning."
+    },
+    {
+      "path": "chronik/node-observer.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 32164,
+        "git_blob": "baae9bd0818a5c5a268447612e950d8fd064c397",
+        "sha256": "d9b8282e628c1015403f04346d751a4e7aa1321cb0d331c4f1bb42cd38b2dfa0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 37579,
+        "git_blob": "4d0edd60ffe6440686fdc88524682295cc929d29",
+        "sha256": "95d192657fca707312d043c49d56c16439558054f8c37f243dcb07cd67a0ce52"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Govern query/read/encode lifetime and accepted-tip checks; close admission on degradation and shutdown."
+    },
+    {
+      "path": "chronik/query-admission.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1147,
+        "git_blob": "0301708f90c520da22b076e6103ff815f2f1abe1",
+        "sha256": "774a05455fea85791a22f554244d75d249b8710ef068d74392c4a149590fcd1e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Provide nonblocking query admission and worker-only mutation serialization."
+    },
+    {
+      "path": "docs/engineering/changes/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 4709,
+        "git_blob": "1ef0e110665369b271ceb2dff530618cc9a8ae21",
+        "sha256": "d9a149e6e1d625f23ee572bb8e85e6a8f0e8476a9f86bb50010b44ce773b0b65"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4778,
+        "git_blob": "0f5d114054b8ece63a7b18289334b69494de0039",
+        "sha256": "e263c00fe4581a731b2855ee6346dd3b90dd8f062c16478e546f3b42265d83f7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Advance the reader journey from dormant confirmed bridge to an explicit experimental HTTP route."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 117834,
+        "git_blob": "e0213bf045a4c6c8d09ad6b9e3c12c11c3261bad",
+        "sha256": "d3e76a3f9c778aca976684df1905b48c8f2097b9c01ff4a1b43a74f4d98ceba9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 117839,
+        "git_blob": "1679e0332415f28142adf9dbd55956e03519819e",
+        "sha256": "bc4bff281c8bae26a33b6443a9c9baf54b0ca32eb74027b44e36c02d9e1b9e21"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional compiled observer only. Serving requires explicit local-regtest observer and loopback bind; no consensus or validation authority.",
+      "test_reachability": "Describe the optional loopback token and transaction service in the guarded CLI help."
+    },
+    {
+      "path": "src/test/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 6000,
+        "git_blob": "338564d437389d2c280d63e83d6ce7cb9a271bd2",
+        "sha256": "3602761f87654f34c3e9cca0ce99a71d9673fcd33606650b71004fa02e5978b8"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6036,
+        "git_blob": "f9c7e75fd0841553c817e0fb5d64bf02630e7d71",
+        "sha256": "11ca7da49d3f6c7c4e99e59c6b288a20059ad950c76ad8980687133082315ebf"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Add the query-admission suite only in the observer-enabled test profile."
+    },
+    {
+      "path": "src/test/chronik_query_admission_tests.cpp",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1907,
+        "git_blob": "6a9e27545f6dbeabf8695aff36accbeb1060d335",
+        "sha256": "d9806b704fe529b2a7eda5893cf6f6f2a3c9716d15ab5f9265f6181a2029ee5b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Falsify concurrent mutation, duplicate query, close and destruction lifetime errors."
+    },
+    {
+      "path": "test/functional/feature_chronik_pruned_observer.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 5123,
+        "git_blob": "eec8d3a3da0f697440f233d331dfd0621cb1fabd",
+        "sha256": "34cc0e6e5889ade75ac5da3a2996808e9185631cb66d61ae7b3365e4cd40dcd5"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 8138,
+        "git_blob": "661e58d89cd55351e43932f3aa036b312c063c47",
+        "sha256": "15e80458b9e73c15c9ba25499de99383cc49ee2d373a58c27e21994dfcf446c1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Keep the prior fresh-pruned bootstrap failure and add already-indexed pruned transaction rejection."
+    },
+    {
+      "path": "test/functional/feature_chronik_token_http.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100755",
+        "bytes": 6308,
+        "git_blob": "588858f359bb3696b8a3076fe0992daa6341aaba",
+        "sha256": "c001f784612672d257a05e266b24cd0e06aaccbf565af89c2822aeafaeeb1958"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 11212,
+        "git_blob": "963b395f5c89ad4cd6f6b78bcade7ff90fa7a78c",
+        "sha256": "efecc58f7085236d64b991f5b15ecae13ccf4d62a5e2911f5ce833fc8f61e07c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "BASE+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime reachability; build, documentation or test construction only.",
+      "test_reachability": "Exercise canonical confirmed ALP bytes, errors, rollback/reconsider, restart, both reindex modes and spent coins."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Configure the standalone node with BUILD_CHRONIK_OBSERVER=OFF and inspect the generated bitcoind build graph."
+        ],
+        "expected_results": [
+          "No observer, query admission or HTTP listener is reachable from the compiled-out node."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build test_bitcoin and bitcoind with BUILD_CHRONIK_OBSERVER=ON while leaving runtime observer opt-in disabled."
+        ],
+        "expected_results": [
+          "The optional query bridge compiles, but creates no state, callbacks or listener without runtime opt-in."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Run the locked offline Rust corpus, focused native query-admission/bridge/reader/envelope suites, and the four existing functional matrices from the reviewed public tree."
+        ],
+        "expected_results": [
+          "Confirmed HTTP ownership, busy and failure behavior, canonical transaction bytes and lifecycle/pruning checks pass."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the confirmed HTTP functional canary, live Rust host-service tests and native query-admission suite.",
+        "expected_results": [
+          "Explicit loopback opt-in serves canonical confirmed ALP and non-coinbase spent-coin bytes. Invalid IDs are 400, missing confirmed IDs are 404, and busy/unavailable reads are 503.",
+          "Owned host allocations are released once, query/body permits are retained until completion, and shutdown joins host request work."
+        ],
+        "failure_conditions": [
+          "Implicit listener or state, wrong protobuf, accepted stale/contradictory data, leaked or prematurely released host context, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Restart the HTTP canary node and compare the exact confirmed Tx bytes; run the retained-window observer restart scenario.",
+        "expected_results": [
+          "Confirmed bytes remain identical after restart and no orphan or unbound response is served."
+        ],
+        "failure_conditions": [
+          "Restart drift, stale query, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run observer deep-reorg failure, HTTP invalidate/reconsider and native query-close scenarios.",
+        "expected_results": [
+          "Rolled-back transactions disappear from the confirmed route, reconsider restores exact bytes, and degraded or closing observation rejects new queries."
+        ],
+        "failure_conditions": [
+          "Orphan result, stale observer state, query accepted after closure, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": [
+        "ubuntu-24.04",
+        "macos-26-arm64-local-observation"
+      ],
+      "lock_reference": "chronik/Cargo.lock SHA-256 849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Confirmed-only experimental local-regtest service; no mempool, history, UTXO or spend-state surface and no full Chronik SDK compatibility claim.",
+    "spent_by is absent, plugin maps are empty and finalization is false; an absent spent_by field does not mean an unspent output.",
+    "A successful response is a snapshot at its final active/indexed-tip check. A later reorganization can invalidate that snapshot.",
+    "Historical blk/rev availability is required. No duplicate body store or pruned-storage fallback is introduced.",
+    "Each transaction, spent-script aggregate and encoded result is limited to 64 MiB; parsing and cross-language copies can coexist in memory. One transaction-response permit prevents additional large results while its body bytes remain live.",
+    "Shutdown joins requests to protect the host context, but stalled storage I/O or a slow network client can delay graceful shutdown; no hard wall-clock shutdown bound is claimed.",
+    "Zero-value regtest spent coins do not establish an economically funded regtest profile.",
+    "Local compilation and component checks are not integrated Linux CI, independent reproduction, deployment or activation evidence."
+  ],
+  "counterevidence": [
+    "Busy or lagging observation returns 503 even when the node already knows the transaction.",
+    "An indexed transaction whose canonical storage was pruned cannot be served and returns 503 instead of a fabricated result.",
+    "Incomplete spend/finality fields cannot support an unspentness or finality assertion.",
+    "A successful canonical snapshot cannot promise validity after a subsequent reorganization."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

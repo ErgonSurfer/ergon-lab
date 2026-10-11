@@ -91,8 +91,11 @@ default port, so compiling or enabling the observer alone opens no socket. The
 route and response contract match upstream Chronik: `GET /token/:txid` returns
 `application/x-protobuf` with canonical `TokenInfo`; malformed transaction IDs
 return protobuf error 400, and unknown or non-genesis IDs return protobuf error
-404. The initial surface is confirmed-state only. It contains no mempool,
-transaction, UTXO, history, WebSocket, plugin, wallet or consensus API.
+404. `GET /tx/:txid` returns the canonical confirmed `Tx` protobuf: malformed
+IDs return protobuf error 400, absent confirmed transactions return 404, and
+busy, lagging, degraded or storage-unavailable queries return 503. Neither
+route includes mempool, UTXO, history, WebSocket, plugin, wallet or consensus
+authority. Both remain explicit local-regtest experiments, not a deployed API.
 
 The transaction-query foundation reuses the node's canonical
 block and undo storage instead of copying transaction bodies into RocksDB. A
@@ -100,9 +103,10 @@ compiled-in reader resolves only an active-chain block identity, loads its
 `blk` and `rev` data through the inherited node primitives, selects the exact
 transaction, and positionally binds every spent coin to its input. Missing or
 pruned storage, a mismatched block or transaction identity, incomplete undo
-data, and a concurrent reorganization all fail the read. This foundation opens
-no route by itself. The bounded Rust bridge builds the confirmed protobuf;
-the `GET /tx/:txid` surface remains a later reviewed slice.
+data, and a concurrent reorganization all fail the read. The bounded Rust bridge
+builds the confirmed protobuf; the HTTP caller binds the complete lookup,
+storage read and encoding to one accepted runtime tip, checked against the
+node's active tip before and after the operation.
 
 For each accepted block-connected callback, C++ serializes the immutable
 `CBlock` once with the canonical network serializer. The C ABI copies those
@@ -291,10 +295,10 @@ python3 test/functional/feature_chronik_pruned_observer.py \
   --hermetic-child-env
 ```
 
-The pruning canary uses a fresh isolated manual-pruning regtest datadir. It
+The pruning canary uses two fresh isolated manual-pruning regtest datadirs. It
 creates only enough large blocks to cross one 128 MiB block-file boundary,
 then uses small blocks to pass the legacy pruning height. Expect roughly
-250 MiB of temporary disk at most; this is separate from the much larger
+500 MiB of temporary disk; this is separate from the much larger
 general pruning test.
 
 ### Confirmed transaction bridge
@@ -310,16 +314,35 @@ response is limited to 64 MiB. A sizing probe precedes the checked buffer copy.
 
 `LookupConfirmedTxLocation` and `EncodeConfirmedTxProto` require a live runtime
 and external serialization against index mutations for the entire
-lookup/read/encode operation. They have no HTTP caller yet. A later route must
-also synchronize the active-chain read and reorganization boundary before
-returning a response. Missing transactions, unavailable coins, contradictory
+lookup/read/encode operation. The HTTP caller supplies a nonblocking query
+lease; the indexing worker serializes mutations through that same gate.
+Validation callbacks never acquire this blocking gate. Disk I/O holds no
+`cs_main` lock. The accepted runtime tip must equal the node's active tip at
+the final response boundary, and degraded observation or shutdown closes query
+admission. A later reorganization can invalidate any previously returned
+snapshot. Missing transactions, unavailable coins, contradictory
 metadata, malformed serialization and insufficient buffers fail the query.
+Block-file and undo-file positions are captured under `cs_main`; the inherited
+undo reader receives a detached index snapshot, not mutable live pruning
+metadata. Removal after capture can still make disk I/O unavailable and is
+reported as 503. A concurrent-pruning canary exercises that failure boundary;
+it is not a data-race detector or formal concurrency proof.
+
+The host owns each C ABI response allocation until Rust copies and releases it
+exactly once. One HTTP transaction permit is retained through the response-body
+lifetime, including cloned body bytes and slow readers; additional transaction
+requests receive 503 rather than queuing another large result. Shutdown joins
+service and blocking request work before releasing the host context, even when
+the event envelope has detached its self-owned indexing worker. A later worker
+mutation then rejects the closed runtime. This is a
+lifetime guarantee, not a hard shutdown deadline: a stalled storage read or
+slow network client can still delay graceful shutdown.
 
 ALP and SLP token annotations use the accepted ancestry database and preserve
 upstream protobuf types. This confirmed-only representation currently leaves
 `spent_by` absent, plugin maps empty and Avalanche finalization false. Absence
 of `spent_by` is not evidence that an output is unspent. Mempool transactions,
-histories and transaction serving remain subsequent work.
+histories, mempool serving and spend-state queries remain subsequent work.
 
 The conversion is adapted from the public Bitcoin ABC donor at commit
 `784d83de2e19eab726898d77bfe7465410d27a9c`:
@@ -335,6 +358,9 @@ Focused checks:
 cargo test --manifest-path chronik/Cargo.toml --package chronik-runtime --locked --offline
 cargo test --manifest-path chronik/Cargo.toml --package chronik-observer --locked --offline
 /absolute/path/build-observer/src/test/test_bitcoin \
+  --run_test=chronik_query_admission_tests \
+  --report_level=short --log_level=message --color_output=no
+/absolute/path/build-observer/src/test/test_bitcoin \
   --run_test=chronik_confirmed_tx_bridge_tests \
   --report_level=short --log_level=message --color_output=no
 ```
@@ -343,6 +369,8 @@ Build directories, Cargo caches, and test datadirs belong outside the source
 tree. Peak parsing memory includes the C++ serialization, one Rust-owned block
 buffer per caller that has crossed the C ABI, and parsed transaction structures;
 startup reconstruction and the bounded event worker are asynchronous from
-validation callbacks. This slice tests one served route; it does not claim the
+validation callbacks. The HTTP canaries cover token metadata and confirmed
+transactions, rollback/reconsider, restart, both reindex modes, positional
+spent coins and pruned-storage rejection. They do not claim the
 rest of Chronik's API, native-asset consensus activation or production
 readiness.
