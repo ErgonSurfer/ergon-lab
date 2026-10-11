@@ -367,6 +367,12 @@ fn runtime_ref(runtime: *const std::ffi::c_void) -> Option<&'static RuntimeHandl
     Some(unsafe { &*runtime.cast::<RuntimeHandle>() })
 }
 
+pub(super) fn indexer_ref(
+    runtime: *const std::ffi::c_void,
+) -> Option<&'static PersistentTokenIndexer> {
+    runtime_ref(runtime).map(|handle| handle.indexer.as_ref())
+}
+
 fn tip_error(error_code: u64) -> RuntimeTip {
     RuntimeTip {
         error_code,

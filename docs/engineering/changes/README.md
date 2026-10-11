@@ -71,9 +71,10 @@ component checks cover restart, full reindex, chainstate reindex, a pruned
 datadir, and deep-reorganization failure behavior. Chronik remains optional,
 off by default, local-regtest opt-in only, and observe/index-only. A single
 loopback-only confirmed-token query is available under explicit local-regtest
-opt-in. The next active slice adds only the canonical node-storage reader
-needed by a future confirmed-transaction query; it opens no route and creates
-no duplicate transaction store. Transaction serving, histories, UTXOs,
+opt-in. The canonical node-storage reader is integrated. The next active slice
+connects it to the accepted token runtime through a bounded C++/Rust bridge and
+constructs the upstream confirmed-transaction protobuf. It opens no route and
+creates no duplicate transaction store. Transaction serving, histories, UTXOs,
 mempool indexing, independent reproduction, production deployment, and every
 consensus activation remain later work.
 

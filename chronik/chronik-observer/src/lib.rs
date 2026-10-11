@@ -30,6 +30,7 @@ use bytes::Bytes;
 
 mod persistent;
 mod token_service;
+mod tx_bridge;
 
 const CONNECTED: u8 = 1;
 const DISCONNECTED: u8 = 2;

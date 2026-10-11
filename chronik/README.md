@@ -94,15 +94,15 @@ return protobuf error 400, and unknown or non-genesis IDs return protobuf error
 404. The initial surface is confirmed-state only. It contains no mempool,
 transaction, UTXO, history, WebSocket, plugin, wallet or consensus API.
 
-The next transaction-query foundation deliberately reuses the node's canonical
+The transaction-query foundation reuses the node's canonical
 block and undo storage instead of copying transaction bodies into RocksDB. A
 compiled-in reader resolves only an active-chain block identity, loads its
 `blk` and `rev` data through the inherited node primitives, selects the exact
 transaction, and positionally binds every spent coin to its input. Missing or
 pruned storage, a mismatched block or transaction identity, incomplete undo
 data, and a concurrent reorganization all fail the read. This foundation opens
-no route by itself; the Rust bridge and `GET /tx/:txid` surface remain a later
-reviewed slice.
+no route by itself. The bounded Rust bridge builds the confirmed protobuf;
+the `GET /tx/:txid` surface remains a later reviewed slice.
 
 For each accepted block-connected callback, C++ serializes the immutable
 `CBlock` once with the canonical network serializer. The C ABI copies those
@@ -296,6 +296,48 @@ creates only enough large blocks to cross one 128 MiB block-file boundary,
 then uses small blocks to pass the legacy pruning height. Expect roughly
 250 MiB of temporary disk at most; this is separate from the much larger
 general pruning test.
+
+### Confirmed transaction bridge
+
+The node-storage reader now feeds a bounded C++/Rust bridge. The accepted
+transaction index resolves the block identity; the node supplies the original
+transaction and positionally aligned spent coins from blk/rev. Rust verifies
+the transaction hash, block metadata, coinbase role and input count, then uses
+the upstream Chronik token conversion to construct the canonical `Tx` protobuf.
+Both the serialized transaction and the aggregate spent-script bytes are
+limited to 64 MiB; there are at most one million spent coins and the encoded
+response is limited to 64 MiB. A sizing probe precedes the checked buffer copy.
+
+`LookupConfirmedTxLocation` and `EncodeConfirmedTxProto` require a live runtime
+and external serialization against index mutations for the entire
+lookup/read/encode operation. They have no HTTP caller yet. A later route must
+also synchronize the active-chain read and reorganization boundary before
+returning a response. Missing transactions, unavailable coins, contradictory
+metadata, malformed serialization and insufficient buffers fail the query.
+
+ALP and SLP token annotations use the accepted ancestry database and preserve
+upstream protobuf types. This confirmed-only representation currently leaves
+`spent_by` absent, plugin maps empty and Avalanche finalization false. Absence
+of `spent_by` is not evidence that an output is unspent. Mempool transactions,
+histories and transaction serving remain subsequent work.
+
+The conversion is adapted from the public Bitcoin ABC donor at commit
+`784d83de2e19eab726898d77bfe7465410d27a9c`:
+[`query/util.rs`](https://github.com/Bitcoin-ABC/bitcoin-abc/blob/784d83de2e19eab726898d77bfe7465410d27a9c/chronik/chronik-indexer/src/query/util.rs)
+and
+[`query/tx_token_data.rs`](https://github.com/Bitcoin-ABC/bitcoin-abc/blob/784d83de2e19eab726898d77bfe7465410d27a9c/chronik/chronik-indexer/src/query/tx_token_data.rs).
+Their MIT notices are preserved. The excluded full indexer workspace is not
+activated by this adapter.
+
+Focused checks:
+
+```sh
+cargo test --manifest-path chronik/Cargo.toml --package chronik-runtime --locked --offline
+cargo test --manifest-path chronik/Cargo.toml --package chronik-observer --locked --offline
+/absolute/path/build-observer/src/test/test_bitcoin \
+  --run_test=chronik_confirmed_tx_bridge_tests \
+  --report_level=short --log_level=message --color_output=no
+```
 
 Build directories, Cargo caches, and test datadirs belong outside the source
 tree. Peak parsing memory includes the C++ serialization, one Rust-owned block

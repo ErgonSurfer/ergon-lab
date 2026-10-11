@@ -10,6 +10,7 @@
 //! an indexing failure, never as a consensus decision.
 
 mod query;
+mod tx_query;
 
 use std::path::Path;
 
@@ -36,6 +37,7 @@ use chronik_db::{
 use thiserror::Error;
 
 pub use query::TokenQueryError;
+pub use tx_query::{ConfirmedTxLocation, ConfirmedTxQueryError};
 
 /// One fully accepted block presented by the node host adapter.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -254,6 +256,20 @@ impl PersistentTokenIndexer {
         query::token_info(&self.db, token_id_txid)
     }
 
+    /// Resolve the canonical indexed block identity for a confirmed tx.
+    pub fn confirmed_tx_location(&self, txid: &TxId) -> Result<Option<ConfirmedTxLocation>> {
+        tx_query::confirmed_tx_location(&self.db, txid)
+    }
+
+    /// Build Chronik's canonical confirmed `Tx` protobuf.
+    pub fn confirmed_tx_proto(
+        &self,
+        tx: &Tx,
+        location: &ConfirmedTxLocation,
+    ) -> Result<chronik_proto::proto::Tx> {
+        tx_query::confirmed_tx_proto(&self.db, tx, location)
+    }
+
     /// Flush the database before orderly shutdown.
     pub fn close(&self) -> Result<()> {
         self.db.close()
@@ -354,7 +370,7 @@ mod tests {
     use super::*;
     use bitcoinsuite_core::{
         script::Script,
-        tx::{OutPoint, TxInput, TxMut, TxOutput},
+        tx::{Coin, OutPoint, TxInput, TxMut, TxOutput},
     };
     use bitcoinsuite_slp::{
         alp::{genesis_section, mint_section, sections_opreturn, send_section},
@@ -463,6 +479,280 @@ mod tests {
             TxId::from([3; 32]),
             TxId::from([4; 32]),
         )
+    }
+
+    fn with_spent_coins(tx: &Tx) -> Tx {
+        let txid = tx.txid();
+        let mut tx_mut = TxMut::from(tx.clone());
+        for (input_idx, input) in tx_mut.inputs.iter_mut().enumerate() {
+            input.coin = Some(Coin {
+                output: TxOutput {
+                    sats: 1_000 + input_idx as i64,
+                    script: Script::EMPTY,
+                },
+                height: 0,
+                is_coinbase: false,
+            });
+        }
+        Tx::with_txid(txid, tx_mut)
+    }
+
+    fn canonical_alp_query_block() -> AcceptedBlock {
+        fn hashed(tx_mut: TxMut) -> Tx {
+            Tx::with_txid(TxId::from_tx(&tx_mut), tx_mut)
+        }
+        let coinbase = hashed(TxMut {
+            inputs: vec![TxInput {
+                prev_out: OutPoint {
+                    txid: TxId::default(),
+                    out_idx: u32::MAX,
+                },
+                ..Default::default()
+            }],
+            outputs: vec![TxOutput::default()],
+            ..Default::default()
+        });
+        let genesis = hashed(TxMut::from(alp_chain().0.txs[1].clone()));
+        let token_id = TokenId::new(genesis.txid());
+        let mut mint = TxMut::from(tx(
+            0,
+            [],
+            scripts(
+                sections_opreturn(vec![mint_section(
+                    &token_id,
+                    AlpTokenType::Standard,
+                    &ParsedMintData {
+                        atoms_vec: vec![50],
+                        num_batons: 1,
+                    },
+                )]),
+                2,
+            ),
+        ));
+        mint.inputs.push(TxInput {
+            prev_out: OutPoint {
+                txid: genesis.txid(),
+                out_idx: 4,
+            },
+            ..Default::default()
+        });
+        let mint = hashed(mint);
+        let mut send = TxMut::from(tx(
+            0,
+            [],
+            scripts(
+                sections_opreturn(vec![send_section(
+                    &token_id,
+                    AlpTokenType::Standard,
+                    [120, 55],
+                )]),
+                2,
+            ),
+        ));
+        for (txid, out_idx) in [(genesis.txid(), 1), (genesis.txid(), 3), (mint.txid(), 1)] {
+            send.inputs.push(TxInput {
+                prev_out: OutPoint { txid, out_idx },
+                ..Default::default()
+            });
+        }
+        block(10, 0, 0, vec![coinbase, genesis, mint, hashed(send)])
+    }
+
+    #[test]
+    fn builds_canonical_confirmed_alp_tx_proto() -> Result<()> {
+        abc_rust_error::install();
+        let tempdir = tempdir::TempDir::new("chronik-runtime-confirmed-tx")?;
+        let runtime = PersistentTokenIndexer::open(tempdir.path())?;
+        let block0 = canonical_alp_query_block();
+        let send = &block0.txs[3];
+        let send_txid = send.txid();
+        runtime.connect_block(&block0)?;
+
+        assert_eq!(runtime.confirmed_tx_location(&TxId::from([99; 32]))?, None,);
+        let location = runtime
+            .confirmed_tx_location(&send_txid)?
+            .expect("indexed send location");
+        assert_eq!(location.block_hash, block0.hash.to_bytes());
+        assert_eq!(location.block_height, block0.height);
+        assert_eq!(location.block_timestamp, block0.timestamp);
+        assert!(!location.is_coinbase);
+
+        let missing_coin = runtime
+            .confirmed_tx_proto(send, &location)
+            .unwrap_err()
+            .to_string();
+        assert!(missing_coin.contains("missing its spent coin"));
+
+        let proto = runtime.confirmed_tx_proto(&with_spent_coins(send), &location)?;
+        assert_eq!(proto.txid, send_txid.to_vec());
+        assert_eq!(proto.block.as_ref().unwrap().hash, block0.hash.to_vec());
+        assert_eq!(proto.block.as_ref().unwrap().height, block0.height);
+        assert_eq!(proto.block.as_ref().unwrap().timestamp, block0.timestamp);
+        assert_eq!(proto.inputs.len(), 3);
+        assert_eq!(
+            proto
+                .inputs
+                .iter()
+                .map(|input| input.token.as_ref().unwrap().atoms)
+                .collect::<Vec<_>>(),
+            vec![100, 25, 50],
+        );
+        assert_eq!(
+            proto
+                .outputs
+                .iter()
+                .map(|output| { output.token.as_ref().map(|token| token.atoms) })
+                .collect::<Vec<_>>(),
+            vec![None, Some(120), Some(55)],
+        );
+        assert_eq!(proto.token_entries.len(), 1);
+        assert_eq!(
+            proto.token_status,
+            chronik_proto::proto::TokenStatus::Normal as i32,
+        );
+        assert!(proto.outputs.iter().all(|output| output.spent_by.is_none()));
+        assert!(proto.inputs.iter().all(|input| input.plugins.is_empty()));
+        assert!(proto.outputs.iter().all(|output| output.plugins.is_empty()));
+        assert!(!proto.is_final);
+
+        let mut wrong_location = location.clone();
+        wrong_location.block_timestamp += 1;
+        let mismatch = runtime
+            .confirmed_tx_proto(&with_spent_coins(send), &wrong_location)
+            .unwrap_err()
+            .to_string();
+        assert!(mismatch.contains("metadata contradicts"));
+        let mut forged = TxMut::from(with_spent_coins(send));
+        forged.locktime += 1;
+        assert!(runtime
+            .confirmed_tx_proto(&Tx::with_txid(send_txid, forged), &location)
+            .unwrap_err()
+            .to_string()
+            .contains("cached txid"));
+        runtime.disconnect_block(&block0)?;
+        assert_eq!(runtime.confirmed_tx_location(&send_txid)?, None);
+        assert!(runtime
+            .confirmed_tx_proto(&with_spent_coins(send), &location)
+            .is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn builds_canonical_confirmed_slp_tx_proto() -> Result<()> {
+        abc_rust_error::install();
+        let tempdir = tempdir::TempDir::new("chronik-runtime-confirmed-slp")?;
+        let runtime = PersistentTokenIndexer::open(tempdir.path())?;
+        let genesis = TxMut {
+            outputs: vec![
+                TxOutput {
+                    sats: 0,
+                    script: genesis_opreturn(
+                        &GenesisInfo::empty_slp(),
+                        SlpTokenType::Fungible,
+                        None,
+                        100,
+                    ),
+                },
+                TxOutput::default(),
+            ],
+            ..Default::default()
+        };
+        let genesis = Tx::with_txid(TxId::from_tx(&genesis), genesis);
+        let send = TxMut {
+            inputs: vec![TxInput {
+                prev_out: OutPoint {
+                    txid: genesis.txid(),
+                    out_idx: 1,
+                },
+                ..Default::default()
+            }],
+            outputs: vec![
+                TxOutput {
+                    sats: 0,
+                    script: send_opreturn(
+                        &TokenId::new(genesis.txid()),
+                        SlpTokenType::Fungible,
+                        &[40, 60],
+                    ),
+                },
+                TxOutput::default(),
+                TxOutput::default(),
+            ],
+            ..Default::default()
+        };
+        let send = Tx::with_txid(TxId::from_tx(&send), send);
+        runtime.connect_block(&block(
+            10,
+            0,
+            0,
+            vec![
+                canonical_alp_query_block().txs[0].clone(),
+                genesis.clone(),
+                send.clone(),
+            ],
+        ))?;
+        let location = runtime.confirmed_tx_location(&send.txid())?.unwrap();
+        let proto = runtime.confirmed_tx_proto(&with_spent_coins(&send), &location)?;
+        assert_eq!(proto.inputs[0].token.as_ref().unwrap().atoms, 100);
+        assert_eq!(proto.outputs[1].token.as_ref().unwrap().atoms, 40);
+        assert_eq!(proto.outputs[2].token.as_ref().unwrap().atoms, 60);
+        assert_eq!(
+            proto.token_entries[0].token_id,
+            TokenId::new(genesis.txid()).to_string()
+        );
+        assert_eq!(
+            proto.token_entries[0]
+                .token_type
+                .as_ref()
+                .unwrap()
+                .token_type,
+            Some(chronik_proto::proto::token_type::TokenType::Slp(
+                chronik_proto::proto::SlpTokenType::Fungible as i32
+            ))
+        );
+        assert_eq!(
+            proto.token_status,
+            chronik_proto::proto::TokenStatus::Normal as i32
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn reports_confirmed_implicit_alp_burns() -> Result<()> {
+        abc_rust_error::install();
+        let tempdir = tempdir::TempDir::new("chronik-runtime-confirmed-burn")?;
+        let runtime = PersistentTokenIndexer::open(tempdir.path())?;
+        let block0 = canonical_alp_query_block();
+        runtime.connect_block(&block0)?;
+        let mut coinbase = TxMut::from(block0.txs[0].clone());
+        coinbase.locktime = 1;
+        let coinbase = Tx::with_txid(TxId::from_tx(&coinbase), coinbase);
+        let burn = TxMut {
+            inputs: vec![TxInput {
+                prev_out: OutPoint {
+                    txid: block0.txs[3].txid(),
+                    out_idx: 1,
+                },
+                ..Default::default()
+            }],
+            outputs: vec![TxOutput::default()],
+            ..Default::default()
+        };
+        let burn = Tx::with_txid(TxId::from_tx(&burn), burn);
+        let block1 = block(11, 10, 1, vec![coinbase, burn.clone()]);
+        runtime.connect_block(&block1)?;
+        let location = runtime.confirmed_tx_location(&burn.txid())?.unwrap();
+        let proto = runtime.confirmed_tx_proto(&with_spent_coins(&burn), &location)?;
+        assert_eq!(
+            proto.token_status,
+            chronik_proto::proto::TokenStatus::NotNormal as i32
+        );
+        assert_eq!(proto.inputs[0].token.as_ref().unwrap().atoms, 120);
+        assert!(proto.outputs[0].token.is_none());
+        assert_eq!(proto.token_entries.len(), 1);
+        assert_eq!(proto.token_entries[0].actual_burn_atoms, "120");
+        assert!(!proto.token_entries[0].burn_summary.is_empty());
+        Ok(())
     }
 
     #[test]
