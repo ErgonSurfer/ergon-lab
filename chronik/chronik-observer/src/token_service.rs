@@ -33,6 +33,7 @@ pub const CONTENT_TYPE_PROTOBUF: &str = "application/x-protobuf";
 struct TokenServiceState {
     indexer: Arc<PersistentTokenIndexer>,
     tx_query: Option<HostTxQuery>,
+    token_query: Option<HostTxQuery>,
     tx_busy: Arc<AtomicBool>,
 }
 
@@ -98,10 +99,11 @@ pub struct TokenService {
 }
 
 impl TokenService {
-    pub fn start_with_tx_query(
+    pub fn start_with_queries(
         indexer: Arc<PersistentTokenIndexer>,
         address: SocketAddr,
         tx_query: Option<HostTxQuery>,
+        token_query: Option<HostTxQuery>,
     ) -> Result<Self, TokenServiceError> {
         if !is_loopback(address.ip()) {
             return Err(TokenServiceError::NonLoopbackAddress);
@@ -128,7 +130,7 @@ impl TokenService {
             .name("chronik-token-http".to_string())
             .spawn(move || {
                 runtime.block_on(async move {
-                    let router = token_router(indexer, tx_query);
+                    let router = token_router(indexer, tx_query, token_query);
                     let _ = axum::serve(listener, router)
                         .with_graceful_shutdown(async move {
                             let _ = shutdown_rx.await;
@@ -169,7 +171,11 @@ fn is_loopback(ip: IpAddr) -> bool {
     ip.is_loopback()
 }
 
-fn token_router(indexer: Arc<PersistentTokenIndexer>, tx_query: Option<HostTxQuery>) -> Router {
+fn token_router(
+    indexer: Arc<PersistentTokenIndexer>,
+    tx_query: Option<HostTxQuery>,
+    token_query: Option<HostTxQuery>,
+) -> Router {
     let router = Router::new().route("/token/:txid", get(handle_token_info));
     // The token-only ABI does not silently acquire a new route.
     let router = if tx_query.is_some() {
@@ -180,6 +186,7 @@ fn token_router(indexer: Arc<PersistentTokenIndexer>, tx_query: Option<HostTxQue
     router.with_state(TokenServiceState {
         indexer,
         tx_query,
+        token_query,
         tx_busy: Arc::new(AtomicBool::new(false)),
     })
 }
@@ -229,6 +236,14 @@ async fn handle_confirmed_tx(
 }
 
 fn read_host_tx(query: HostTxQuery, txid: TxId) -> Result<Vec<u8>, StatusCode> {
+    read_host_response(query, txid, false)
+}
+
+fn read_host_token(query: HostTxQuery, token_id: TxId) -> Result<Vec<u8>, StatusCode> {
+    read_host_response(query, token_id, true)
+}
+
+fn read_host_response(query: HostTxQuery, txid: TxId, token: bool) -> Result<Vec<u8>, StatusCode> {
     let payload = HostPayload {
         response: (query.query)(query.context, txid.as_bytes().as_ptr()),
         release: query.release,
@@ -250,9 +265,16 @@ fn read_host_tx(query: HostTxQuery, txid: TxId) -> Result<Vec<u8>, StatusCode> {
     }
     // SAFETY: host provides a live immutable allocation until release.
     let bytes = unsafe { std::slice::from_raw_parts(response.payload, response.payload_len) };
-    let proto = proto::Tx::decode(bytes).map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-    if proto.txid != txid.to_vec() || proto.block.is_none() {
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    if token {
+        let proto = proto::TokenInfo::decode(bytes).map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+        if proto.token_id != txid.to_string() || proto.block.is_none() {
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        }
+    } else {
+        let proto = proto::Tx::decode(bytes).map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+        if proto.txid != txid.to_vec() || proto.block.is_none() {
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        }
     }
     Ok(bytes.to_vec())
 }
@@ -274,6 +296,38 @@ async fn handle_token_info(
             return protobuf_error(StatusCode::BAD_REQUEST, format!("400: Not a txid: {txid}"));
         }
     };
+    if let Some(query) = state.token_query {
+        // Share the transaction admission budget, including response-body
+        // lifetime. Both routes use the host's coherent accepted-tip gate.
+        if state
+            .tx_busy
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return token_unavailable();
+        }
+        let permit = TxPermit(Arc::clone(&state.tx_busy));
+        let result = tokio::task::spawn_blocking(move || {
+            read_host_token(query, token_id).map(|bytes| (bytes, permit))
+        })
+        .await;
+        return match result {
+            Ok(Ok((bytes, permit))) => protobuf_body(
+                StatusCode::OK,
+                Body::from(Bytes::from_owner(LeasedTxBytes {
+                    bytes,
+                    _permit: permit,
+                })),
+            ),
+            Ok(Err(StatusCode::NOT_FOUND)) => protobuf_error(
+                StatusCode::NOT_FOUND,
+                format!("404: Token {token_id} not found in the index"),
+            ),
+            _ => token_unavailable(),
+        };
+    }
+    // Preserve the original standalone token-service ABI. The node never uses
+    // this unguarded compatibility path; it selects the guarded-query ABI.
     match state.indexer.token_info(&token_id) {
         Ok(Some(token_info)) => protobuf(StatusCode::OK, token_info),
         Ok(None) => protobuf_error(
@@ -285,6 +339,13 @@ async fn handle_token_info(
             "Unknown error, contact admins".to_string(),
         ),
     }
+}
+
+fn token_unavailable() -> Response {
+    protobuf_error(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "503: Confirmed token data unavailable".to_string(),
+    )
 }
 
 fn protobuf<P: Message>(status: StatusCode, payload: P) -> Response {
@@ -349,6 +410,15 @@ mod tests {
         bytes: Option<Vec<u8>>,
         declared_len: Option<usize>,
     ) -> (Result<Vec<u8>, StatusCode>, usize) {
+        run_fixture_for(status, bytes, declared_len, false)
+    }
+
+    fn run_fixture_for(
+        status: u64,
+        bytes: Option<Vec<u8>>,
+        declared_len: Option<usize>,
+        token: bool,
+    ) -> (Result<Vec<u8>, StatusCode>, usize) {
         let fixture = HostFixture {
             payload: Mutex::new(bytes),
             status,
@@ -360,8 +430,68 @@ mod tests {
             release: fixture_release,
             context: (&fixture as *const HostFixture) as usize,
         };
-        let result = read_host_tx(query, TxId::from([7; 32]));
+        let result = if token {
+            read_host_token(query, TxId::from([7; 32]))
+        } else {
+            read_host_tx(query, TxId::from([7; 32]))
+        };
         (result, fixture.releases.load(Ordering::SeqCst))
+    }
+
+    #[test]
+    fn token_payloads_require_identity_confirmation_and_exact_release() {
+        let token = proto::TokenInfo {
+            token_id: TxId::from([7; 32]).to_string(),
+            block: Some(proto::BlockMetadata::default()),
+            ..Default::default()
+        };
+        let bytes = token.encode_to_vec();
+        assert_eq!(
+            run_fixture_for(200, Some(bytes.clone()), None, true),
+            (Ok(bytes), 1)
+        );
+        for status in [404, 503, 500, 999] {
+            assert_eq!(
+                run_fixture_for(status, Some(vec![1]), None, true),
+                (
+                    Err(if status == 404 {
+                        StatusCode::NOT_FOUND
+                    } else {
+                        StatusCode::SERVICE_UNAVAILABLE
+                    }),
+                    1
+                )
+            );
+        }
+        for declared_len in [0, MAX_TX_RESPONSE_BYTES + 1] {
+            assert_eq!(
+                run_fixture_for(200, Some(vec![1]), Some(declared_len), true),
+                (Err(StatusCode::SERVICE_UNAVAILABLE), 1)
+            );
+        }
+        assert_eq!(
+            run_fixture_for(200, None, Some(1), true),
+            (Err(StatusCode::SERVICE_UNAVAILABLE), 0)
+        );
+        assert_eq!(
+            run_fixture_for(200, Some(vec![0xff]), None, true),
+            (Err(StatusCode::SERVICE_UNAVAILABLE), 1)
+        );
+        for token in [
+            proto::TokenInfo {
+                token_id: token.token_id.clone(),
+                ..Default::default()
+            },
+            proto::TokenInfo {
+                token_id: TxId::from([8; 32]).to_string(),
+                ..token
+            },
+        ] {
+            assert_eq!(
+                run_fixture_for(200, Some(token.encode_to_vec()), None, true),
+                (Err(StatusCode::SERVICE_UNAVAILABLE), 1)
+            );
+        }
     }
 
     #[test]

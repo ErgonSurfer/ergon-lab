@@ -116,7 +116,7 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         return block.hash, token_id, block.nTime
 
     def assert_token_info(self, token_id, expected_timestamp):
-        status, body = self.request(f"/token/{token_id}")
+        status, body = self.request_ready(f"/token/{token_id}", 200)
         assert_equal(status, 200)
         token_info = parse_protobuf(body)
         assert_equal(token_info[1][0][1].decode(), token_id)
@@ -133,10 +133,23 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         assert_equal(block[3][0][1], expected_timestamp)
 
     def assert_token_missing(self, token_id):
-        status, body = self.request(f"/token/{token_id}")
+        status, body = self.request_ready(f"/token/{token_id}", 404)
         assert_equal(status, 404)
         error = parse_protobuf(body)[2][0][1].decode()
         assert_equal(error, f"404: Token {token_id} not found in the index")
+
+    def request_ready(self, path, expected):
+        result = None
+
+        def ready():
+            nonlocal result
+            result = self.request(path)
+            # Worker lag is retriable, never a missing/confirmed-data claim.
+            assert result[0] in (expected, 503)
+            return result[0] == expected
+
+        wait_until(ready)
+        return result
 
     def assert_confirmed_tx(self, txid, block_hash, timestamp):
         result = None
@@ -166,7 +179,7 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         return result[1]
 
     def assert_tx_missing(self, txid):
-        status, body = self.request(f"/tx/{txid}")
+        status, body = self.request_ready(f"/tx/{txid}", 404)
         assert_equal(status, 404)
         assert_equal(parse_protobuf(body)[2][0][1].decode(),
                      f"404: Transaction {txid} not found in the confirmed index")
@@ -280,6 +293,54 @@ class ChronikTokenHttpTest(ChronikBlockObserverTest):
         node.syncwithvalidationinterfacequeue()
         assert_equal(self.assert_confirmed_tx(token_id, block_hash, timestamp), canonical_tx)
         self.exercise_spent_coin_read()
+        self.exercise_closed_admission(args, token_id, timestamp, block_hash, canonical_tx)
+
+    def exercise_closed_admission(self, args, token_id, timestamp, block_hash, canonical_tx):
+        node = self.nodes[0]
+        # Advance beyond the retained projection anchor in bounded batches;
+        # wait for both routes before starting the next batch.
+        while node.getblockcount() < 290:
+            node.generatetoaddress(min(50, 290 - node.getblockcount()), node.get_deterministic_priv_key().address)
+            node.syncwithvalidationinterfacequeue()
+            self.assert_token_info(token_id, timestamp)
+            self.assert_confirmed_tx(token_id, block_hash, timestamp)
+        node.invalidateblock(block_hash)
+        node.syncwithvalidationinterfacequeue()
+        wait_until(lambda: "reason=retained-anchor-disconnected recovery=restart" in self.read_log())
+        assert_equal(node.getblockcount(), 0)
+        for route in ("token", "tx"):
+            for txid in (token_id, "99" * 32):
+                status, body = self.request(f"/{route}/{txid}")
+                assert_equal(status, 503)
+                assert_equal(parse_protobuf(body)[2][0][1].decode(),
+                             "503: Confirmed token data unavailable" if route == "token"
+                             else "503: Confirmed transaction data unavailable")
+        # Even restoring the active chain cannot reopen an irreversibly closed
+        # observer. Consensus remains live; recovery requires restart.
+        node.reconsiderblock(block_hash)
+        node.syncwithvalidationinterfacequeue()
+        assert_equal(node.getblockcount(), 290)
+        for route in ("token", "tx"):
+            assert_equal(self.request(f"/{route}/{token_id}")[0], 503)
+        # Closure leaves the persistent runtime behind the restored chain.
+        # Restart must not serve this mismatched index; explicit reindex is
+        # required, unlike an ordinary restart with a matching persistent tip.
+        with node.assert_debug_log([
+            "reason=tip-mismatch recovery=reindex",
+            "Chronik token service state=disabled reason=runtime-unavailable",
+        ]):
+            self.restart_node(0, extra_args=args)
+        assert_equal(node.getblockcount(), 290)
+        try:
+            self.request(f"/token/{token_id}")
+        except ConnectionRefusedError:
+            pass
+        else:
+            raise AssertionError("mismatched runtime must not start the HTTP service")
+        self.restart_node(0, extra_args=args + ["-reindex=1"])
+        node.syncwithvalidationinterfacequeue()
+        self.assert_token_info(token_id, timestamp)
+        assert_equal(self.assert_confirmed_tx(token_id, block_hash, timestamp), canonical_tx)
 
 
 if __name__ == "__main__":

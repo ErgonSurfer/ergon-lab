@@ -140,7 +140,7 @@ pub extern "C" fn chronik_runtime_start_token_service(
     address: *const u8,
     address_len: usize,
 ) -> RuntimeServiceStart {
-    start_service(runtime, address, address_len, None)
+    start_service(runtime, address, address_len, None, None)
 }
 
 /// The host owns context until destroy has stopped and joined the HTTP service.
@@ -169,6 +169,43 @@ pub extern "C" fn chronik_runtime_start_query_service(
             release,
             context,
         }),
+        None,
+    )
+}
+
+/// Node-only guarded token and transaction queries. Preserve both older ABIs;
+/// do not silently change the guarantees of a standalone Rust caller.
+#[no_mangle]
+pub extern "C" fn chronik_runtime_start_guarded_query_service(
+    runtime: *const std::ffi::c_void,
+    address: *const u8,
+    address_len: usize,
+    tx_query: Option<HostTxQueryFn>,
+    token_query: Option<HostTxQueryFn>,
+    release: Option<HostTxReleaseFn>,
+    context: usize,
+) -> RuntimeServiceStart {
+    let (Some(tx_query), Some(token_query), Some(release)) = (tx_query, token_query, release)
+    else {
+        return service_error(ERROR_INVALID_ARGUMENT);
+    };
+    if context == 0 {
+        return service_error(ERROR_INVALID_ARGUMENT);
+    }
+    start_service(
+        runtime,
+        address,
+        address_len,
+        Some(HostTxQuery {
+            query: tx_query,
+            release,
+            context,
+        }),
+        Some(HostTxQuery {
+            query: token_query,
+            release,
+            context,
+        }),
     )
 }
 
@@ -177,6 +214,7 @@ fn start_service(
     address: *const u8,
     address_len: usize,
     tx_query: Option<HostTxQuery>,
+    token_query: Option<HostTxQuery>,
 ) -> RuntimeServiceStart {
     catch_unwind(AssertUnwindSafe(|| {
         let Some(runtime) = runtime_ref(runtime) else {
@@ -194,7 +232,12 @@ fn start_service(
         if service.is_some() {
             return service_error(ERROR_SERVICE_ACTIVE);
         }
-        match TokenService::start_with_tx_query(Arc::clone(&runtime.indexer), address, tx_query) {
+        match TokenService::start_with_queries(
+            Arc::clone(&runtime.indexer),
+            address,
+            tx_query,
+            token_query,
+        ) {
             Ok(started) => {
                 let port = u64::from(started.port());
                 *service = Some(started);
@@ -822,6 +865,237 @@ mod tests {
         assert!(!prematurely_stopped);
         assert_eq!(client_result.unwrap().0, 200);
         assert_eq!(shutdown_result.unwrap(), STATUS_OK);
+        assert_eq!(host.releases.load(Ordering::SeqCst), 3);
+        assert!(host.owned.lock().unwrap().is_none());
+        assert!(TcpStream::connect(("127.0.0.1", port)).is_err());
+    }
+
+    #[test]
+    fn guarded_token_http_shares_admission_and_joins_callbacks() {
+        use crate::token_service::HostTxResponse;
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+        struct Host {
+            owned: Mutex<Option<Vec<u8>>>,
+            releases: AtomicUsize,
+            entered: AtomicBool,
+            unblock: AtomicBool,
+        }
+        fn read(context: usize, txid: *const u8, token: bool) -> HostTxResponse {
+            let host = unsafe { &*(context as *const Host) };
+            let txid = TxId::from(unsafe { *(txid as *const [u8; 32]) });
+            for (value, status) in [(99, 404), (55, 503)] {
+                if txid == TxId::from([value; 32]) {
+                    return HostTxResponse {
+                        status,
+                        payload: ptr::null_mut(),
+                        payload_len: 0,
+                    };
+                }
+            }
+            if txid == TxId::from([44; 32]) {
+                host.entered.store(true, Ordering::Release);
+                while !host.unblock.load(Ordering::Acquire) {
+                    thread::sleep(Duration::from_millis(1));
+                }
+            }
+            let bytes = if token {
+                proto::TokenInfo {
+                    token_id: txid.to_string(),
+                    block: Some(proto::BlockMetadata::default()),
+                    ..Default::default()
+                }
+                .encode_to_vec()
+            } else {
+                proto::Tx {
+                    txid: txid.to_vec(),
+                    block: Some(proto::BlockMetadata::default()),
+                    ..Default::default()
+                }
+                .encode_to_vec()
+            };
+            let mut owned = host.owned.lock().unwrap();
+            assert!(owned.is_none());
+            *owned = Some(bytes);
+            let bytes = owned.as_mut().unwrap();
+            HostTxResponse {
+                status: 200,
+                payload: bytes.as_mut_ptr(),
+                payload_len: bytes.len(),
+            }
+        }
+        extern "C" fn tx(context: usize, id: *const u8) -> HostTxResponse {
+            read(context, id, false)
+        }
+        extern "C" fn token(context: usize, id: *const u8) -> HostTxResponse {
+            read(context, id, true)
+        }
+        extern "C" fn release(context: usize, payload: *mut u8) {
+            let host = unsafe { &*(context as *const Host) };
+            let bytes = host.owned.lock().unwrap().take().unwrap();
+            assert_eq!(bytes.as_ptr(), payload);
+            host.releases.fetch_add(1, Ordering::SeqCst);
+        }
+        let tempdir = tempdir::TempDir::new("chronik-guarded-token-http").unwrap();
+        let path = tempdir.path().to_str().unwrap().as_bytes();
+        let runtime = chronik_runtime_create(path.as_ptr(), path.len(), 0);
+        assert!(!runtime.is_null());
+        let host = Host {
+            owned: Mutex::new(None),
+            releases: AtomicUsize::new(0),
+            entered: AtomicBool::new(false),
+            unblock: AtomicBool::new(false),
+        };
+        struct RuntimeGuard(*mut std::ffi::c_void);
+        impl Drop for RuntimeGuard {
+            fn drop(&mut self) {
+                if !self.0.is_null() {
+                    chronik_runtime_destroy(self.0);
+                }
+            }
+        }
+        let mut guard = RuntimeGuard(runtime);
+        let context = (&host as *const Host) as usize;
+        let address = b"127.0.0.1:0";
+        for (tx_query, token_query, release_query, ctx) in [
+            (
+                None,
+                Some(token as HostTxQueryFn),
+                Some(release as HostTxReleaseFn),
+                context,
+            ),
+            (
+                Some(tx as HostTxQueryFn),
+                None,
+                Some(release as HostTxReleaseFn),
+                context,
+            ),
+            (
+                Some(tx as HostTxQueryFn),
+                Some(token as HostTxQueryFn),
+                None,
+                context,
+            ),
+            (
+                Some(tx as HostTxQueryFn),
+                Some(token as HostTxQueryFn),
+                Some(release as HostTxReleaseFn),
+                0,
+            ),
+        ] {
+            assert_eq!(
+                chronik_runtime_start_guarded_query_service(
+                    runtime,
+                    address.as_ptr(),
+                    address.len(),
+                    tx_query,
+                    token_query,
+                    release_query,
+                    ctx
+                )
+                .error_code,
+                ERROR_INVALID_ARGUMENT
+            );
+        }
+        let started = chronik_runtime_start_guarded_query_service(
+            runtime,
+            address.as_ptr(),
+            address.len(),
+            Some(tx),
+            Some(token),
+            Some(release),
+            context,
+        );
+        assert_eq!(started.success, STATUS_OK);
+        let port = started.port as u16;
+        let id = TxId::from([7; 32]);
+        let (status, content_type, bytes) = http_get(port, &format!("/token/{id}"));
+        assert_eq!(status, 200);
+        assert_eq!(content_type, CONTENT_TYPE_PROTOBUF);
+        assert_eq!(
+            proto::TokenInfo::decode(bytes.as_slice()).unwrap().token_id,
+            id.to_string()
+        );
+        for route in ["token", "tx"] {
+            for (id, status) in [
+                ("not-a-txid".to_string(), 400),
+                (TxId::from([99; 32]).to_string(), 404),
+                (TxId::from([55; 32]).to_string(), 503),
+            ] {
+                let (actual, content_type, bytes) = http_get(port, &format!("/{route}/{id}"));
+                assert_eq!(actual, status);
+                assert_eq!(content_type, CONTENT_TYPE_PROTOBUF);
+                assert!(!proto::Error::decode(bytes.as_slice())
+                    .unwrap()
+                    .msg
+                    .is_empty());
+            }
+        }
+        // Test both directions: a token read excludes a transaction read and
+        // vice versa. The sole permit also protects the shared host allocation.
+        for blocked_route in ["tx", "token"] {
+            host.entered.store(false, Ordering::Release);
+            host.unblock.store(false, Ordering::Release);
+            let client = thread::spawn(move || {
+                // The previous HTTP body can still be dropping after its
+                // client has read EOF. Retry admission, not the host work.
+                for _ in 0..1000 {
+                    let result =
+                        http_get(port, &format!("/{blocked_route}/{}", TxId::from([44; 32])));
+                    if result.0 != 503 {
+                        return result;
+                    }
+                    thread::sleep(Duration::from_millis(1));
+                }
+                panic!("shared HTTP admission did not become available");
+            });
+            struct UnblockOnDrop<'a>(&'a AtomicBool);
+            impl Drop for UnblockOnDrop<'_> {
+                fn drop(&mut self) {
+                    self.0.store(true, Ordering::Release);
+                }
+            }
+            let _unblock_on_failure = UnblockOnDrop(&host.unblock);
+            for _ in 0..1000 {
+                if host.entered.load(Ordering::Acquire) {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(1));
+            }
+            if !host.entered.load(Ordering::Acquire) {
+                host.unblock.store(true, Ordering::Release);
+                let _ = client.join();
+                panic!("guarded callback did not start");
+            }
+            for route in ["token", "tx"] {
+                assert_eq!(http_get(port, &format!("/{route}/{id}")).0, 503);
+            }
+            if blocked_route == "token" {
+                let runtime_address = std::mem::replace(&mut guard.0, ptr::null_mut()) as usize;
+                let stopped = Arc::new(AtomicBool::new(false));
+                let stop_flag = Arc::clone(&stopped);
+                let (entered, entered_rx) = std::sync::mpsc::channel();
+                let shutdown = thread::spawn(move || {
+                    let _ = entered.send(());
+                    let result = chronik_runtime_destroy(runtime_address as *mut std::ffi::c_void);
+                    stop_flag.store(true, Ordering::Release);
+                    result
+                });
+                let entered_result = entered_rx.recv_timeout(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(25));
+                let prematurely_stopped = stopped.load(Ordering::Acquire);
+                host.unblock.store(true, Ordering::Release);
+                let client_result = client.join();
+                let shutdown_result = shutdown.join();
+                assert!(entered_result.is_ok());
+                assert!(!prematurely_stopped);
+                assert_eq!(client_result.unwrap().0, 200);
+                assert_eq!(shutdown_result.unwrap(), STATUS_OK);
+            } else {
+                host.unblock.store(true, Ordering::Release);
+                assert_eq!(client.join().unwrap().0, 200);
+            }
+        }
         assert_eq!(host.releases.load(Ordering::SeqCst), 3);
         assert!(host.owned.lock().unwrap().is_none());
         assert!(TcpStream::connect(("127.0.0.1", port)).is_err());

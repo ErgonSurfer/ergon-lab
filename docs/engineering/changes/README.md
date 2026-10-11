@@ -72,9 +72,12 @@ datadir, and deep-reorganization failure behavior. Chronik remains optional,
 off by default, local-regtest opt-in only, and observe/index-only. A single
 loopback-only confirmed-token query is available under explicit local-regtest
 opt-in. The canonical node-storage reader and bounded C++/Rust transaction
-bridge are integrated. The next active slice exposes confirmed transactions
-at `/tx/:txid`, with nonblocking query admission, an active-tip snapshot check,
-explicit storage-unavailable responses and request-lifetime protection. It
+bridge and confirmed `/tx/:txid` HTTP route are integrated, with nonblocking
+query admission, an active-tip snapshot check, explicit storage-unavailable
+responses and request-lifetime protection. The next active slice applies the
+same freshness guard to the existing `/token/:txid` route and shares one
+response budget across both routes. Neither a busy nor a degraded observer
+may present stale metadata as a successful lookup or a definitive 404. It
 creates no duplicate transaction store. Histories, spend-state queries, UTXOs,
 mempool indexing, independent reproduction, production deployment, and every
 consensus activation remain later work.

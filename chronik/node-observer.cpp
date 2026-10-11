@@ -98,6 +98,14 @@ struct ChronikRuntimeServiceStart {
 
 static_assert(sizeof(ChronikRuntimeServiceStart) == 3 * sizeof(uint64_t));
 
+struct ChronikRuntimeTokenQuery {
+    uint64_t success;
+    uint64_t error_code;
+    uint64_t present;
+    uint64_t payload_len;
+};
+static_assert(sizeof(ChronikRuntimeTokenQuery) == 4 * sizeof(uint64_t));
+
 // Match the active-chain suffix that the legacy node guarantees to retain.
 constexpr int32_t CHRONIK_OBSERVER_RETAINED_BLOCKS = MIN_BLOCKS_TO_KEEP;
 // Cover the governed 288-block observer window plus callback bursts while
@@ -127,10 +135,14 @@ uint64_t chronik_runtime_destroy(void *runtime);
 ChronikRuntimeTip chronik_runtime_tip(const void *runtime);
 ChronikRuntimeServiceStart chronik_runtime_start_token_service(
     const void *runtime, const uint8_t *address, size_t address_size);
-ChronikRuntimeServiceStart chronik_runtime_start_query_service(
+ChronikRuntimeServiceStart chronik_runtime_start_guarded_query_service(
     const void *runtime, const uint8_t *address, size_t address_size,
-    chronik::HostTxQueryFn query, chronik::HostTxReleaseFn release,
+    chronik::HostTxQueryFn tx_query, chronik::HostTxQueryFn token_query,
+    chronik::HostTxReleaseFn release,
     uintptr_t context);
+ChronikRuntimeTokenQuery chronik_runtime_token_info(
+    const void *runtime, const uint8_t *token_id, uint8_t *output,
+    size_t output_capacity);
 ChronikRuntimeMutation chronik_runtime_connect(
     const void *runtime, const uint8_t *hash, int32_t height,
     const uint8_t *raw_block, size_t raw_block_size);
@@ -231,6 +243,48 @@ public:
         }
     }
 
+    chronik::HostTxResponse QueryToken(const uint8_t *token_id) noexcept {
+        try {
+            auto lock = m_admission.TryQuery();
+            if (!lock.owns_lock() || !token_id || !m_runtime ||
+                !m_admission.IsOpen()) {
+                return {503, nullptr, 0};
+            }
+            const auto tip = chronik_runtime_tip(m_runtime);
+            if (!TipIsCurrent(tip)) {
+                return {503, nullptr, 0};
+            }
+            // Reuse the existing canonical token query. Keep both sizing and
+            // copy under the worker/query gate: separate DB reads must not
+            // straddle a connect or rollback batch.
+            const auto sized = chronik_runtime_token_info(
+                m_runtime, token_id, nullptr, 0);
+            if (sized.success != 1 || sized.error_code != 0) {
+                return {503, nullptr, 0};
+            }
+            if (sized.present == 0 && sized.payload_len == 0) {
+                return {TipIsCurrent(tip) ? uint64_t(404) : uint64_t(503),
+                        nullptr, 0};
+            }
+            constexpr size_t MAX_TOKEN_RESPONSE_BYTES = 64 * 1024 * 1024;
+            if (sized.present != 1 || sized.payload_len == 0 ||
+                sized.payload_len > MAX_TOKEN_RESPONSE_BYTES) {
+                return {503, nullptr, 0};
+            }
+            auto owned = std::make_unique<uint8_t[]>(sized.payload_len);
+            const auto copied = chronik_runtime_token_info(
+                m_runtime, token_id, owned.get(), sized.payload_len);
+            if (copied.success != 1 || copied.error_code != 0 ||
+                copied.present != 1 || copied.payload_len != sized.payload_len ||
+                !TipIsCurrent(tip)) {
+                return {503, nullptr, 0};
+            }
+            return {200, owned.release(), sized.payload_len};
+        } catch (...) {
+            return {503, nullptr, 0};
+        }
+    }
+
     uint64_t Destroy() noexcept {
         CloseQueries();
         m_closing.store(true, std::memory_order_release);
@@ -269,6 +323,14 @@ extern "C" chronik::HostTxResponse QueryConfirmedTx(
 
 extern "C" void ReleaseConfirmedTx(uintptr_t, uint8_t *payload) noexcept {
     delete[] payload;
+}
+
+extern "C" chronik::HostTxResponse QueryConfirmedToken(
+    uintptr_t context, const uint8_t *token_id) noexcept {
+    if (context == 0) {
+        return {503, nullptr, 0};
+    }
+    return reinterpret_cast<RustRuntimeHandle *>(context)->QueryToken(token_id);
 }
 
 std::array<uint8_t, 32> CopyHash(const uint256 &hash) {
@@ -447,10 +509,11 @@ public:
             return false;
         }
         const ChronikRuntimeServiceStart service =
-            chronik_runtime_start_query_service(
+            chronik_runtime_start_guarded_query_service(
                 m_runtime->Get(),
                 reinterpret_cast<const uint8_t *>(address.data()),
-                address.size(), QueryConfirmedTx, ReleaseConfirmedTx,
+                address.size(), QueryConfirmedTx, QueryConfirmedToken,
+                ReleaseConfirmedTx,
                 reinterpret_cast<uintptr_t>(m_runtime.get()));
         if (service.success == 0) {
             LogPrintf("Chronik token service state=disabled "

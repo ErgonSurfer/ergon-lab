@@ -91,7 +91,9 @@ default port, so compiling or enabling the observer alone opens no socket. The
 route and response contract match upstream Chronik: `GET /token/:txid` returns
 `application/x-protobuf` with canonical `TokenInfo`; malformed transaction IDs
 return protobuf error 400, and unknown or non-genesis IDs return protobuf error
-404. `GET /tx/:txid` returns the canonical confirmed `Tx` protobuf: malformed
+404 only when the accepted index is current. Both routes return protobuf 503
+when query admission is busy, observation is lagging, degraded or closing.
+`GET /tx/:txid` returns the canonical confirmed `Tx` protobuf: malformed
 IDs return protobuf error 400, absent confirmed transactions return 404, and
 busy, lagging, degraded or storage-unavailable queries return 503. Neither
 route includes mempool, UTXO, history, WebSocket, plugin, wallet or consensus
@@ -328,15 +330,32 @@ metadata. Removal after capture can still make disk I/O unavailable and is
 reported as 503. A concurrent-pruning canary exercises that failure boundary;
 it is not a data-race detector or formal concurrency proof.
 
+The node uses a distinct guarded-query service ABI for both routes, preserving
+the older standalone token-only and transaction-query service entry points.
+Those older Rust entry points do not claim node active-tip freshness for token
+queries. The node's token sizing/copy calls reuse the existing canonical query
+under the same mutation/query gate as transaction reads; token lookup adds no
+new ancestry engine, schema or database. Both successful and missing results
+require accepted-tip/active-tip agreement before and after the lookup.
+
 The host owns each C ABI response allocation until Rust copies and releases it
-exactly once. One HTTP transaction permit is retained through the response-body
-lifetime, including cloned body bytes and slow readers; additional transaction
+exactly once. One shared HTTP token/transaction permit is retained through the response-body
+lifetime, including cloned body bytes and slow readers; additional
 requests receive 503 rather than queuing another large result. Shutdown joins
 service and blocking request work before releasing the host context, even when
 the event envelope has detached its self-owned indexing worker. A later worker
 mutation then rejects the closed runtime. This is a
 lifetime guarantee, not a hard shutdown deadline: a stalled storage read or
 slow network client can still delay graceful shutdown.
+
+The HTTP deep-reorganization canary disconnects below the retained projection
+anchor, checks protobuf 503 for both known and unknown token/transaction IDs,
+and verifies that reconsidering the chain leaves admission closed. Node RPC
+and chain selection continue independently. If the persistent index tip no
+longer matches the restored chain, ordinary restart leaves HTTP disabled;
+explicit full reindex recovers canonical token metadata and transaction bytes.
+Ordinary rollback, matching-tip restart and both reindex modes are checked
+separately. These are bounded component checks, not mainnet readiness.
 
 ALP and SLP token annotations use the accepted ancestry database and preserve
 upstream protobuf types. This confirmed-only representation currently leaves
