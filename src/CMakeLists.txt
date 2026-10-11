@@ -525,6 +525,7 @@ target_link_libraries(server
 
 if(BUILD_CHRONIK_OBSERVER)
 	target_sources(server PRIVATE
+		../chronik/confirmed-tx-reader.cpp
 		../chronik/event-envelope.cpp
 		../chronik/node-observer.cpp
 	)

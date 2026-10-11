@@ -94,6 +94,16 @@ return protobuf error 400, and unknown or non-genesis IDs return protobuf error
 404. The initial surface is confirmed-state only. It contains no mempool,
 transaction, UTXO, history, WebSocket, plugin, wallet or consensus API.
 
+The next transaction-query foundation deliberately reuses the node's canonical
+block and undo storage instead of copying transaction bodies into RocksDB. A
+compiled-in reader resolves only an active-chain block identity, loads its
+`blk` and `rev` data through the inherited node primitives, selects the exact
+transaction, and positionally binds every spent coin to its input. Missing or
+pruned storage, a mismatched block or transaction identity, incomplete undo
+data, and a concurrent reorganization all fail the read. This foundation opens
+no route by itself; the Rust bridge and `GET /tx/:txid` surface remain a later
+reviewed slice.
+
 For each accepted block-connected callback, C++ serializes the immutable
 `CBlock` once with the canonical network serializer. The C ABI copies those
 bytes once into an owned Rust buffer and moves that buffer through a bounded
@@ -256,6 +266,9 @@ cmake -S . -B /absolute/path/build-observer -GNinja \
   -DCHRONIK_LIBCLANG_DIR=/absolute/path/to/libclang
 cmake --build /absolute/path/build-observer --target bitcoind
 cmake --build /absolute/path/build-observer --target check-chronik-observer
+/absolute/path/build-observer/src/test/test_bitcoin \
+  --run_test=chronik_confirmed_tx_reader_tests \
+  --report_level=short --log_level=message --color_output=no
 ```
 
 Run the opt-in functional boundary only with the compiled-in build:

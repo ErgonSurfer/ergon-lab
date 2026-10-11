@@ -200,7 +200,12 @@ add_boost_unit_tests_to_suite(bitcoin test_bitcoin
 )
 
 if(BUILD_CHRONIK_OBSERVER)
-	target_sources(test_bitcoin PRIVATE chronik_event_envelope_tests.cpp)
+	target_sources(test_bitcoin PRIVATE
+		../../chronik/confirmed-tx-reader.cpp
+		chronik_confirmed_tx_reader_tests.cpp
+		chronik_event_envelope_tests.cpp
+	)
+	target_include_directories(test_bitcoin PRIVATE "${CMAKE_SOURCE_DIR}")
 	target_compile_definitions(test_bitcoin PRIVATE ENABLE_CHRONIK_OBSERVER=1)
 endif()
 

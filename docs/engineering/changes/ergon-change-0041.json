@@ -1,0 +1,329 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0041",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0041.json",
+  "purpose": {
+    "summary": "Add the read-only node-storage foundation for a future upstream-compatible confirmed transaction query, without opening a route or duplicating transaction bodies in Chronik storage.",
+    "scope": [
+      "Resolve an indexed block identity only when it is on the active chain and re-check that identity after disk I/O.",
+      "Read canonical block and undo data through the inherited Bitcoin Static storage primitives.",
+      "Select the exact transaction and positionally bind every spent coin to its corresponding input.",
+      "Fail closed on unavailable or pruned data, identity contradictions, incomplete undo data and concurrent reorganization."
+    ],
+    "exclusions": [
+      "No HTTP, RPC, Rust bridge, transaction response, spent-by lookup, mempool query, UTXO query, history, websocket, plugin or wallet surface is added.",
+      "No consensus, validation, activation, chain-selection, P2P, network-identity or mainnet parameter behavior changes.",
+      "No duplicate transaction-body database, private source, history, operator data, incoming evidence, binary, cache, build output or host-specific path is tracked."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "acb0dd71e44606be38891eaa3383a28428306d15",
+      "tree": "396a4b7b7a4432221a43b9bdf47e4441931865ea"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "0103e80300daa86672ea0a799116089860c7a8f33a01511d01fd2fdcef72f8f5",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "test",
+      "before": {"mode": "100644", "bytes": 4671, "git_blob": "7bdf2c40134b9ee09beb839022a2ff8d1745b630", "sha256": "d27aeb488586b20219f30000d136b2173a23d4a93a0307edf6ae9edfdac07ddd"},
+      "after": {"mode": "100644", "bytes": 4901, "git_blob": "0545715de70a6642373433f66a64d9f5b63f26a5", "sha256": "7db618a7c6d4af547b4e7e6fbe1e8c09ba95e557f3966c96f1c45dbc2aa1b5a5"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public CI coverage for the optional default-off Chronik adapter.",
+      "test_reachability": "Runs the focused confirmed transaction reader suite before the existing envelope and functional matrices."
+    },
+    {
+      "path": "chronik/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {"mode": "100644", "bytes": 15163, "git_blob": "0910fa7d7e94bf6ad7f59d1b08280a7ae65c9ce2", "sha256": "b9339c3c59e6f4b3d3ed3f22aaefa627b86ef8f7ac273b1718ee7cabf0dc66d4"},
+      "after": {"mode": "100644", "bytes": 15965, "git_blob": "eceead4dece956eba95aabfe0bdc3ce2e4e9f01f", "sha256": "3f45620e9c961d5d451a8621a6f0b2c28fae1601fe62e4fc847d42755d94d649"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; documents the node-storage reader boundary and explicit absence of a transaction route.",
+      "test_reachability": "Documents the focused native unit-test command."
+    },
+    {
+      "path": "chronik/confirmed-tx-reader.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {"mode": "100644", "bytes": 3622, "git_blob": "22569e7913739a8cf0dc3cb407a74ea404559efa", "sha256": "6b2bd8f26e16b52ebd566af8c2958ce0b0bcaee223a1f72300a8e5ef8405b24d"},
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784D+A1",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-cpp/chronik_bridge.cpp",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Compiled only with BUILD_CHRONIK_OBSERVER and reads canonical active-chain blk/rev data when a later bridge invokes it.",
+      "test_reachability": "The pure selection boundary is linked into the observer-only native unit suite."
+    },
+    {
+      "path": "chronik/confirmed-tx-reader.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {"mode": "100644", "bytes": 1910, "git_blob": "808700e224f3d464349d7cbfbe4a446217b5bf08", "sha256": "0840c2c1f3929e16a71de0fb2a8a85fd0f82bf31c708191a10825e39ea696641"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Defines the observer-only confirmed transaction and spent-coin result contract.",
+      "test_reachability": "Exposes the pure fail-closed selector for native unit tests."
+    },
+    {
+      "path": "docs/engineering/changes/README.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {"mode": "100644", "bytes": 4440, "git_blob": "aede7fc508a5b5d4b3f1e5041c725d1815a87d63", "sha256": "bcf366031e0454b556a47cc2fb58f10a47179a9c79521ddc5e3759b997983598"},
+      "after": {"mode": "100644", "bytes": 4616, "git_blob": "57ff6c6548d9d89d11a3239abf75e410c61f49ea", "sha256": "0910e9daf97e23b50deb8ae71873a0d4dfdda2822cbe2e390026cc8816285217"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; public engineering-sequence description.",
+      "test_reachability": "Clarifies that this active slice opens no route."
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 16955, "git_blob": "209e8f9da2bbd70e4becc28534a3ffe071ea8799", "sha256": "42454d12730fecf2a11141af222ba93877850cfe905a837f8e54c4759c0f4e8a"},
+      "after": {"mode": "100644", "bytes": 16992, "git_blob": "5add8fba0ad4279547aac78ff4a8ab2b7e0a9f85", "sha256": "ac9b8f2400cf8d5117679f57c3d9a345e248652fe26a1eab9ba532ec49be35ba"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "Links the reader into server only in the compiled observer profile.",
+      "test_reachability": "Compiled-out dry-run verifies the reader is absent when BUILD_CHRONIK_OBSERVER is OFF."
+    },
+    {
+      "path": "src/test/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {"mode": "100644", "bytes": 5764, "git_blob": "96a5575f17c9a049d3804996a567e580bed19039", "sha256": "27bc767e128ba68036f3eaaf8510554f2fa70be0ee7571a99421b0cd6a8d4890"},
+      "after": {"mode": "100644", "bytes": 5920, "git_blob": "e4c0edafc0c44ea011526b1366465664299dfe4c", "sha256": "7b64b2b3aaeb7caf11c5474c424ee189a45ad71bc592de8b8f298b714c2a23ad"},
+      "provenance": {"kind": "independent-authorship", "code": "BASE+A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; observer-only native test construction.",
+      "test_reachability": "Builds the reader and its focused unit suite only in the observer profile."
+    },
+    {
+      "path": "src/test/chronik_confirmed_tx_reader_tests.cpp",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {"mode": "100644", "bytes": 4222, "git_blob": "1cfb65814191cc4c5e0b48a292309e3e10910e97", "sha256": "27219fdc3ddc3f0e300bf7d94546d1d66fcd2c44e81c01adb2bf9a0d69626044"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"},
+      "spdx": "MIT",
+      "production_reachability": "None; native unit tests only.",
+      "test_reachability": "Covers coinbase, positional spent coins, missing or misaligned undo and block or transaction identity contradictions."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": false,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": ["Configure the standalone node with BUILD_CHRONIK_OBSERVER=OFF and inspect the generated bitcoind build graph."],
+        "expected_results": ["The confirmed transaction reader is absent from the build graph and node behavior remains unchanged."]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": ["Build test_bitcoin and bitcoind with BUILD_CHRONIK_OBSERVER=ON while leaving runtime observer opt-in disabled."],
+        "expected_results": ["The reader compiles, no Chronik database or socket opens, and the node remains standalone."]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": ["Run chronik_confirmed_tx_reader_tests and the existing chronik_event_envelope_tests in fresh processes."],
+        "expected_results": ["Canonical transaction selection and spent-coin alignment pass without weakening the existing event boundary."]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run chronik_confirmed_tx_reader_tests and the existing explicit local-regtest observer scenarios against the observer-enabled native build.",
+        "expected_results": ["Four reader tests and 27 assertions pass, including the fail-closed identity and undo cases, while observer opt-in remains explicit."],
+        "failure_conditions": ["Wrong transaction selection, missing or misaligned spent coin accepted, identity contradiction accepted, implicit observer state, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the existing restart scenario and repeat the focused reader unit suite in separate fresh processes.",
+        "expected_results": ["Restart reconstruction remains stable and the reader preserves exact transaction and spent-coin selection."],
+        "failure_conditions": ["Reconstruction drift, reader regression, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the existing full-reindex observer scenario with the compiled reader present.",
+        "expected_results": ["The accepted index rebuilds without changing node validation or invoking an unregistered transaction route."],
+        "failure_conditions": ["Stale state, node-authority effect, unexpected route, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the existing chainstate-reindex observer scenario with the compiled reader present.",
+        "expected_results": ["Ordered callbacks rebuild queryable state while the reader remains a passive node-storage adapter."],
+        "failure_conditions": ["Stale state, validation effect, unexpected route, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the existing pruned-datadir observer scenario and retain the reader's unavailable-data failure law.",
+        "expected_results": ["Unavailable historical blk or rev data fails the read and cannot affect node correctness."],
+        "failure_conditions": ["Partial transaction result, node shutdown, validation effect, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the existing deep-reorganization scenario and the reader identity-contradiction unit cases.",
+        "expected_results": ["Observer contradictions remain isolated and an active-chain identity change cannot produce a silent orphan transaction result."],
+        "failure_conditions": ["Orphan result, stale observer state, node-authority effect, skip, timeout or nonzero exit."],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": true,
+      "platforms": ["ubuntu-24.04", "macos-26-arm64-local-observation"],
+      "lock_reference": "chronik/Cargo.lock SHA-256 849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17"
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": ["public-root", "integration-parent", "candidate"],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "This slice exposes no public transaction route; the Rust bridge, canonical transaction protobuf and HTTP integration remain later work.",
+    "Historical transaction reads require the relevant canonical blk and rev data to remain available; pruned or unavailable data fails the query.",
+    "Spent-by, mempool, histories, UTXOs, websockets, plugins and independent public reproduction remain outside this slice.",
+    "The local macOS result is a component observation only; public CI and review are still pending."
+  ],
+  "counterevidence": [
+    "The first native build attempt found async-trait 0.1.92 absent from the isolated offline Cargo cache; a locked fetch into the task-specific cache resolved the declared dependency without changing source or lock bytes.",
+    "The first native Rust bridge build could not discover libclang automatically; binding CHRONIK_LIBCLANG_DIR to the Xcode toolchain completed the build without changing source.",
+    "The reader deliberately returns no result when canonical block or undo data is missing instead of falling back to a partial or duplicate Chronik record."
+  ],
+  "decision": {"status": "pending"}
+}
