@@ -86,8 +86,17 @@ def check_helpers(root):
     require((root / path).read_text() == expected, "plugin engine delta exceeds exact include-path adaptation")
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_plugin_restart import MANIFEST as RESTART_MANIFEST, PARENT as RESTART_PARENT
+    from check_chronik_plugin_restart import validate as validate_restart
+    if not historical and (root / RESTART_MANIFEST).exists():
+        return validate_restart(root) | validate(root, historical=True)
+    def observed(path):
+        if not historical:
+            return current_identity(root, path)
+        entry = git(root, "ls-tree", RESTART_PARENT, "--", path).decode().split()
+        return identity(git(root, "show", RESTART_PARENT + ":" + path), entry[0])
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE,
             "public plugin parent tree drift")
     require(git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "parent not an ancestor")
@@ -105,13 +114,15 @@ def validate(root):
                     "chronik/chronik-plugin-impl/python/upstream/") else "PUBLIC+A1/MIT")
                 and row["reachability"] == "opt-in-build-or-test-only", "plugin provenance/row drift")
         require(row["before"] == before_identity(root, row["path"])
-                and row["after"] == current_identity(root, row["path"])
+                and row["after"] == observed(row["path"])
                 and row["after"]["mode"] == "100644", "plugin pre/postimage drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, RESTART_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected plugin implementation/policy path")
     for path in changed:
-        require(current_identity(root, path)["mode"] == "100644", "nonregular or executable plugin path")
+        require(observed(path)["mode"] == "100644", "nonregular or executable plugin path")
     change_path = "docs/engineering/changes/ergon-change-0047.json"
     change = load_json(root / change_path)
     require(change["change_id"] == "ERGON-CHANGE-0047" and
@@ -125,7 +136,7 @@ def validate(root):
             ("git_blob_sha1" if k == "git_blob" else k): v for k, v in value.items()}
     for row in change["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]),
+                governed(row["after"]) == observed(row["path"]),
                 "plugin governance pre/postimage drift")
     for path in ("src/coins.cpp", "src/coins.h", "src/dbwrapper.cpp", "src/dbwrapper.h",
                  "src/txdb.cpp", "src/txdb.h", "src/chain.cpp", "src/chain.h", "src/txmempool.cpp",

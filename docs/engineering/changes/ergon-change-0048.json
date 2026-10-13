@@ -1,0 +1,639 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0048",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0048.json",
+  "purpose": {
+    "summary": "Witness plugin restart in independent native processes, exact incompatible-version refusals and explicit new-root reconstruction using existing Chronik upstream machinery.",
+    "scope": [
+      "Generate only a public fixture corpus of 101 natively accepted blocks and three synthetic zero-value transactions. Every child replays blocks through ProcessNewBlock and admits the pending descendant through the native mempool.",
+      "Own one interpreter per fresh process. Reload only the exact public fixture source/configuration before Python initialization, with no recreation or overwrite fallback.",
+      "Separate operational identity refusal from the exact upstream PluginVersionMismatch in a negative setup oracle that never returns an indexer, Ready or HTTP owner.",
+      "Require original version-1 identity preservation and a successful fresh version-1 reopen after refusal; DB operational logs are not claimed byte-identical.",
+      "Refuse a partial reconstruction after native source drift and refuse its failed root in another process. Reconstruct version 2 in a distinct empty root using upstream setup/resync, never editing identities or requesting wipe_db.",
+      "Run eight fresh phases per repetition, compare native source and real ordered plugin response commitments, and preserve the original 48/2385 enabled and 45/2291 disabled component selections.",
+      "Keep dependencies, public donor helpers, native consensus, optional defaults, original manifests and earlier records unchanged."
+    ],
+    "exclusions": [
+      "No daemon startup hook, merge, activation, server access, deployment, cutover, release or desktop integration.",
+      "No custom operator plugin, production database migration, parallel plugin/indexer algorithm, token-consensus or native-validation change.",
+      "No incoming evidence, private history, operator datadir, binary, cache, host metadata or unreviewed donor artifact."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "ac40aa814528333ddb88049ea3ec3bb7e7a34cd3",
+      "tree": "df700d15336b8d02e5de50df03ffc1b21b32ca68"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "43c9aa9adaed0b7da5f37dca86e97692d340492344734aae185a6b5eeac19ea9",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 7474,
+        "git_blob": "1945d1408c4ca9e3050b9330af275c3f0d76e145",
+        "sha256": "4e30e61365f818cdeef507b366b592d8bd2c4b31f6980cf6ad93724b9d410171"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8423,
+        "git_blob": "8ae7d8de181c458771f58b8791ec2470a72d7a31",
+        "sha256": "c0ad04bdd6c35d4b8147a0efaf642a242e73c57f155cc0ddcbdb38379612c8fa"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 8511,
+        "git_blob": "c18eaf7aced16c6ba8458ee18671772455291211",
+        "sha256": "0d6b24b41ea7b08b538f3ae5f09f85d4ca6a83c4ea1b654aae67692d51fafbea"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8537,
+        "git_blob": "c57bc1a538e7e5c7a1800a883a7b3a2b86adc5c2",
+        "sha256": "fff1a6c8126317d7a9aec222d5cc67070ceaccef92ecdc2d419f590312c63c7b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 58707,
+        "git_blob": "bdcc949abd6951c93e1a686bb3c13bd01891bf51",
+        "sha256": "42b9d9db4d9a4e5be196ba7349bf1b5126b498f51d4f2fcd9a75b941ee8f3a48"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 61191,
+        "git_blob": "e4ac179b61d6c4593c103f8304f68f48eb0e02ea",
+        "sha256": "ad5b5ba56f7d16c1f109d93f4ab03a5452b071f8b80f525d8607104e0c8a8624"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 7436,
+        "git_blob": "f7b32b4fb7d7fd7781ae854a7d712be3ee873d0f",
+        "sha256": "c14ea759ea80c9ad6f9c667ba45c8b22ec925e9f528215060267cec88e77dcbe"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8484,
+        "git_blob": "2536cf7769041eb29b00ec291119380c73408c49",
+        "sha256": "88c1c566b2a862918232265d0e6f518437b16a4c5327f7e907f93518d3757163"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-restart-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6194,
+        "git_blob": "4d3e7831af4739de7ca263d91902e4f3a977d23d",
+        "sha256": "48c2fd3051cbb1c980ef1ce5eb6e54463488c05f0f5271f1d96e4f1941e73e6e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-restart.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4979,
+        "git_blob": "64165de219e474c864356a18218531d3d2c497b2",
+        "sha256": "ba6e7f8bd3dab62b3f4223db783ecc0684a147e1c6d61a435992f5ff844d1541"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 143146,
+        "git_blob": "0ae59547ca55b2d418746e04912b425cc840c2a7",
+        "sha256": "8b163da8dfe56a74255b0ab26ea4cfdab854f2c1cb482b2d6fa42abbe8115e91"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 156576,
+        "git_blob": "dddd1f79f765ac60fbc529d41b0cf21f380f8aad",
+        "sha256": "034d8f4acc973e79384f123bf46fc0214cf4f79a80b2e00aa263471b010b1540"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "src/test/main.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 1336,
+        "git_blob": "7444e2f0683ee129b418a299733425f45c31ab8c",
+        "sha256": "186c5deeb8157bfbecd5401f8a1e8987d4188b24a784e2d97452341a35260aa9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1488,
+        "git_blob": "c9eaa03af13a8d5c996bb1e758970dcd2769e164",
+        "sha256": "8f5bd86b129d907eaa1ab88cf21dafd28d881401525592de756a465d3dc5aecd"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_restart.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6872,
+        "git_blob": "acfbb91c275a3a1dc159088820deb18e6bc53b17",
+        "sha256": "1db03acc7d27688279e10b2c93396e27fe7878a56d1616884aed89e5dbac4c2f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_restart_self_test.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5170,
+        "git_blob": "2a8ad81e1fb463518e40a8146d986d4940e6eb4c",
+        "sha256": "b2ac0709ea2be8cb45bc3be910e6db4ba565eba6deaa07938140b4ad58d62d0b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 25981,
+        "git_blob": "bd93e428fe1d74460fe1578c47ba3d95da15c894",
+        "sha256": "34943e0b4296b3f2c95604b4fa628631c8da5ef7486c04e8f207687cadd9e32c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 26967,
+        "git_blob": "be06237aac518fdde546a2f82b0b2a60cab89388",
+        "sha256": "1f65ce67f6675c958dc2d4555e367ab39b2349651651d06bc4824b824662d1c8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 16398,
+        "git_blob": "3972335fe05b3d33b4f3e2f8ed63f8cfb5b30577",
+        "sha256": "a263e3ea1dc89a32b0f084d65b136d332c3d811294375ec470a8186cf8eb8b99"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 17466,
+        "git_blob": "08861c443bbc087e016a62f9d341a719fff5655d",
+        "sha256": "b1316d09206f2a87e0ebb41442657f0ba4f02740214380baa1709ff42f551ad0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_fixtures.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 10422,
+        "git_blob": "5f859d259bd6c01be74b4c471b4b9b2ea99eb327",
+        "sha256": "8c8f825217cc579b1489dc6eb6cca0235a6507e6f64c6d4d7886fd7c5c684955"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11070,
+        "git_blob": "b33935bb757b3ccf56b3ec1d79c87030969c9bbd",
+        "sha256": "8fc37c69a2fc37f8bef3c69a307066319402e1162a2f85c75e2fc2eb94ab3687"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7314,
+        "git_blob": "60e64f92bafbde5d2a5231552ef6828d2225734e",
+        "sha256": "3ddc4b8e88cc4e2faca0000422cae7da2838794130ea5a82df3a007efd3edd3c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart_self_test.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3363,
+        "git_blob": "2e675daf29b905f4cc043f134a38a3e1086e8b2c",
+        "sha256": "b9351e7b4728a3b80b441e7d815debb081c1c809828525300a418c7f214f8d5e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Opt-in fixture/build adapter only; no daemon admission or native consensus authority.",
+      "test_reachability": "Fresh native plugin restart, exact version refusal and new-root upstream reconstruction; source/self-tests do not substitute for execution."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the independent compiled-out profile with all upstream/plugin/observer flags OFF; execute the existing native zero-subsidy mining and positive-stop smoke."
+        ],
+        "expected_results": [
+          "Native mining and shutdown work without linking Rust/Chronik; no Chronik state or external peer connection is created."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build archival fixtures with upstream link ON, plugin fixtures OFF and observer OFF in an independent native/Rust target root. Run 45 cases / 2291 assertions at ten repetitions (70 fresh processes), including explicit plugin setup refusal; run dormant daemon smoke."
+        ],
+        "expected_results": [
+          "No Python plugin implementation is selected; setup refuses before plugin files or state are created. Linking upstream alone starts no daemon index or listener."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the independent plugins fixture profile with Rust 1.93.1, locked/offline public inputs and configured CPython 3.12 embedding. Run the retained 48 cases /2385 assertions at ten repetitions and plugin_restart.py at ten repetitions (80 fresh phase processes), then the dormant daemon smoke."
+        ],
+        "expected_results": [
+          "Exact fixed assertions/selection and stable commitments; genuine new-process interpreter initialization, native-source replay and plugin response parity; exact upstream version refusal without Ready; index-only interrupted rebuild; explicit new-root setup/resync and positive stop. No daemon or independent reproduction claim."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the retained native component matrix with its exact enabled/disabled selections and the public plugin_restart.py eight-phase witness. Keep the inherited observer scenarios separate; none proves an upstream daemon lifecycle.",
+        "expected_results": [
+          "Enabled 48 cases /2385 assertions over 100 fresh processes; disabled 45 cases /2291 assertions over 70 processes at ten repetitions.",
+          "Eight restart/rebuild phases per repetition, 80 fresh processes at ten repetitions; healthy source and ordered plugin response commitments identical across version-1 reopen, new-root version-2 rebuild and reopen.",
+          "Identity and upstream version refusals distinguished; old identity unchanged, old logical index readable after refusal, failed reconstruction never adopted, native progress and shutdown unaffected."
+        ],
+        "failure_conditions": [
+          "Wrong exact case/assertion selection, stale or changed source/view, mismatched plugin accepted, identity rewritten, disabled guard bypass, failed root adopted, native authority effect, skip, timeout, nonzero exit, instability or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Restart the HTTP canary node and compare the exact confirmed Tx bytes; run the retained-window observer restart scenario. Separately exercise upstream owned startup and database reopen in the fixture-only profile, including a nonempty parent/child mempool.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Confirmed bytes remain identical after restart and no orphan or unbound response is served."
+        ],
+        "failure_conditions": [
+          "Restart drift, stale query, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run feature_chronik_token_http.py: extend to height 290 in bounded batches, disconnect below the retained projection anchor, reconsider, verify mismatched restart leaves HTTP disabled, then explicitly full-reindex. Separately exercise upstream retained-anchor and source-generation contradictions; the fixture observer closes while native progress continues.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both known and unknown token/transaction IDs return protobuf 503 after observer closure, never stale 200 or misleading 404.",
+          "Node RPC and chain selection continue; reconsider does not reopen observation. A persistent-tip mismatch disables HTTP on restart and logs recovery=reindex. Explicit full reindex restores canonical token metadata and byte-identical confirmed transaction output."
+        ],
+        "failure_conditions": [
+          "Any accepted response after irreversible closure, missing-ID 404 from a degraded view, HTTP serving from a mismatched restarted runtime, missing mismatch diagnostic, failed canonical reindex recovery, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04-ci-required-not-yet-observed",
+        "macos-26-arm64-local-component-profile"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "The parent is the public PR #53 head, not assumed accepted main. Parent acceptance or a renewed exact source binding is required before landing.",
+    "Open Question /record-review-only with empty incoming evidence. Fresh-run observations remain component-level and do not automatically promote public evidence.",
+    "Trusted synthetic Python only, not a sandbox or operator-plugin compatibility claim. Configured embedding is bound, but system libraries, SDK and CI runner are not locked.",
+    "Small unpruned zero-value public regtest corpus, not an economically funded scenario, mainnet replay, full-chain resource bound or production persistence contract.",
+    "Explicit reconstruction uses a new empty fixture root. It is not an in-place DB migration or a daemon -chronikreindex contract; original and failed roots remain intact during the scenario.",
+    "Actual upstream setup may update RocksDB operational logs on a refused version. Original identity and subsequent logical view parity are required; whole-DB file byte identity is not claimed.",
+    "No daemon admission, merge, activation, deployment/cutover, packaging or desktop integration. Earlier observer scenarios remain separate."
+  ],
+  "counterevidence": [
+    "An initial local enabled retained-matrix attempt passed the bridge/startup/capture groups, then refused completion without a report; its subsequent dormant smoke is not matrix success. A later quiescent disabled retained-matrix attempt exceeded the unchanged 60-second process deadline in actual_http_worker_admission_and_generation_rejection. Three isolated leaf runs on the exact preceding public binary and three on the new disabled binary all passed with 56 assertions. These observations establish no cause. Local stack attempts produced no usable stack and two wrappers were prematurely interrupted by the sample tool's own timeout; those attempts are not native-deadline or old/new equivalence evidence. Subsequent complete runs must be recorded separately without erasing these refusals.",
+    "The first local ten-repetition restart runner invocation exited FAIL-CLOSED: Rejected and created no report; its exact refusal condition was not retained. A subsequent single-cycle diagnostic, two-cycle observation and audited ten-cycle run passed with the same native source/view commitments and unchanged selections, assertion counts, 60-second deadlines and cleanup. The initial cause remains unestablished and is not erased by those later observations.",
+    "Two initial ten-repetition plugin-disabled invocations were rejected before capture-group completion, with no passing report. The first error class was not retained; the second was TimeoutExpired at the unchanged 60-second process bound. Isolated capture/query execution then passed ten fresh repetitions with identical signatures and exact 13 cases / 1063 assertions, taking about 15 to 28 seconds per process. A subsequent full nonconcurrent invocation passed all 45 cases / 2291 assertions per repetition in 70 fresh processes with verified cleanup. These separate observations do not erase the refusals or establish their cause. Public CI and independent review remain distinct checks; no timeout criterion or assertion was relaxed.",
+    "The preceding reopen reused one Python context within a single process. It did not establish an interpreter restart or cross-process version/reconstruction compatibility.",
+    "An incompatible fixture identity rejects before database opening, so that refusal alone cannot be attributed to upstream's version law. A separate non-serving negative setup oracle must require the exact upstream PluginVersionMismatch.",
+    "A changed native source during startup cannot publish Ready even when upstream resync has written partial data. The failed root is permanently refused; reconstruction must use a new reviewed root.",
+    "Small public fixture/source-policy success cannot establish production migration, arbitrary plugin compatibility, independent reproduction or service readiness."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

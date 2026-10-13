@@ -5,7 +5,8 @@
 //! reconciliation remains only as a synchronous comparison oracle.
 
 use crate::ergon_plugin_fixture::{
-    http_plugin_group_matches, http_plugin_tx_matches, make_plugin_fixture, PluginFixture,
+    binding_for_mode, http_plugin_group_matches, http_plugin_tx_matches, load_plugin_fixture,
+    make_plugin_fixture, PluginFixture,
 };
 use crate::ergon_service::{Binding, RequestGate, ResponseLatch};
 use abc_rust_error::{bail, Report, Result};
@@ -18,7 +19,7 @@ use chronik_bridge::ffi as native;
 use chronik_db::{
     group::GroupMember, index_tx::TxNumCacheSettings, io::GroupHistorySettings, mem::MempoolTx,
 };
-use chronik_indexer::indexer::{ChronikIndexer, ChronikIndexerParams, Node};
+use chronik_indexer::indexer::{ChronikIndexer, ChronikIndexerError, ChronikIndexerParams, Node};
 use chronik_plugin::context::PluginContext;
 use prost::Message;
 use std::{
@@ -127,12 +128,20 @@ mod ffi {
         type ArchivalProbe;
         type PluginFixture;
         fn make_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>>;
+        fn load_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>>;
         fn loaded(self: &PluginFixture) -> u32;
         fn open_archival_with_plugins(
             root: &str,
             node: &ErgonNodeAccess,
             plugins: &PluginFixture,
         ) -> Result<Box<ArchivalProbe>>;
+        fn open_archival_with_plugins_and_hook(
+            root: &str, node: &ErgonNodeAccess, plugins: &PluginFixture,
+            hook: &StartupHook,
+        ) -> Result<Box<ArchivalProbe>>;
+        fn upstream_plugin_version_refusal(
+            root: &str, node: &ErgonNodeAccess, plugins: &PluginFixture,
+        ) -> Result<bool>;
         fn http_plugin_tx_matches(
             body: &[u8],
             output: u32,
@@ -502,6 +511,58 @@ fn decompress(script: &[u8]) -> Result<Vec<u8>> {
     Ok(native::decompress_script(script)?)
 }
 
+fn plugin_identity(genesis: [u8; 32], binding: &str) -> Result<Vec<u8>> {
+    Ok(String::from_utf8(identity(genesis))?
+        .replace("\"plugins\":false", &format!(
+            "\"plugins\":true,\"plugin_fixture_sha256\":\"{binding}\""))
+        .into_bytes())
+}
+
+fn indexer_params(root: &Path, plugins: Option<&PluginFixture>) -> ChronikIndexerParams {
+    ChronikIndexerParams {
+        datadir_net: root.to_owned(), wipe_db: false,
+        enable_token_index: true, enable_lokad_id_index: true,
+        enable_scripthash_index: true, enable_perf_stats: false,
+        tx_num_cache: TxNumCacheSettings { bucket_size: 100, num_buckets: 10 },
+        script_history: GroupHistorySettings { is_member_hash_index_enabled: true },
+        plugin_ctx: plugins.map(|p| p.context.clone())
+            .unwrap_or_else(|| Arc::new(PluginContext::default())),
+        decompress_script_fn: decompress,
+    }
+}
+
+// Negative fixture oracle only. NEVER returns an indexer, Ready state or HTTP
+// owner, and never changes the identity/version record or requests wipe_db.
+// Operational opens still enforce their complete identity first. This narrowly
+// checks the REAL upstream setup rejection against a bound synthetic v1 DB.
+pub fn upstream_plugin_version_refusal(
+    root: &str, access: &native::ErgonNodeAccess, plugins: &PluginFixture,
+) -> Result<bool> {
+    ffi::archival_fixture_guard(access)?;
+    plugins.check()?;
+    let loaded = plugins.context.plugins();
+    if loaded.len() != 1 || loaded[0].module_name != "ergon_public_probe"
+        || loaded[0].version.to_string() != "2.0.0" {
+        bail!("Version-refusal oracle requires the actual public v2 plugin");
+    }
+    let root = checked_root(root)?;
+    check_entries(&root)?;
+    let _lock = OpenOptions::new().write(true).create_new(true).open(root.join("probe.lock"))?;
+    let _lease = Lease { root: root.clone() };
+    let node = Arc::new(Node { bridge: ffi::make_startup_bridge(access)? });
+    let expected = plugin_identity(node.bridge.get_genesis_hash().data, &binding_for_mode(0)?)?;
+    if fs::read(root.join("ergon-identity.json"))? != expected || !root.join("indexes/chronik").is_dir() {
+        bail!("Version-refusal oracle requires a bound existing public v1 index");
+    }
+    let error = match ChronikIndexer::setup(indexer_params(&root, Some(plugins)), node) {
+        Ok(_) => bail!("Upstream accepted an incompatible public plugin version"),
+        Err(error) => error.downcast::<ChronikIndexerError>()?,
+    };
+    Ok(matches!(error, ChronikIndexerError::PluginVersionMismatch {
+        plugin_name, db_version, loaded_version,
+    } if plugin_name == "ergon_public_probe" && db_version == "1.0.0" && loaded_version == "2.0.0"))
+}
+
 pub fn open_archival(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
     open_archival_impl(root, access, None, None)
 }
@@ -519,6 +580,13 @@ pub fn open_archival_with_hook(
     hook: &ffi::StartupHook,
 ) -> Result<Box<ArchivalProbe>> {
     open_archival_impl(root, access, Some(hook), None)
+}
+pub fn open_archival_with_plugins_and_hook(
+    root: &str, access: &native::ErgonNodeAccess,
+    plugins: &PluginFixture, hook: &ffi::StartupHook,
+) -> Result<Box<ArchivalProbe>> {
+    plugins.check()?;
+    open_archival_impl(root, access, Some(hook), Some(plugins))
 }
 fn open_archival_impl(
     root: &str,
@@ -545,16 +613,7 @@ fn open_archival_impl(
     });
     let mut expected = identity(node.bridge.get_genesis_hash().data);
     if let Some(plugins) = plugins {
-        let original = String::from_utf8(expected)?;
-        expected = original
-            .replace(
-                "\"plugins\":false",
-                &format!(
-                    "\"plugins\":true,\"plugin_fixture_sha256\":\"{}\"",
-                    plugins.binding
-                ),
-            )
-            .into_bytes();
+        expected = plugin_identity(node.bridge.get_genesis_hash().data, &plugins.binding)?;
     }
     let id_path = root.join("ergon-identity.json");
     if id_path.exists() {
@@ -583,25 +642,7 @@ fn open_archival_impl(
             hook.run()?;
         }
         let mut indexer = ChronikIndexer::setup(
-            ChronikIndexerParams {
-                datadir_net: root.clone(),
-                wipe_db: false,
-                enable_token_index: true,
-                enable_lokad_id_index: true,
-                enable_scripthash_index: true,
-                enable_perf_stats: false,
-                tx_num_cache: TxNumCacheSettings {
-                    bucket_size: 100,
-                    num_buckets: 10,
-                },
-                script_history: GroupHistorySettings {
-                    is_member_hash_index_enabled: true,
-                },
-                plugin_ctx: plugins
-                    .map(|p| p.context.clone())
-                    .unwrap_or_else(|| Arc::new(PluginContext::default())),
-                decompress_script_fn: decompress,
-            },
+            indexer_params(&root, plugins),
             node.clone(),
         )?;
         indexer.resync_indexer(&node)?;

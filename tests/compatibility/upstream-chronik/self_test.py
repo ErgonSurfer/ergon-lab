@@ -13,6 +13,23 @@ from unittest.mock import patch
 import run_repetitions as runner
 
 class Contract(unittest.TestCase):
+    def test_restart_projection_finite_parent_and_preimage(self):
+        source = Path(__file__).resolve().parents[3]
+        paths = [source / p for p in ("docs/engineering/chronik/upstream-host-adaptation-v1.json",
+            runner.READ_MANIFEST, runner.PLUGIN_MANIFEST, runner.RESTART_MANIFEST)]
+        original = json.loads(paths[-1].read_text())
+        self.assertEqual(len(runner.source_projection(source, *paths)), 64)
+        with tempfile.TemporaryDirectory(prefix="synthetic-restart-projection-") as name:
+            path = Path(name) / "manifest.json"
+            for mutate in (lambda r: r["files"].pop(), lambda r: r["files"].reverse(),
+                           lambda r: r["public_parent"].update(tree="0" * 40),
+                           lambda r: r["files"][0].update(before=None)):
+                bad = copy.deepcopy(original)
+                mutate(bad)
+                path.write_bytes(runner.canonical(bad))
+                with self.assertRaises(runner.Rejected):
+                    runner.source_projection(source, *paths[:-1], path)
+
     def streams(self, cases=runner.STARTUP, assertions=593):
         out = "Running " + str(len(cases)) + " test cases...\n"
         err = "".join("Fixture start: " + case + "\nFixture done: " + case + "\n" for case in cases)

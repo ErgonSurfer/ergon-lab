@@ -15,6 +15,8 @@
 #include <chronik_lib/src/ergon_archival.rs.h>
 #include <clientversion.h>
 #include <condition_variable>
+#include <cstdio>
+#include <crypto/sha256.h>
 #include <config.h>
 #include <consensus/validation.h>
 #include <fs.h>
@@ -22,6 +24,8 @@
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <miner.h>
+#include <pow.h>
 #include <script/sign.h>
 #include <shutdown.h>
 #include <sstream>
@@ -31,6 +35,7 @@
 #include <txdb.h>
 #include <txmempool.h>
 #include <util/source_generation.h>
+#include <util/strencodings.h>
 #include <util/system.h>
 #include <util/time.h>
 #include <validation.h>
@@ -2968,3 +2973,259 @@ BOOST_AUTO_TEST_CASE(upstream_public_plugin_disabled_refuses_setup) {
 }
 #endif
 BOOST_AUTO_TEST_SUITE_END()
+
+#ifdef CHRONIK_ERGON_PLUGIN_TESTS
+namespace {
+// A public corpus of ACTUALLY accepted native blocks, not a donor datadir or
+// mock chain. Every phase replays it through ProcessNewBlock in a fresh process.
+using chronik_upstream_archival_tests::PublicPluginSignals;
+using chronik_upstream_archival_tests::AcceptPublicPluginTx;
+struct RestartSetup : TestingSetup {
+    RestartSetup() : TestingSetup(CBaseChainParams::REGTEST) {
+        SetMockTime(1700000000);
+    }
+    ~RestartSetup() { SetMockTime(0); }
+};
+fs::path RestartRoot() {
+    const auto name = gArgs.GetArg("-ergonpluginrestartroot", "");
+    BOOST_REQUIRE(!name.empty());
+    const fs::path root(name);
+    BOOST_REQUIRE(root.is_absolute() && fs::canonical(root) == root);
+    BOOST_REQUIRE(fs::is_directory(root) && !fs::is_symlink(root));
+    return root;
+}
+std::string RestartDir(const fs::path &root, const std::string &name, bool fresh) {
+    const auto path = root / name;
+    if (fresh) BOOST_REQUIRE(fs::create_directory(path));
+    BOOST_REQUIRE(fs::is_directory(path) && !fs::is_symlink(path));
+    return fs::canonical(path).string();
+}
+CBlock RestartBlock(const std::vector<CMutableTransaction> &txs) {
+    const auto &config = GetConfig();
+    auto candidate = BlockAssembler(config, g_mempool).CreateNewBlock(CScript() << OP_1);
+    auto block = candidate->block;
+    block.vtx.resize(1);
+    for (const auto &tx : txs) block.vtx.push_back(MakeTransactionRef(tx));
+    std::sort(block.vtx.begin() + 1, block.vtx.end(),
+              [](const CTransactionRef &a, const CTransactionRef &b) { return a->GetId() < b->GetId(); });
+    {
+        LOCK(cs_main);
+        unsigned int nonce = 0;
+        IncrementExtraNonce(&block, ChainActive().Tip(), config.GetExcessiveBlockSize(), nonce);
+    }
+    while (!CheckProofOfWork(block.GetHash(), block.nBits, config.GetChainParams().GetConsensus())) ++block.nNonce;
+    BOOST_REQUIRE(ProcessNewBlock(config, std::make_shared<const CBlock>(block), true, nullptr));
+    BOOST_REQUIRE(ChainActive().Tip()->GetBlockHash() == block.GetHash());
+    return block;
+}
+struct RestartCorpus {
+    std::vector<CBlock> blocks;
+    std::vector<CMutableTransaction> txs;
+};
+RestartCorpus MakeRestartCorpus() {
+    RestartCorpus corpus;
+    for (int height = 1; height <= 100; ++height) {
+        SetMockTime(1700000000 + height * 600);
+        corpus.blocks.push_back(RestartBlock({}));
+    }
+    CMutableTransaction parent, child, pending;
+    parent.vin.emplace_back(COutPoint(corpus.blocks[0].vtx[0]->GetId(), 0));
+    auto alp = ergon_archival::fixture_alp_script(0, {});
+    CScript metadata(alp.data(), alp.data() + alp.size());
+    metadata << std::vector<uint8_t>{'E','R','G','N'};
+    parent.vout.emplace_back(Amount::zero(), metadata);
+    parent.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    parent.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    child.vin.emplace_back(COutPoint(CTransaction(parent).GetId(), 1));
+    child.vout.emplace_back(Amount::zero(), CScript() << OP_RETURN
+        << std::vector<uint8_t>{'E','R','G','N'} << std::vector<uint8_t>(64, 0));
+    child.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    pending.vin.emplace_back(COutPoint(CTransaction(child).GetId(), 1));
+    pending.vout.emplace_back(Amount::zero(), CScript() << OP_RETURN
+        << std::vector<uint8_t>{'E','R','G','N'} << std::vector<uint8_t>(64, 0));
+    pending.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    SetMockTime(1700060600);
+    corpus.blocks.push_back(RestartBlock({parent, child}));
+    corpus.txs = {parent, child, pending};
+    return corpus;
+}
+void WriteRestartCorpus(const fs::path &root, const RestartCorpus &corpus) {
+    CDataStream bytes(SER_NETWORK, PROTOCOL_VERSION);
+    bytes << std::string("ergon-public-plugin-native-corpus/v1") << corpus.blocks << corpus.txs;
+    BOOST_REQUIRE(bytes.size() < 262144);
+    std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen((root / "corpus.bin").string().c_str(), "wbx"), &std::fclose);
+    BOOST_REQUIRE(file != nullptr);
+    BOOST_REQUIRE_EQUAL(std::fwrite(bytes.data(), 1, bytes.size(), file.get()), bytes.size());
+    BOOST_REQUIRE(FileCommit(file.get()));
+}
+RestartCorpus ReplayRestartCorpus(const fs::path &root) {
+    const auto path = root / "corpus.bin";
+    BOOST_REQUIRE(fs::is_regular_file(path) && !fs::is_symlink(path) && fs::hard_link_count(path) == 1);
+    BOOST_REQUIRE(fs::file_size(path) < 262144);
+    std::ifstream file(path.string(), std::ios::binary);
+    const std::vector<char> raw((std::istreambuf_iterator<char>(file)), {});
+    CDataStream bytes(raw, SER_NETWORK, PROTOCOL_VERSION);
+    std::string magic;
+    RestartCorpus corpus;
+    bytes >> magic >> corpus.blocks >> corpus.txs;
+    BOOST_REQUIRE(magic == "ergon-public-plugin-native-corpus/v1");
+    BOOST_REQUIRE(corpus.blocks.size() == 101 && corpus.txs.size() == 3 && bytes.empty());
+    // The recorded tip is later than the first block. Replay must not treat
+    // those already accepted public headers as future headers.
+    SetMockTime(1700060610);
+    for (const auto &block : corpus.blocks) {
+        BOOST_REQUIRE(ProcessNewBlock(GetConfig(), std::make_shared<const CBlock>(block), true, nullptr));
+        BOOST_REQUIRE(ChainActive().Tip()->GetBlockHash() == block.GetHash());
+    }
+    return corpus;
+}
+void RestartPool(const RestartCorpus &corpus) {
+    SetMockTime(1700060610);
+    PublicPluginSignals signals;
+    AcceptPublicPluginTx(corpus.txs[2]);
+    SyncWithValidationInterfaceQueue();
+    BOOST_REQUIRE_EQUAL(g_mempool.size(), 1);
+}
+void RestartQueries(uint16_t port, const RestartCorpus &corpus) {
+    CDataStream commitment(SER_NETWORK, PROTOCOL_VERSION);
+    const auto group = "/plugin/ergon_public_probe/7075626c6963";
+    for (size_t index = 0; index < corpus.txs.size(); ++index) {
+        const auto response = Http(port, "/tx/" + CTransaction(corpus.txs[index]).GetId().ToString());
+        BOOST_REQUIRE_EQUAL(response.status, 200);
+        BOOST_CHECK(response.protobuf && response.no_store);
+        BOOST_CHECK(ergon_archival::http_plugin_tx_matches(Body(response), 1, index ? 1 : 0, index ? 0 : 1000));
+        commitment << response.body;
+    }
+    const auto groups = Http(port, "/plugin/ergon_public_probe/groups?page_size=10");
+    BOOST_REQUIRE_EQUAL(groups.status, 200);
+    BOOST_CHECK(ergon_archival::http_plugin_group_matches(Body(groups), 0, {}));
+    commitment << groups.body;
+    const auto points = Points({{CTransaction(corpus.txs[0]).GetId(), 2}, {CTransaction(corpus.txs[2]).GetId(), 1}});
+    const auto utxos = Http(port, std::string(group) + "/utxos");
+    BOOST_REQUIRE_EQUAL(utxos.status, 200);
+    BOOST_CHECK(ergon_archival::http_plugin_group_matches(Body(utxos), 1, {points.data(), points.size()}));
+    commitment << utxos.body;
+    std::vector<CMutableTransaction> confirmed;
+    for (size_t index = 1; index < corpus.blocks.back().vtx.size(); ++index)
+        confirmed.emplace_back(*corpus.blocks.back().vtx[index]);
+    auto history = confirmed;
+    std::reverse(history.begin(), history.end());
+    history.insert(history.begin(), corpus.txs[2]);
+    for (const auto &entry : std::vector<std::pair<std::string, std::vector<CMutableTransaction>>>{
+         {"confirmed-txs", confirmed}, {"unconfirmed-txs", {corpus.txs[2]}}, {"history", history}}) {
+        const auto response = Http(port, std::string(group) + "/" + entry.first);
+        const auto ids = Ids(entry.second);
+        const std::array<uint64_t, 3> expected{entry.second.size(), 1, 1};
+        BOOST_REQUIRE_EQUAL(response.status, 200);
+        BOOST_CHECK(ergon_archival::http_fixture_check(5, Body(response), {ids.data(), ids.size()}, {expected.data(), expected.size()}));
+        commitment << response.body;
+    }
+    const auto bytes = std::vector<uint8_t>(commitment.begin(), commitment.end());
+    std::array<uint8_t, 32> hash;
+    CSHA256().Write(bytes.data(), bytes.size()).Finalize(hash.data());
+    std::cout << "Restart view: " << HexStr(hash) << std::endl;
+    std::cout << "Restart source: " << ChainActive().Tip()->GetBlockHash().ToString() << std::endl;
+}
+void RestartOpen(const fs::path &root, const RestartCorpus &corpus, uint8_t mode, bool fresh) {
+    const std::string source_name = mode == 0 ? "plugin-v1" : "plugin-v2";
+    const auto source = RestartDir(root, source_name, fresh);
+    auto plugins = fresh ? ergon_archival::make_plugin_fixture(source, mode)
+                         : ergon_archival::load_plugin_fixture(source, mode);
+    BOOST_REQUIRE_EQUAL(plugins->loaded(), 1);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto index = RestartDir(root, mode == 0 ? "index-v1" : "index-v2", fresh);
+    ergon_archival::ArchivalWorker worker(index, access, 128, {}, {}, {}, {}, &*plugins);
+    const auto port = worker.StartHttpFixture();
+    RestartQueries(port, corpus);
+    BOOST_CHECK(!access.index_failed.load());
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.lock"));
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.failed"));
+}
+}
+BOOST_FIXTURE_TEST_SUITE(chronik_upstream_plugin_restart_tests, RestartSetup)
+BOOST_AUTO_TEST_CASE(seed_v1) {
+    const auto root = RestartRoot();
+    auto corpus = MakeRestartCorpus();
+    WriteRestartCorpus(root, corpus);
+    RestartPool(corpus);
+    RestartOpen(root, corpus, 0, true);
+}
+BOOST_AUTO_TEST_CASE(reopen_v1) {
+    const auto root = RestartRoot();
+    auto corpus = ReplayRestartCorpus(root);
+    RestartPool(corpus);
+    RestartOpen(root, corpus, 0, false);
+}
+BOOST_AUTO_TEST_CASE(refuse_v2) {
+    const auto root = RestartRoot();
+    const auto corpus = ReplayRestartCorpus(root);
+    RestartPool(corpus);
+    auto plugins = ergon_archival::make_plugin_fixture(RestartDir(root, "plugin-v2", true), 3);
+    BOOST_REQUIRE_EQUAL(plugins->loaded(), 1);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto index = RestartDir(root, "index-v1", false);
+    BOOST_CHECK_THROW(ergon_archival::open_archival_with_plugins(index, access, *plugins), std::exception);
+    // Unlike the preceding identity refusal, this is the actual upstream
+    // PluginVersionMismatch from setup, with no HTTP/Ready owner returned.
+    BOOST_CHECK(ergon_archival::upstream_plugin_version_refusal(index, access, *plugins));
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    BOOST_CHECK_EQUAL(g_mempool.size(), 1);
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.lock"));
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.failed"));
+}
+BOOST_AUTO_TEST_CASE(interrupted_rebuild) {
+    const auto root = RestartRoot();
+    const auto corpus = ReplayRestartCorpus(root);
+    RestartPool(corpus);
+    auto plugins = ergon_archival::load_plugin_fixture(RestartDir(root, "plugin-v2", false), 3);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto index = RestartDir(root, "index-interrupted", true);
+    const auto shutdown = ShutdownRequested();
+    const ergon_archival::StartupHook hook([&] { RestartBlock({}); });
+    BOOST_CHECK_THROW(ergon_archival::open_archival_with_plugins_and_hook(index, access, *plugins, hook), std::exception);
+    BOOST_CHECK(access.index_failed.load());
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 102);
+    BOOST_CHECK_EQUAL(ShutdownRequested(), shutdown);
+    BOOST_CHECK(fs::exists(fs::path(index) / "probe.failed"));
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.lock"));
+}
+BOOST_AUTO_TEST_CASE(failed_reopen_refused) {
+    const auto root = RestartRoot();
+    const auto corpus = ReplayRestartCorpus(root);
+    RestartPool(corpus);
+    auto plugins = ergon_archival::load_plugin_fixture(RestartDir(root, "plugin-v2", false), 3);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto index = RestartDir(root, "index-interrupted", false);
+    BOOST_CHECK_THROW(ergon_archival::open_archival_with_plugins(index, access, *plugins), std::exception);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.lock"));
+    BOOST_CHECK(fs::exists(fs::path(index) / "probe.failed"));
+}
+BOOST_AUTO_TEST_CASE(rebuild_v2) {
+    const auto root = RestartRoot();
+    const auto corpus = ReplayRestartCorpus(root);
+    RestartPool(corpus);
+    // Preserve v1 and failed roots. Upstream setup/resync reconstructs a NEW
+    // empty root; no identity rewrite, database wipe or parallel index logic.
+    auto plugins = ergon_archival::load_plugin_fixture(RestartDir(root, "plugin-v2", false), 3);
+    const auto index = RestartDir(root, "index-v2", true);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    ergon_archival::ArchivalWorker worker(index, access, 128, {}, {}, {}, {}, &*plugins);
+    RestartQueries(worker.StartHttpFixture(), corpus);
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!fs::exists(fs::path(index) / "probe.lock"));
+}
+BOOST_AUTO_TEST_CASE(reopen_v2) {
+    const auto root = RestartRoot();
+    const auto corpus = ReplayRestartCorpus(root);
+    RestartPool(corpus);
+    RestartOpen(root, corpus, 3, false);
+}
+BOOST_AUTO_TEST_SUITE_END()
+#endif

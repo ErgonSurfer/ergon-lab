@@ -24,6 +24,10 @@ struct CustomArgumentsFixture {
             testsuitename,
             "-axionactivationtime",
             "-tachyonactivationtime",
+#ifdef CHRONIK_ERGON_PLUGIN_TESTS
+            // Public test driver only; never registered by the daemon.
+            "-ergonpluginrestartroot",
+#endif
         };
 
         for (const auto &arg : testArgs) {

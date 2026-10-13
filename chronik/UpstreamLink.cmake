@@ -84,7 +84,8 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         src/dbwrapper.cpp src/txdb.h src/txdb.cpp)
     list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_plugin_fixture.rs
         chronik/chronik-db/src/mem/mempool.rs
-        tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py)
+        tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py
+        src/test/main.cpp)
     if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
         list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs
             chronik/chronik-plugin-impl/python/upstream/script.py

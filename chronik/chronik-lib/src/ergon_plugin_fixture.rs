@@ -50,9 +50,44 @@ impl PluginFixture {
 }
 
 pub fn make_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>> {
+    plugin_fixture(root, mode, false)
+}
+
+pub fn load_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>> {
+    plugin_fixture(root, mode, true)
+}
+
+pub(crate) fn binding_for_mode(mode: u8) -> Result<String> {
+    #[cfg(not(feature = "plugins"))]
+    { let _ = mode; bail!("Upstream plugin implementation is not enabled"); }
+    #[cfg(feature = "plugins")]
+    {
+        let config = config_for_mode(mode)?;
+        let mut identity = b"ergon-public-plugin-fixture/v1\n".to_vec();
+        identity.extend_from_slice(SOURCE.as_bytes());
+        identity.extend_from_slice(&config);
+        identity.extend_from_slice(env!("CHRONIK_ERGON_PYTHON_VERSION").as_bytes());
+        identity.extend_from_slice(env!("CHRONIK_ERGON_PYTHON_ID").as_bytes());
+        Ok(Sha256::digest(identity).hex_le())
+    }
+}
+
+#[cfg(feature = "plugins")]
+fn config_for_mode(mode: u8) -> Result<Vec<u8>> {
+    let class = match mode {
+        0 => "PublicProbePlugin",
+        1 => "ThrowProbePlugin",
+        2 => "BadOutputProbePlugin",
+        3 => "VersionTwoProbePlugin",
+        _ => bail!("Unknown public plugin fixture mode"),
+    };
+    Ok(format!("[regtest.plugin.ergon_public_probe]\nclass = \"{class}\"\n").into_bytes())
+}
+
+fn plugin_fixture(root: &str, mode: u8, reopen: bool) -> Result<Box<PluginFixture>> {
     #[cfg(not(feature = "plugins"))]
     {
-        let _ = (root, mode);
+        let _ = (root, mode, reopen);
         bail!("Upstream plugin implementation is not enabled");
     }
     #[cfg(feature = "plugins")]
@@ -68,29 +103,28 @@ pub fn make_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>> {
         let root = PathBuf::from(root);
         if !root.is_absolute()
             || fs::canonicalize(&root)? != root
-            || fs::read_dir(&root)?.next().is_some()
+            || (!reopen && fs::read_dir(&root)?.next().is_some())
         {
             bail!("Plugin fixture requires an empty canonical root");
         }
-        let class = match mode {
-            0 => "PublicProbePlugin",
-            1 => "ThrowProbePlugin",
-            2 => "BadOutputProbePlugin",
-            3 => "VersionTwoProbePlugin",
-            _ => bail!("Unknown public plugin fixture mode"),
+        let config = config_for_mode(mode)?;
+        let binding = binding_for_mode(mode)?;
+        let provisional = PluginFixture {
+            context: Arc::new(PluginContext::default()),
+            root: root.clone(), config: config.clone(), binding: binding.clone(),
         };
+        // Validate existing bytes BEFORE interpreter initialization/import.
+        if reopen { provisional.check()?; }
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             bail!("Reuse the owned plugin fixture; interpreter setup is process-once");
         }
         if unsafe { pyo3::ffi::Py_IsInitialized() } != 0 {
             bail!("Plugin fixture requires ownership of initial interpreter setup");
         }
-        let config =
-            format!("[regtest.plugin.ergon_public_probe]\nclass = \"{class}\"\n").into_bytes();
-        for (name, bytes) in [
+        for (name, bytes) in if reopen { Vec::new() } else { vec![
             ("ergon_public_probe.py", SOURCE.as_bytes()),
             ("plugins.toml", config.as_slice()),
-        ] {
+        ] } {
             let mut file = fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -125,16 +159,11 @@ pub fn make_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>> {
         if python != env!("CHRONIK_ERGON_PYTHON_VERSION") {
             bail!("Plugin interpreter differs from configured profile");
         }
-        let mut identity = b"ergon-public-plugin-fixture/v1\n".to_vec();
-        identity.extend_from_slice(SOURCE.as_bytes());
-        identity.extend_from_slice(&config);
-        identity.extend_from_slice(python.as_bytes());
-        identity.extend_from_slice(env!("CHRONIK_ERGON_PYTHON_ID").as_bytes());
         let fixture = Box::new(PluginFixture {
             context,
             root,
             config,
-            binding: Sha256::digest(identity).hex_le(),
+            binding,
         });
         fixture.check()?;
         Ok(fixture)

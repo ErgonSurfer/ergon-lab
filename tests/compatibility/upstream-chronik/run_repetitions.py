@@ -94,6 +94,7 @@ GROUPS = (
 )
 READ_MANIFEST = "docs/engineering/chronik/owned-chainstate-reads-v1.json"
 PLUGIN_MANIFEST = "docs/engineering/chronik/upstream-plugin-fixtures-v1.json"
+RESTART_MANIFEST = "docs/engineering/chronik/upstream-plugin-restart-v1.json"
 PLUGIN_GROUPS = tuple((name, (PREFIX + name,), count) for name, count in (
     ("upstream_public_plugin_lifecycle", 55),
     ("upstream_public_plugin_exception_is_index_only", 16),
@@ -130,6 +131,7 @@ PLUGIN_ADAPTER_INPUTS = (
     "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
     "chronik/chronik-db/src/mem/mempool.rs",
     "tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py",
+    "src/test/main.cpp",
 )
 PLUGIN_ENABLED_INPUTS = (
     "chronik/chronik-plugin-impl/src/module.rs",
@@ -160,7 +162,7 @@ def regular(path):
     require(path.is_file() and not path.is_symlink(), "regular input required")
     return path.read_bytes()
 
-def source_projection(source, manifest, read_manifest=None, plugin_manifest=None):
+def source_projection(source, manifest, read_manifest=None, plugin_manifest=None, restart_manifest=None):
     rows = json.loads(regular(manifest))["files"]
     names = [r["path"] for r in rows]
     require(len(rows) == 34 and names == sorted(set(names)), "finite source projection required")
@@ -192,6 +194,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "plugin projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    if restart_manifest is not None:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools/engineering"))
+        from check_chronik_plugin_restart import PARENT, TREE, TECHNICAL
+        layer = json.loads(regular(restart_manifest))
+        require(layer["schema"] == "ergon-upstream-plugin-restart/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(TECHNICAL), "restart source projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "restart projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -207,7 +222,7 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
 def bind_build(source, build, profile, manifest):
     require(profile in ("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant"),
             "unknown build profile")
-    projection = source_projection(source, manifest, source / READ_MANIFEST, source / PLUGIN_MANIFEST)
+    projection = source_projection(source, manifest, source / READ_MANIFEST, source / PLUGIN_MANIFEST, source / RESTART_MANIFEST)
     require(not source.is_relative_to(build) and not build.is_relative_to(source), "separate build root required")
     cache = {}
     for line in regular(build / "CMakeCache.txt").decode("utf-8").splitlines():
