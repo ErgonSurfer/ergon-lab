@@ -387,7 +387,13 @@ impl CapturedSource {
         wire_bytes: u64,
         node: &native::ErgonNodeAccess,
     ) -> Result<()> {
-        self.owner(node)?;
+        // Native transactions and coin values are owned detached inputs. C++
+        // resolves cold prevouts using an owned snapshot outside native locks,
+        // then rechecks the live source/owner before apply and publication.
+        if self.owner != node as *const _ as usize {
+            bail!("Capture native owner mismatch");
+        }
+        ffi::archival_database_guard(node)?;
         if wire_bytes == 0 || wire_bytes > 64 * 1024 * 1024 {
             bail!("Invalid captured pool payload charge");
         }
@@ -682,7 +688,7 @@ impl ArchivalProbe {
         index: usize,
         node: &native::ErgonNodeAccess,
     ) -> Result<()> {
-        source.owner(node)?;
+        ffi::archival_database_guard(node)?;
         if source.owner != self.access_address
             || source.generation != self.pool_chain_generation
             || index >= self.captured_pool.len()

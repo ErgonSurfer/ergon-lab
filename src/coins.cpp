@@ -102,6 +102,14 @@ bool CCoinsViewCache::GetCoin(const COutPoint &outpoint, Coin &coin) const {
     return !coin.IsSpent();
 }
 
+bool CCoinsViewCache::CopyCachedCoin(const COutPoint &outpoint,
+                                    Coin &coin) const {
+    const auto it = cacheCoins.find(outpoint);
+    if (it == cacheCoins.end()) return false;
+    coin = it->second.coin;
+    return true;
+}
+
 void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin coin,
                               bool possible_overwrite) {
     assert(!coin.IsSpent());

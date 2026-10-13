@@ -199,6 +199,13 @@ def expected_native_generation_source(original, path):
 
 def validate(root: Path) -> HistoricalView:
     root = root.resolve(strict=True)
+    # A separately finite successor binds current bytes to the exact public
+    # review parent. Preserve this original adaptation's identities and donor
+    # preimages: do not relabel later authored native storage code as donor.
+    from check_chronik_chainstate_reads import MANIFEST as READ_MANIFEST
+    from check_chronik_chainstate_reads import validate as validate_reads, before_identity as read_parent_identity
+    from check_chronik_chainstate_reads import TECHNICAL as READ_TECHNICAL
+    read_layer = validate_reads(root) if (root / READ_MANIFEST).exists() else frozenset()
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == PARENT_TREE,
             "public parent tree mismatch or missing history")
     require(git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"",
@@ -213,7 +220,8 @@ def validate(root: Path) -> HistoricalView:
     view = HistoricalView(root, {row["path"]: row for row in rows})
     for row in rows:
         path = public_path(row["path"])
-        require(current_identity(root, path) == row["after"], "technical postimage drift: " + path)
+        observed = read_parent_identity(root, path) if read_layer and path in READ_TECHNICAL else current_identity(root, path)
+        require(observed == row["after"], "technical postimage drift: " + path)
         tree_entry = git(root, "ls-tree", PARENT, "--", path).decode().strip()
         if row["before"] is None:
             require(not tree_entry, "addition already exists in public parent")
@@ -237,7 +245,7 @@ def validate(root: Path) -> HistoricalView:
             "historical donor manifest changed")
     changed = set(p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p)
     changed |= set(p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p)
-    require(TECHNICAL <= changed and changed <= TECHNICAL | POLICY, "unexpected or missing changed path")
+    require(TECHNICAL <= changed and changed <= TECHNICAL | POLICY | read_layer, "unexpected or missing changed path")
     for relative in changed:
         require(current_identity(root, relative)["mode"] == "100644", "unexpected changed-file executable bit")
     workspace = tomllib.loads((root / "chronik/Cargo.toml").read_text())["workspace"]

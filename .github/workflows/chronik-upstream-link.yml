@@ -11,9 +11,13 @@ on:
       - "src/chain.*"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
+      - "src/coins.*"
+      - "src/dbwrapper.*"
+      - "src/txdb.*"
       - "src/test/chronik_*upstream*tests.cpp"
       - "docs/engineering/chronik/**"
       - "docs/engineering/changes/ergon-change-0045.json"
+      - "docs/engineering/changes/ergon-change-0046.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -26,9 +30,13 @@ on:
       - "src/chain.*"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
+      - "src/coins.*"
+      - "src/dbwrapper.*"
+      - "src/txdb.*"
       - "src/test/chronik_*upstream*tests.cpp"
       - "docs/engineering/chronik/**"
       - "docs/engineering/changes/ergon-change-0045.json"
+      - "docs/engineering/changes/ergon-change-0046.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -64,6 +72,8 @@ jobs:
         run: |
           python3 -B tools/engineering/check_chronik_upstream_link.py check
           python3 -B tools/engineering/check_chronik_port_core.py check
+          python3 -B tools/engineering/check_chronik_chainstate_reads.py check
+          python3 -B tools/engineering/check_chronik_chainstate_reads_self_test.py
           python3 -B tests/compatibility/upstream-chronik/self_test.py
 
       - name: Install native prerequisites

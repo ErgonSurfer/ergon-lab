@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <txmempool.h>
+#include <txdb.h>
 #include <undo.h>
 #include <validation.h>
 #include <vector>
@@ -33,6 +34,13 @@ struct CaptureReference {
     FlatFilePos data, undo;
     int height;
 };
+struct PoolRead {
+    CTransactionRef tx;
+    int64_t time;
+    size_t wire_bytes, retained_index;
+    std::vector<Coin> coins;
+    std::vector<size_t> cold;
+};
 } // namespace
 void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node) {
     LOCK2(cs_main, node.mempool.cs);
@@ -41,7 +49,7 @@ void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node) {
         !ChainActive().GetSourceGeneration() ||
         !node.mempool.GetSourceGeneration() || ChainActive().Height() < 0 ||
         ChainActive().Height() > 2000 || node.mempool.size() > 4096 ||
-        !pcoinsTip) {
+        !pcoinsTip || !pcoinsdbview) {
         throw std::runtime_error(
             "Archival probe requires a healthy, unpruned, bounded-mempool "
             "regtest fixture (height <= 2000)");
@@ -76,7 +84,7 @@ void archival_reconcile_guard(const chronik_bridge::ErgonNodeAccess &node) {
     if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
         fPruneMode || ShutdownRequested() || node.index_failed.load() ||
         !ChainActive().GetSourceGeneration() ||
-        !node.mempool.GetSourceGeneration() || !pcoinsTip ||
+        !node.mempool.GetSourceGeneration() || !pcoinsTip || !pcoinsdbview ||
         ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
         node.mempool.size() > 4096) {
         throw std::runtime_error(
@@ -206,8 +214,13 @@ bool reconcile_captured(ArchivalProbe &probe,
                     for (const auto &parent : parents)
                         children[parent].insert(id);
                 }
+                // Metadata-only LevelDB snapshot acquisition is coherent with
+                // the copied cache overlay under cs_main. A flush afterwards
+                // cannot resurrect spent cache entries or change this read.
+                auto coin_snapshot = pcoinsdbview->Snapshot();
+                auto cache_identity = pcoinsTip->ReadIdentity();
+                std::vector<PoolRead> reads;
                 size_t emitted = 0;
-                CCoinsViewMemPool view(pcoinsTip.get(), node.mempool);
                 while (!ready.empty()) {
                     const auto id = *ready.begin();
                     ready.erase(ready.begin());
@@ -217,7 +230,9 @@ bool reconcile_captured(ArchivalProbe &probe,
                         pool[found->second].chain_generation == generation &&
                         pool[found->second].time == entry.nTime) {
                         charge(pool[found->second].wire_bytes);
-                        probe.seed_pool_entry(*source, found->second, node);
+                        reads.push_back({entry.tx, entry.nTime,
+                                         pool[found->second].wire_bytes,
+                                         found->second, {}, {}});
                         if (stats)
                             ++stats->pool_reused;
                     } else {
@@ -226,13 +241,32 @@ bool reconcile_captured(ArchivalProbe &probe,
                         if (entry_bytes > 64 * 1024 * 1024)
                             throw std::runtime_error(
                                 "Captured pool entry exceeds budget");
-                        std::vector<Coin> coins;
-                        for (const auto &input : entry.tx->vin) {
+                        PoolRead read{entry.tx, entry.nTime, entry_bytes,
+                                      SIZE_MAX, {}, {}};
+                        read.coins.resize(entry.tx->vin.size());
+                        for (size_t i = 0; i < entry.tx->vin.size(); ++i) {
+                            const auto &input = entry.tx->vin[i];
                             Coin coin;
                             if (stats)
                                 ++stats->prevout_reads;
-                            if (!view.GetCoin(input.prevout, coin) ||
-                                coin.IsSpent())
+                            const auto parent = entries.find(
+                                input.prevout.GetTxId());
+                            if (parent != entries.end()) {
+                                if (input.prevout.GetN() >=
+                                    parent->second.tx->vout.size())
+                                    throw std::runtime_error(
+                                        "Missing captured pool parent output");
+                                coin = Coin(parent->second.tx->vout[
+                                                input.prevout.GetN()],
+                                            MEMPOOL_HEIGHT, false);
+                            } else if (!pcoinsTip->CopyCachedCoin(
+                                           input.prevout, coin)) {
+                                read.cold.push_back(i);
+                                continue;
+                            }
+                            // A spent cache entry is NOT a cold miss. Never
+                            // fall back to an older unspent database value.
+                            if (coin.IsSpent())
                                 throw std::runtime_error(
                                     "Missing actual captured native prevout");
                             const auto amount =
@@ -241,11 +275,11 @@ bool reconcile_captured(ArchivalProbe &probe,
                                 throw std::runtime_error(
                                     "Captured pool entry exceeds budget");
                             entry_bytes += amount;
-                            coins.push_back(std::move(coin));
+                            read.coins[i] = std::move(coin);
                         }
                         charge(entry_bytes);
-                        source->capture_mempool(*entry.tx, coins, entry.nTime,
-                                                entry_bytes, node);
+                        read.wire_bytes = entry_bytes;
+                        reads.push_back(std::move(read));
                         if (stats)
                             ++stats->pool_captured;
                     }
@@ -260,13 +294,19 @@ bool reconcile_captured(ArchivalProbe &probe,
                                        ChainActive().Tip()->GetBlockHash(),
                                        generation,
                                        archival_mempool_revision(node),
-                                       std::move(references), bytes, common);
+                                       std::move(references), bytes, common,
+                                       std::move(coin_snapshot),
+                                       std::move(cache_identity),
+                                       std::move(reads));
             }();
             auto current = [&] {
                 AssertLockHeld(cs_main);
                 AssertLockHeld(node.mempool.cs);
                 const auto *tip = ChainActive().Tip();
                 if (!tip || fPruneMode || ShutdownRequested() ||
+                    !pcoinsdbview || !pcoinsTip ||
+                    !pcoinsdbview->OwnsSnapshot(*std::get<8>(captured)) ||
+                    pcoinsTip->ReadIdentity() != std::get<9>(captured) ||
                     tip->GetBlockHash() != std::get<2>(captured) ||
                     archival_chain_generation(node) != std::get<3>(captured) ||
                     archival_mempool_revision(node) != std::get<4>(captured))
@@ -308,6 +348,33 @@ bool reconcile_captured(ArchivalProbe &probe,
             try {
                 auto bridge = chronik_bridge::make_bridge(node);
                 size_t bytes = std::get<6>(captured);
+                for (auto &read : std::get<10>(captured)) {
+                    AssertLockNotHeld(cs_main);
+                    AssertLockNotHeld(node.mempool.cs);
+                    if (read.retained_index != SIZE_MAX) {
+                        probe.seed_pool_entry(*std::get<0>(captured),
+                                              read.retained_index, node);
+                        continue;
+                    }
+                    for (const auto i : read.cold) {
+                        if (stats) ++stats->cold_prevout_reads;
+                        auto &coin = read.coins[i];
+                        if (!std::get<8>(captured)->GetCoin(
+                                read.tx->vin[i].prevout, coin) ||
+                            coin.IsSpent())
+                            throw std::runtime_error(
+                                "Missing actual cold native prevout");
+                        const auto amount =
+                            ::GetSerializeSize(coin, CLIENT_VERSION);
+                        if (amount > 64 * 1024 * 1024 - bytes)
+                            throw std::runtime_error(
+                                "Captured source payload budget exceeded");
+                        bytes += amount;
+                        read.wire_bytes += amount;
+                    }
+                    std::get<0>(captured)->capture_mempool(
+                        *read.tx, read.coins, read.time, read.wire_bytes, node);
+                }
                 for (const auto &ref : std::get<5>(captured)) {
                     AssertLockNotHeld(cs_main);
                     AssertLockNotHeld(node.mempool.cs);

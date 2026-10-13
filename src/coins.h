@@ -14,6 +14,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 
 /**
@@ -203,6 +204,10 @@ protected:
     /* Cached dynamic memory usage for the inner Coin objects. */
     mutable size_t cachedCoinsUsage;
 
+    // An owned identity prevents address-reuse ABA after cache replacement.
+    const std::shared_ptr<const uint8_t> read_identity{
+        std::make_shared<const uint8_t>(0)};
+
 public:
     CCoinsViewCache(CCoinsView *baseIn);
 
@@ -229,6 +234,14 @@ public:
      * CCoinsView are made.
      */
     bool HaveCoinInCache(const COutPoint &outpoint) const;
+
+    // No FetchCoin, backend I/O or cache mutation. True means an entry exists,
+    // INCLUDING a spent tombstone which must shadow the backing database.
+    // Caller must hold the same fence used for native cache mutations.
+    bool CopyCachedCoin(const COutPoint &outpoint, Coin &coin) const;
+    std::shared_ptr<const uint8_t> ReadIdentity() const {
+        return read_identity;
+    }
 
     /**
      * Return a reference to Coin in the cache, or a pruned one if not found.

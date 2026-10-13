@@ -1,0 +1,246 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-owned-chainstate-reads/v1",
+  "public_parent": {
+    "commit": "8fc7aec5a3935533fe7d4e0ccbfdf14b276abc37",
+    "tree": "0a97f74862c1f7ff1842ce60aa7969837b31a887"
+  },
+  "parent_status": "public-review-branch-not-assumed-accepted",
+  "license": "MIT",
+  "contract": {
+    "cold_coin_io": "outside-both-native-locks",
+    "source": "owned-LevelDB-snapshot-plus-copied-native-cache-overlay",
+    "spent_overlay": "never-fall-back-to-database",
+    "fences": "chain-generation,pool-generation,cache-owner,database-owner",
+    "shutdown": "positive-reader-join-before-native-storage-reopen",
+    "daemon_admission": false,
+    "consensus_change": false,
+    "dependency_change": false,
+    "incoming_evidence": [],
+    "knowledge_status": "Open Question",
+    "evidence_ceiling": "record-review-only"
+  },
+  "files": [
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "before": {
+        "mode": "100644",
+        "bytes": 6693,
+        "git_blob_sha1": "b248c1595b06d263b526a3440aad629359069aa6",
+        "sha256": "12186b0cadc5ed3cb130884a37912b60faa208670115767ce90d080ebcad7245"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6819,
+        "git_blob_sha1": "3e5402b3b7608d134e59d593681af4effaedd2da",
+        "sha256": "2131bd3b3b36fae50217ef0f1b476e87a900571050599ae7d56ad8c11a244ff6"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 20942,
+        "git_blob_sha1": "8e04362891262aefd2b35cdb63bfe19ab0f74e1c",
+        "sha256": "b533d2169a41e1055da2e923a4476a201c04544e0242ca3669a2c93b3aa4b7a3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 24664,
+        "git_blob_sha1": "accf1555928cd9fdd658bbf60c74a23f3d2062ec",
+        "sha256": "0c0917e4cac0c8bc2986d8cc659aff0fadbe3702decb1c87880f782991640831"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 2757,
+        "git_blob_sha1": "5fd987bd0303f32573a2e78a1bda240e3639e64f",
+        "sha256": "4a3fc4670c1de64bf665bddac6b68fe96b8c5b8398c528e3620b3dd549df3b6e"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2885,
+        "git_blob_sha1": "31b2dd5320e2a62ad17e4430be969a2335025e48",
+        "sha256": "43ffef3bf8786b2ab1cd4d78cc8531026a5cecc4716fb00794e022306fb3e9cf"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "before": {
+        "mode": "100644",
+        "bytes": 56589,
+        "git_blob_sha1": "86f5063c4c238f53adf4d34c61361f392cd26f6f",
+        "sha256": "fb0e1f17c00b457ff4eaaa8bee30cff47739b2c284dd77f2e8e7929173699eff"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 56973,
+        "git_blob_sha1": "a9a36b9bac6daa1ede9742c201bff6a30da76cc7",
+        "sha256": "2696d6d9d0408333166e59950910bf093da86f2b780d7c5db3ac129704657d92"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    },
+    {
+      "path": "src/coins.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 11404,
+        "git_blob_sha1": "fb53ac245b558e1e38dd7d42eb686a8e4f830af0",
+        "sha256": "2e50c5b905d626eecf97877fe28b36cd33a8265d198d4c3f09b5e95d80cc93cc"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11665,
+        "git_blob_sha1": "15f7e9e238e4405c07a42a287b7907205b28e365",
+        "sha256": "f2654e88a60a474e853554cb4d41a48cd6f13bd6937f8ff5e79f86d825c0891a"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "native-storage-api-always-built"
+    },
+    {
+      "path": "src/coins.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 10936,
+        "git_blob_sha1": "3fe10e05bb6addf150d43386ef19af1dab88c3cf",
+        "sha256": "8ea358cba047c8a1d60a2ad7cc1ec0b729cb69d4a5382f19d5a7ecaaba29a68d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11525,
+        "git_blob_sha1": "a0929f670f850620a17b2f9a826890203e527e6a",
+        "sha256": "e61e18260bf80b9f0c480cfebe8bf63a1fc8da8f04d2887d7ac2b9c169904b52"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "native-storage-api-always-built"
+    },
+    {
+      "path": "src/dbwrapper.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 8997,
+        "git_blob_sha1": "5d1197146ee6a9243c43e08ae3f78bf4003f1923",
+        "sha256": "e1ff04ec44ac56574e86aa5dc006d7da4deeca5c79d0a305d1bdb7502bd4c236"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9489,
+        "git_blob_sha1": "f5fb86c284cceacbe5ffd2a96acfbc557ac9477d",
+        "sha256": "b1b86652f5480222e74708831bd36645f08d078dc36604898011fd61c576f8d5"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "native-storage-api-always-built"
+    },
+    {
+      "path": "src/dbwrapper.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 10764,
+        "git_blob_sha1": "3e5c05ff411bd676a209ae89bc181fc0b25d3417",
+        "sha256": "33313dad8410f313519c23ecbb10ae143144126c88a0834dee1a00d7fefbbd79"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12846,
+        "git_blob_sha1": "93cf61c45129679ddf4319574145206ee89a385c",
+        "sha256": "9455c002b45798b2598fe43870b0fef4a5a4555d7ce5f99db68d66f4d9514936"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "native-storage-api-always-built"
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 116088,
+        "git_blob_sha1": "62f11e8ee76e63fb334d868c45ef938eaadc4d95",
+        "sha256": "81938f47b27d1f9fec5bf5dae019ed1a070cc066c9bf1b1dfec0316e42910392"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 130018,
+        "git_blob_sha1": "bf35ab6814fec26605cddc6c6869fb7f40f3f233",
+        "sha256": "cab8b9607474dba3eb02cf974f8a698053a7a7be2c3708ff314e7b58579f693c"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    },
+    {
+      "path": "src/txdb.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 14196,
+        "git_blob_sha1": "380cf110f8f9d1ec6bd4232f810976d3bf9aad12",
+        "sha256": "8cd7fa84210f4dd0d4540e7e374ec5435779018ed99545036dfa7458a86d7047"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14639,
+        "git_blob_sha1": "4418d6329306b5db6f6f9577a431e27dda73e3ea",
+        "sha256": "a1a61d332ef2bcdf738213768d8da9bc6eefb727caebcc5c80ebbc6f76b89f7f"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "native-storage-api-always-built"
+    },
+    {
+      "path": "src/txdb.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 3848,
+        "git_blob_sha1": "cb96b15dc612d64bc370e6181257105c48bc0dbb",
+        "sha256": "9ac1bcafb1bd36ab9f6b8753e50a58fc138ff31a9c21acecbf707a4e31ea80c0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4376,
+        "git_blob_sha1": "e48239f4cfcf5d58fdc31c097afccc80e76d0e6a",
+        "sha256": "34af7a76afac395c4f6ac3e6c33955b8e041ba8d1c15cc094bb57cf2db2e1374"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "native-storage-api-always-built"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 19503,
+        "git_blob_sha1": "5490ca0e914c6f85e775a08f17a9fc95d4281f78",
+        "sha256": "0722df8487bb7bb7f0cae0efb0dd237738a98729a1eceb52d605778711eb4010"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21542,
+        "git_blob_sha1": "170b1761f2dfcd1ad72915db54654004633f2ff8",
+        "sha256": "c100202a56c345be9a14b53148bae6b8251b2e9829b62aee9ee308acce53fda3"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 8610,
+        "git_blob_sha1": "a7dfef0b487c2265947d892a9d6850231970af4a",
+        "sha256": "fa2eda0b1d7498235536d7923fce7c26d19f81fbf4bb16f3a308e502e781b428"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8610,
+        "git_blob_sha1": "f2d79e9c93b7acb78909a2321990bc0f96780252",
+        "sha256": "fa14585ba4cf39271483c1cd568f5e201d6f85628c60aeed5a522b65a5cf0eb9"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "opt-in-build-or-test-only"
+    }
+  ]
+}

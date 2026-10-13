@@ -26,10 +26,10 @@ class Contract(unittest.TestCase):
         for _, cases, assertions in runner.GROUPS:
             result = runner.parse_streams(self.streams(cases, assertions), cases, assertions)
             self.assertEqual(result["cases"], list(cases))
-        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 39)
-        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 39)
-        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2179)
-        self.assertEqual(len(runner.GROUPS), 5)
+        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 44)
+        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 44)
+        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2285)
+        self.assertEqual(len(runner.GROUPS), 6)
         self.assertEqual(runner.filter_for(runner.STARTUP).count(runner.PREFIX), 1)
 
     def test_summary_fail_closed(self):

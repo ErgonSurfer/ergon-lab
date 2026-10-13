@@ -21,6 +21,7 @@
 struct BlockHash;
 class CBlockIndex;
 class CCoinsViewDBCursor;
+class CCoinsViewDBSnapshot;
 
 namespace Consensus {
 struct Params;
@@ -56,6 +57,8 @@ public:
                           bool fWipe = false);
 
     bool GetCoin(const COutPoint &outpoint, Coin &coin) const override;
+    std::unique_ptr<CCoinsViewDBSnapshot> Snapshot() const;
+    bool OwnsSnapshot(const CCoinsViewDBSnapshot &snapshot) const;
     bool HaveCoin(const COutPoint &outpoint) const override;
     BlockHash GetBestBlock() const override;
     std::vector<BlockHash> GetHeadBlocks() const override;
@@ -66,6 +69,16 @@ public:
     //! Returns whether an error occurred.
     bool Upgrade();
     size_t EstimateSize() const override;
+};
+
+// Read-only owned native coin codec; no CCoinsViewDB/cache is borrowed.
+class CCoinsViewDBSnapshot {
+    friend class CCoinsViewDB;
+    const std::unique_ptr<CDBSnapshot> database;
+    explicit CCoinsViewDBSnapshot(std::unique_ptr<CDBSnapshot> snapshot)
+        : database(std::move(snapshot)) {}
+public:
+    bool GetCoin(const COutPoint &outpoint, Coin &coin) const;
 };
 
 /** Specialization of CCoinsViewCursor to iterate over a CCoinsViewDB */

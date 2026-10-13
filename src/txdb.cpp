@@ -61,6 +61,19 @@ bool CCoinsViewDB::GetCoin(const COutPoint &outpoint, Coin &coin) const {
     return db.Read(CoinEntry(&outpoint), coin);
 }
 
+std::unique_ptr<CCoinsViewDBSnapshot> CCoinsViewDB::Snapshot() const {
+    return std::unique_ptr<CCoinsViewDBSnapshot>(
+        new CCoinsViewDBSnapshot(db.Snapshot()));
+}
+
+bool CCoinsViewDB::OwnsSnapshot(const CCoinsViewDBSnapshot &snapshot) const {
+    return db.OwnsSnapshot(*snapshot.database);
+}
+
+bool CCoinsViewDBSnapshot::GetCoin(const COutPoint &outpoint, Coin &coin) const {
+    return database->Read(CoinEntry(&outpoint), coin);
+}
+
 bool CCoinsViewDB::HaveCoin(const COutPoint &outpoint) const {
     return db.Exists(CoinEntry(&outpoint));
 }

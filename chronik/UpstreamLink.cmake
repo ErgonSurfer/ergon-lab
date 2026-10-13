@@ -68,6 +68,8 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
     list(APPEND _identity_inputs src/chain.h src/chain.cpp src/txmempool.h
         src/txmempool.cpp src/util/source_generation.h)
     list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_http_tests.rs)
+    list(APPEND _identity_inputs src/coins.h src/coins.cpp src/dbwrapper.h
+        src/dbwrapper.cpp src/txdb.h src/txdb.cpp)
     set(_identity "ergon-archival-adapter/v1\n")
     foreach(_input IN LISTS _identity_inputs)
         file(SHA256 "${CMAKE_SOURCE_DIR}/${_input}" _digest)

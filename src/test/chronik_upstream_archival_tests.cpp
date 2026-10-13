@@ -28,6 +28,7 @@
 #include <streams.h>
 #include <test/setup_common.h>
 #include <thread>
+#include <txdb.h>
 #include <txmempool.h>
 #include <util/source_generation.h>
 #include <util/system.h>
@@ -97,6 +98,33 @@ struct DataPositionRestore {
         ChainActive()[height]->nDataPos = original;
     }
 };
+// Fixture setup only, before any observer starts: copy the actual accepted
+// native coin database into a file-backed LevelDB. No synthetic prevouts or
+// production migration path. Destroy the borrowed cursor before owner swap.
+bool FileBackedFixtureChainstate() {
+    LOCK2(cs_main, g_mempool.cs);
+    if (!pcoinsTip->Flush()) return false;
+    CCoinsMap coins;
+    {
+        std::unique_ptr<CCoinsViewCursor> cursor(pcoinsdbview->Cursor());
+        for (; cursor->Valid(); cursor->Next()) {
+            COutPoint point;
+            Coin coin;
+            if (!cursor->GetKey(point) || !cursor->GetValue(coin) ||
+                coin.IsSpent()) return false;
+            auto inserted = coins.emplace(point, CCoinsCacheEntry(std::move(coin)));
+            if (!inserted.second) return false;
+            inserted.first->second.flags = CCoinsCacheEntry::DIRTY;
+        }
+    }
+    auto database = std::make_unique<CCoinsViewDB>(1 << 20, false);
+    if (!database->BatchWrite(coins, ChainActive().Tip()->GetBlockHash()))
+        return false;
+    pcoinsTip.reset();
+    pcoinsdbview = std::move(database);
+    pcoinsTip = std::make_unique<CCoinsViewCache>(pcoinsdbview.get());
+    return fs::is_directory(GetDataDir() / "chainstate");
+}
 struct HttpReply {
     int status{0};
     std::vector<uint8_t> body;
@@ -2418,5 +2446,280 @@ BOOST_AUTO_TEST_CASE(native_barrier_owner_mismatch_isolates_failure) {
     BOOST_CHECK(fs::is_regular_file(fs::path(root) / "probe.failed"));
     BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
     BOOST_CHECK_EQUAL(ShutdownRequested(), stopped_before);
+}
+
+BOOST_AUTO_TEST_CASE(owned_native_db_snapshot_outlives_wrapper) {
+    std::unique_ptr<CDBSnapshot> snapshot;
+    {
+        CDBWrapper database(GetDataDir() / "owned-read", 1 << 20, true, false,
+                            true);
+        BOOST_REQUIRE(database.Write('a', uint64_t{19}));
+        BOOST_REQUIRE(database.Write('b', uint8_t{7}));
+        snapshot = database.Snapshot();
+        BOOST_CHECK(database.OwnsSnapshot(*snapshot));
+        BOOST_REQUIRE(database.Write('a', uint64_t{27}));
+        BOOST_REQUIRE(database.Erase('a'));
+        uint64_t value = 0;
+        BOOST_REQUIRE(snapshot->Read('a', value));
+        BOOST_CHECK_EQUAL(value, 19);
+        BOOST_CHECK(!database.Read('a', value));
+    }
+    // Includes the obfuscation key, memory environment, cache and logger. A
+    // borrowed wrapper/DB would be a use-after-free at this actual native read.
+    uint64_t value = 0;
+    BOOST_REQUIRE(snapshot->Read('a', value));
+    BOOST_CHECK_EQUAL(value, 19);
+    BOOST_CHECK(!snapshot->Read('z', value));
+    BOOST_CHECK(
+        !snapshot->Read('b', value)); // Native decoder rejects truncation.
+    CDBWrapper replacement(GetDataDir() / "owned-read", 1 << 20, true);
+    BOOST_CHECK(!replacement.OwnsSnapshot(*snapshot));
+    snapshot.reset();
+    BOOST_REQUIRE(replacement.Write('a', uint64_t{31}));
+    BOOST_REQUIRE(replacement.Read('a', value));
+    BOOST_CHECK_EQUAL(value, 31);
+}
+
+BOOST_AUTO_TEST_CASE(native_coin_snapshot_overlay_and_owner_laws) {
+    auto database = std::make_unique<CCoinsViewDB>(1 << 20, true);
+    auto cache = std::make_unique<CCoinsViewCache>(database.get());
+    const COutPoint point(m_coinbase_txns[0]->GetId(), 0);
+    const Coin original(m_coinbase_txns[0]->vout[0], 1, true);
+    Coin coin;
+    BOOST_CHECK(!cache->CopyCachedCoin(point, coin));
+    BOOST_CHECK_EQUAL(cache->GetCacheSize(), 0);
+    cache->AddCoin(point, original, false);
+    cache->SetBestBlock(ChainActive().Tip()->GetBlockHash());
+    BOOST_REQUIRE(cache->Flush());
+    auto snapshot = database->Snapshot();
+    const auto identity = cache->ReadIdentity();
+    BOOST_CHECK(database->OwnsSnapshot(*snapshot));
+    BOOST_CHECK(!cache->CopyCachedCoin(point, coin));
+    BOOST_CHECK_EQUAL(cache->GetCacheSize(), 0);
+    BOOST_REQUIRE(snapshot->GetCoin(point, coin));
+    BOOST_CHECK(coin.GetTxOut() == original.GetTxOut());
+    BOOST_CHECK_EQUAL(coin.GetHeight(), 1);
+    BOOST_CHECK(coin.IsCoinBase());
+    BOOST_CHECK_EQUAL(cache->GetCacheSize(), 0);
+    // Dirty spent entries shadow an older unspent DB snapshot, even after a
+    // flush empties the live cache. CopyCachedCoin never treats them as misses.
+    BOOST_REQUIRE(cache->SpendCoin(point));
+    BOOST_REQUIRE(cache->CopyCachedCoin(point, coin));
+    BOOST_CHECK(coin.IsSpent());
+    const Coin tombstone = coin;
+    BOOST_REQUIRE(cache->Flush());
+    BOOST_CHECK(!cache->CopyCachedCoin(point, coin));
+    BOOST_REQUIRE(snapshot->GetCoin(point, coin));
+    BOOST_CHECK(!coin.IsSpent());
+    BOOST_CHECK(tombstone.IsSpent());
+    auto after = database->Snapshot();
+    BOOST_CHECK(!after->GetCoin(point, coin));
+    cache->AddCoin(point,
+                   Coin(CTxOut(Amount::zero(), CScript() << OP_2), 2, false),
+                   false);
+    BOOST_REQUIRE(cache->CopyCachedCoin(point, coin));
+    BOOST_CHECK_EQUAL(coin.GetHeight(), 2);
+    BOOST_CHECK(!coin.IsCoinBase());
+    BOOST_CHECK(coin.GetTxOut().scriptPubKey == (CScript() << OP_2));
+    BOOST_CHECK(!after->GetCoin(point, coin));
+    BOOST_REQUIRE(cache->Flush());
+    BOOST_CHECK(!after->GetCoin(point, coin));
+    cache.reset();
+    database.reset();
+    BOOST_REQUIRE(snapshot->GetCoin(point, coin));
+    BOOST_CHECK(coin.GetTxOut() == original.GetTxOut());
+    auto replacement = std::make_unique<CCoinsViewDB>(1 << 20, true);
+    CCoinsViewCache next(replacement.get());
+    BOOST_CHECK(next.ReadIdentity() != identity);
+    BOOST_CHECK(!replacement->OwnsSnapshot(*snapshot));
+    BOOST_CHECK(!replacement->OwnsSnapshot(*after));
+}
+
+BOOST_AUTO_TEST_CASE(cold_chainstate_capture_retries_owner_and_aba) {
+    struct Policy {
+        bool original{fRequireStandard};
+        Policy() { fRequireStandard = false; }
+        ~Policy() { fRequireStandard = original; }
+    } policy;
+    BOOST_REQUIRE(FileBackedFixtureChainstate());
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto probe = ergon_archival::open_archival(Root("cold-owner-aba"), access);
+    const auto &prev = *m_coinbase_txns[0];
+    CMutableTransaction spend;
+    spend.vin.emplace_back(COutPoint(prev.GetId(), 0));
+    spend.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    std::vector<uint8_t> signature;
+    BOOST_REQUIRE(coinbaseKey.SignECDSA(
+        SignatureHash(prev.vout[0].scriptPubKey, CTransaction(spend), 0,
+                      SigHashType().withForkId(), Amount::zero()),
+        signature));
+    signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+    spend.vin[0].scriptSig << signature;
+    {
+        LOCK2(cs_main, g_mempool.cs);
+        CValidationState state;
+        BOOST_REQUIRE(AcceptToMemoryPool(GetConfig(), g_mempool, state,
+                                         MakeTransactionRef(spend), nullptr,
+                                         true, Amount::zero()));
+        BOOST_REQUIRE(pcoinsTip->Flush());
+        Coin coin;
+        BOOST_CHECK(!pcoinsTip->CopyCachedCoin(spend.vin[0].prevout, coin));
+    }
+    const auto hash = ChainActive().Tip()->GetBlockHash();
+    const auto generation = ChainActive().GetSourceGeneration();
+    unsigned reads = 0;
+    ergon_archival::CaptureStats stats;
+    BOOST_REQUIRE(ergon_archival::reconcile_captured(
+        *probe, access, {},
+        [&] {
+            AssertLockNotHeld(cs_main);
+            AssertLockNotHeld(g_mempool.cs);
+            if (++reads == 1) {
+                LOCK(cs_main);
+                // Same hash/generation/DB, new cache owner: scalar source
+                // checks alone must NOT accept this detached capture.
+                pcoinsTip =
+                    std::make_unique<CCoinsViewCache>(pcoinsdbview.get());
+            } else if (reads == 2) {
+                CreateAndProcessBlock({}, CScript() << OP_2);
+                LOCK(cs_main);
+                CValidationState state;
+                BOOST_REQUIRE(
+                    InvalidateBlock(GetConfig(), state, ChainActive().Tip()));
+                BOOST_REQUIRE(ActivateBestChain(GetConfig(), state));
+                BOOST_REQUIRE(pcoinsTip->Flush());
+            }
+        },
+        &stats));
+    BOOST_CHECK_EQUAL(reads, 3);
+    BOOST_CHECK_EQUAL(stats.attempts, 3);
+    BOOST_CHECK_EQUAL(stats.discarded_before_db, 2);
+    BOOST_CHECK_EQUAL(stats.cold_prevout_reads, 3);
+    BOOST_CHECK(ChainActive().Tip()->GetBlockHash() == hash);
+    BOOST_CHECK(ChainActive().GetSourceGeneration() > generation);
+    BOOST_CHECK_EQUAL(
+        probe->tx_view(Bytes(CTransaction(spend).GetId()), 0).height, -1);
+    BOOST_CHECK_EQUAL(g_mempool.size(), 1);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_REQUIRE(
+        ergon_archival::reconcile_captured(*probe, access, {}, {}, &stats));
+    BOOST_CHECK_EQUAL(stats.cold_prevout_reads, 0);
+    BOOST_CHECK_EQUAL(stats.pool_reused, 1);
+}
+
+BOOST_AUTO_TEST_CASE(cold_chainstate_worker_stop_allows_native_progress) {
+    struct Policy {
+        bool original{fRequireStandard};
+        Policy() { fRequireStandard = false; }
+        ~Policy() { fRequireStandard = original; }
+    } policy;
+    BOOST_REQUIRE(FileBackedFixtureChainstate());
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("cold-worker-stop");
+    CallbackLatch cold;
+    std::atomic<bool> first{true};
+    ergon_archival::ArchivalWorker worker(root, access, 128, {}, {}, {}, [&] {
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(g_mempool.cs);
+        if (first.exchange(false)) cold.Block();
+    });
+    const auto &prev = *m_coinbase_txns[0];
+    CMutableTransaction spend;
+    spend.vin.emplace_back(COutPoint(prev.GetId(), 0));
+    spend.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    std::vector<uint8_t> signature;
+    BOOST_REQUIRE(coinbaseKey.SignECDSA(
+        SignatureHash(prev.vout[0].scriptPubKey, CTransaction(spend), 0,
+                      SigHashType().withForkId(), Amount::zero()),
+        signature));
+    signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+    spend.vin[0].scriptSig << signature;
+    {
+        LOCK2(cs_main, g_mempool.cs);
+        CValidationState state;
+        BOOST_REQUIRE(AcceptToMemoryPool(GetConfig(), g_mempool, state,
+                                         MakeTransactionRef(spend), nullptr,
+                                         true, Amount::zero()));
+        BOOST_REQUIRE(pcoinsTip->Flush());
+        Coin coin;
+        BOOST_CHECK(!pcoinsTip->CopyCachedCoin(spend.vin[0].prevout, coin));
+    }
+    SyncWithValidationInterfaceQueue();
+    BOOST_REQUIRE(cold.Wait());
+    BOOST_CHECK_THROW(worker.ReadSnapshot(), std::exception);
+    // Actual block validation and callback drain progress while an owned cold
+    // read session is paused; no native lock or coin-cache reference is held.
+    CreateAndProcessBlock({}, CScript() << OP_2);
+    SyncWithValidationInterfaceQueue();
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    auto stopping = std::async(std::launch::async, [&] { worker.Stop(); });
+    BOOST_CHECK(!worker.WaitThrough(1, 5000));
+    BOOST_CHECK(worker.Status().admission_closed);
+    BOOST_CHECK(!worker.Status().joined);
+    BOOST_CHECK(fs::exists(fs::path(root) / "probe.lock"));
+    cold.Release();
+    BOOST_REQUIRE(stopping.wait_for(std::chrono::seconds(5)) ==
+                  std::future_status::ready);
+    stopping.get();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(!worker.Status().failed);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+    auto reopened = ergon_archival::open_archival(root, access);
+    BOOST_CHECK_EQUAL(
+        reopened->tx_view(Bytes(CTransaction(spend).GetId()), 0).height, -1);
+}
+
+BOOST_AUTO_TEST_CASE(spent_cache_tombstone_quarantines_only_index) {
+    struct Policy {
+        bool original{fRequireStandard};
+        Policy() { fRequireStandard = false; }
+        ~Policy() { fRequireStandard = original; }
+    } policy;
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("spent-overlay-fault");
+    {
+        auto probe = ergon_archival::open_archival(root, access);
+        const auto stopped = ShutdownRequested();
+        const auto &prev = *m_coinbase_txns[0];
+        CMutableTransaction spend;
+        spend.vin.emplace_back(COutPoint(prev.GetId(), 0));
+        spend.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+        std::vector<uint8_t> signature;
+        BOOST_REQUIRE(coinbaseKey.SignECDSA(
+            SignatureHash(prev.vout[0].scriptPubKey, CTransaction(spend), 0,
+                          SigHashType().withForkId(), Amount::zero()),
+            signature));
+        signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+        spend.vin[0].scriptSig << signature;
+        {
+            LOCK2(cs_main, g_mempool.cs);
+            CValidationState state;
+            BOOST_REQUIRE(AcceptToMemoryPool(GetConfig(), g_mempool, state,
+                                             MakeTransactionRef(spend), nullptr,
+                                             true, Amount::zero()));
+            BOOST_REQUIRE(pcoinsTip->Flush());
+            // Explicit fixture corruption, NOT an accepted native transition:
+            // the pool references a spent overlay hiding an unspent DB value.
+            BOOST_REQUIRE(pcoinsTip->SpendCoin(spend.vin[0].prevout));
+            Coin tombstone, backing;
+            BOOST_REQUIRE(
+                pcoinsTip->CopyCachedCoin(spend.vin[0].prevout, tombstone));
+            BOOST_CHECK(tombstone.IsSpent());
+            BOOST_REQUIRE(pcoinsdbview->Snapshot()->GetCoin(
+                spend.vin[0].prevout, backing));
+            BOOST_CHECK(!backing.IsSpent());
+        }
+        BOOST_CHECK_THROW(ergon_archival::reconcile_captured(*probe, access),
+                          std::exception);
+        BOOST_CHECK_THROW(probe->snapshot(), std::exception);
+        BOOST_CHECK(access.index_failed.load());
+        BOOST_CHECK_EQUAL(ShutdownRequested(), stopped);
+        BOOST_CHECK_EQUAL(ChainActive().Height(), 100);
+        BOOST_CHECK_EQUAL(g_mempool.size(), 1);
+    }
+    BOOST_CHECK(fs::exists(fs::path(root) / "probe.failed"));
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+    // Native fixture teardown discards this deliberate corrupt overlay.
 }
 BOOST_AUTO_TEST_SUITE_END()

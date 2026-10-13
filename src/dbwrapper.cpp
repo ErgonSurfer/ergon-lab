@@ -142,6 +142,16 @@ CDBWrapper::CDBWrapper(const fs::path &path, size_t nCacheSize, bool fMemory,
     }
     leveldb::Status status = leveldb::DB::Open(options, path.string(), &pdb);
     dbwrapper_private::HandleError(status);
+    // The final reader, not necessarily this wrapper, releases storage. The
+    // deleter owns every resource referred to by LevelDB for its full lifetime.
+    database_owner = std::shared_ptr<leveldb::DB>(
+        pdb, [resources = options, environment = penv](leveldb::DB *database) {
+            delete database;
+            delete resources.filter_policy;
+            delete resources.info_log;
+            delete resources.block_cache;
+            delete environment;
+        });
     LogPrintf("Opened LevelDB successfully\n");
 
     if (gArgs.GetBoolArg("-forcecompactdb", false)) {
@@ -172,17 +182,15 @@ CDBWrapper::CDBWrapper(const fs::path &path, size_t nCacheSize, bool fMemory,
               HexStr(obfuscate_key));
 }
 
-CDBWrapper::~CDBWrapper() {
-    delete pdb;
-    pdb = nullptr;
-    delete options.filter_policy;
-    options.filter_policy = nullptr;
-    delete options.info_log;
-    options.info_log = nullptr;
-    delete options.block_cache;
-    options.block_cache = nullptr;
-    delete penv;
-    options.env = nullptr;
+CDBWrapper::~CDBWrapper() = default;
+
+std::unique_ptr<CDBSnapshot> CDBWrapper::Snapshot() const {
+    return std::unique_ptr<CDBSnapshot>(
+        new CDBSnapshot(database_owner, obfuscate_key));
+}
+
+bool CDBWrapper::OwnsSnapshot(const CDBSnapshot &snapshot) const {
+    return database_owner == snapshot.owner;
 }
 
 bool CDBWrapper::WriteBatch(CDBBatch &batch, bool fSync) {

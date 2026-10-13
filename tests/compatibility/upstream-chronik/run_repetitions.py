@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Fresh-process component observations, never automatic proof promotion.
 
-Five disjoint native groups have a fixed 60-second process deadline. Reports
+Six disjoint native groups have a fixed 60-second process deadline. Reports
 exclude process text and binding paths. The source projection and CMake cache
 are checked, but are not a substitute for recorded binary construction.
 """
@@ -77,13 +77,30 @@ LIVENESS = tuple(PREFIX + name for name in (
     "silent_mempool_generation_recovers_without_callback",
     "control_handles_do_not_wait_behind_native_capture",
 ))
+CHAINSTATE = tuple(PREFIX + name for name in (
+    "owned_native_db_snapshot_outlives_wrapper",
+    "native_coin_snapshot_overlay_and_owner_laws",
+    "cold_chainstate_capture_retries_owner_and_aba",
+    "cold_chainstate_worker_stop_allows_native_progress",
+    "spent_cache_tombstone_quarantines_only_index",
+))
 GROUPS = (
     ("native-bridge-and-disk", BRIDGE, 166),
     ("owned-startup", STARTUP, 593),
     ("capture-and-query-controls", CAPTURE, 1063),
     ("runtime-stop-and-reopen-controls", STOP, 307),
     ("silent-generation-and-control-locks", LIVENESS, 50),
+    ("owned-cold-chainstate-reads", CHAINSTATE, 106),
 )
+READ_MANIFEST = "docs/engineering/chronik/owned-chainstate-reads-v1.json"
+READ_INPUTS = frozenset({
+    "chronik/UpstreamLink.cmake", "chronik/chronik-cpp/ergon_archival_probe.cpp",
+    "chronik/chronik-cpp/ergon_archival_probe.h", "chronik/chronik-lib/src/ergon_archival.rs",
+    "src/coins.h", "src/coins.cpp", "src/dbwrapper.h", "src/dbwrapper.cpp",
+    "src/txdb.h", "src/txdb.cpp", "src/test/chronik_upstream_archival_tests.cpp",
+    "tests/compatibility/upstream-chronik/run_repetitions.py",
+    "tests/compatibility/upstream-chronik/self_test.py",
+})
 ADAPTER_INPUTS = (
     "chronik/Cargo.lock", "chronik/chronik-bridge/src/ffi.rs",
     "chronik/chronik-cpp/chronik_bridge.cpp", "chronik/chronik-cpp/chronik_bridge.h",
@@ -97,6 +114,8 @@ ADAPTER_INPUTS = (
     "chronik/chronik-http/src/server.rs", "src/chain.h", "src/chain.cpp",
     "src/txmempool.h", "src/txmempool.cpp", "src/util/source_generation.h",
     "chronik/chronik-lib/src/ergon_http_tests.rs",
+    "src/coins.h", "src/coins.cpp", "src/dbwrapper.h", "src/dbwrapper.cpp",
+    "src/txdb.h", "src/txdb.cpp",
 )
 
 class Rejected(ValueError):
@@ -116,10 +135,24 @@ def regular(path):
     require(path.is_file() and not path.is_symlink(), "regular input required")
     return path.read_bytes()
 
-def source_projection(source, manifest):
+def source_projection(source, manifest, read_manifest=None):
     rows = json.loads(regular(manifest))["files"]
     names = [r["path"] for r in rows]
     require(len(rows) == 34 and names == sorted(set(names)), "finite source projection required")
+    if read_manifest is not None:
+        layer = json.loads(regular(read_manifest))
+        require(layer["schema"] == "ergon-owned-chainstate-reads/v1" and
+                layer["public_parent"] == {"commit": "8fc7aec5a3935533fe7d4e0ccbfdf14b276abc37",
+                                           "tree": "0a97f74862c1f7ff1842ce60aa7969837b31a887"},
+                "read-session projection parent/schema drift")
+        require([r["path"] for r in layer["files"]] == sorted(READ_INPUTS), "finite read-session projection required")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "read-session projection preimage drift")
+            merged[row["path"]] = row
+        require(len(merged) == 42, "combined source projection cardinality drift")
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -133,7 +166,7 @@ def source_projection(source, manifest):
     return digest(canonical(rows))
 
 def bind_build(source, build, profile, manifest):
-    projection = source_projection(source, manifest)
+    projection = source_projection(source, manifest, source / READ_MANIFEST)
     require(not source.is_relative_to(build) and not build.is_relative_to(source), "separate build root required")
     cache = {}
     for line in regular(build / "CMakeCache.txt").decode("utf-8").splitlines():
@@ -242,7 +275,7 @@ def filter_for(cases):
 
 def repeat(binary, work, forbidden, repetitions):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
-    require(len({case for _, cases, _ in GROUPS for case in cases}) == 39, "non-disjoint test groups")
+    require(len({case for _, cases, _ in GROUPS for case in cases}) == 44, "non-disjoint test groups")
     result = []
     for role, cases, assertions in GROUPS:
         first = None
@@ -255,8 +288,8 @@ def repeat(binary, work, forbidden, repetitions):
             first = observation
         result.append(dict(role=role, repetitions=repetitions, **first))
         print("PASS: " + role + "; " + str(len(cases)) + " cases; " + str(assertions) + " assertions", flush=True)
-    return {"groups": result, "selected_cases": 39, "assertions_per_repetition": 2179,
-            "fresh_processes": repetitions * 5, "per_process_timeout_seconds": 60,
+    return {"groups": result, "selected_cases": 44, "assertions_per_repetition": sum(a for _, _, a in GROUPS),
+            "fresh_processes": repetitions * 6, "per_process_timeout_seconds": 60,
             "stream_contract": "strict UTF-8, exact bytes within each group, binding paths rejected; no text retained"}
 
 def mining_address():

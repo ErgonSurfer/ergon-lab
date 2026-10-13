@@ -25,7 +25,8 @@ class StartupHook {
 struct CaptureStats {
     uint64_t attempts{0}, reused_blocks{0}, block_read_calls{0},
         undo_load_calls{0}, discarded_before_db{0}, metadata_copied{0},
-        metadata_checked{0}, pool_reused{0}, pool_captured{0}, prevout_reads{0};
+        metadata_checked{0}, pool_reused{0}, pool_captured{0}, prevout_reads{0},
+        cold_prevout_reads{0};
 };
 // Test fixture owns native resources and must outlive the synchronous Rust box.
 // No daemon calls this function. It is not live-source epoch validation.
@@ -41,10 +42,11 @@ make_startup_bridge(const chronik_bridge::ErgonNodeAccess &node);
 void finish_startup_bridge(const chronik_bridge::ChronikBridge &bridge);
 bool reconcile_startup(ArchivalProbe &probe,
                        const chronik_bridge::ErgonNodeAccess &node);
-// Copy native metadata/prevouts under the source fence, read block/undo using
-// owned references after release, recheck source/storage before DB application,
-// then recheck before scalar publication. Chainstate prevout lookup remains
-// fenced. Fixture hooks are not daemon capabilities.
+// Copy native metadata, mempool parent outputs and the cache overlay under the
+// source fence. Resolve cold prevouts through an owned native DB snapshot and
+// read block/undo after release; recheck source, storage AND cache/DB owners
+// before DB application, then again before publication. No borrowed native coin
+// view crosses the fence. Fixture hooks are not daemon capabilities.
 bool reconcile_captured(ArchivalProbe &probe,
                         const chronik_bridge::ErgonNodeAccess &node,
                         const std::function<void()> &after_capture = {},

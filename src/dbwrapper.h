@@ -15,6 +15,7 @@
 
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
+#include <memory>
 
 static const size_t DBWRAPPER_PREALLOC_KEY_SIZE = 64;
 static const size_t DBWRAPPER_PREALLOC_VALUE_SIZE = 1024;
@@ -26,6 +27,7 @@ public:
 };
 
 class CDBWrapper;
+class CDBSnapshot;
 
 /**
  * These should be considered an implementation detail of the specific database.
@@ -196,6 +198,10 @@ private:
     //! the database itself
     leveldb::DB *pdb;
 
+    // Snapshots retain the database AND its environment/options resources.
+    // No snapshot borrows this wrapper or prolongs a native validation lock.
+    std::shared_ptr<leveldb::DB> database_owner;
+
     //! the name of this database
     std::string m_name;
 
@@ -227,6 +233,10 @@ public:
 
     CDBWrapper(const CDBWrapper &) = delete;
     CDBWrapper &operator=(const CDBWrapper &) = delete;
+
+    // Acquire under the caller's source fence; Read performs I/O later.
+    std::unique_ptr<CDBSnapshot> Snapshot() const;
+    bool OwnsSnapshot(const CDBSnapshot &snapshot) const;
 
     template <typename K, typename V> bool Read(const K &key, V &value) const {
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
@@ -334,6 +344,49 @@ public:
         leveldb::Slice slKey1(ssKey1.data(), ssKey1.size());
         leveldb::Slice slKey2(ssKey2.data(), ssKey2.size());
         pdb->CompactRange(&slKey1, &slKey2);
+    }
+};
+
+/** Immutable native read session. Safe after CDBWrapper destruction; no writes,
+ * iterator or raw database pointer are exposed. Snapshot release precedes the
+ * last owner release (including LevelDB cache, logger and memory environment).
+ */
+class CDBSnapshot {
+    friend class CDBWrapper;
+    const std::shared_ptr<leveldb::DB> owner;
+    const std::vector<uint8_t> obfuscate_key;
+    const leveldb::Snapshot *snapshot;
+    CDBSnapshot(std::shared_ptr<leveldb::DB> database,
+                const std::vector<uint8_t> &key)
+        : owner(std::move(database)), obfuscate_key(key),
+          snapshot(owner->GetSnapshot()) {}
+
+public:
+    ~CDBSnapshot() { owner->ReleaseSnapshot(snapshot); }
+    CDBSnapshot(const CDBSnapshot &) = delete;
+    CDBSnapshot &operator=(const CDBSnapshot &) = delete;
+
+    template <typename K, typename V> bool Read(const K &key, V &value) const {
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        ssKey << key;
+        leveldb::ReadOptions read;
+        read.verify_checksums = true;
+        read.fill_cache = false;
+        read.snapshot = snapshot;
+        std::string bytes;
+        const auto status = owner->Get(
+            read, leveldb::Slice(ssKey.data(), ssKey.size()), &bytes);
+        if (status.IsNotFound()) return false;
+        dbwrapper_private::HandleError(status);
+        try {
+            CDataStream decoded(bytes.data(), bytes.data() + bytes.size(),
+                                SER_DISK, CLIENT_VERSION);
+            decoded.Xor(obfuscate_key);
+            decoded >> value;
+        } catch (const std::exception &) {
+            return false;
+        }
+        return true;
     }
 };
 
