@@ -15,6 +15,11 @@ on:
       - "docs/engineering/changes/ergon-change-0040.json"
       - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
       - "tools/engineering/check_chronik_port_core.py"
+      - "tools/engineering/check_chronik_upstream_link.py"
+      - "docs/engineering/chronik/upstream-*.json"
+      - "src/chain.*"
+      - "src/txmempool.*"
+      - "src/util/source_generation.h"
   push:
     branches:
       - main
@@ -29,6 +34,11 @@ on:
       - "docs/engineering/changes/ergon-change-0040.json"
       - "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"
       - "tools/engineering/check_chronik_port_core.py"
+      - "tools/engineering/check_chronik_upstream_link.py"
+      - "docs/engineering/chronik/upstream-*.json"
+      - "src/chain.*"
+      - "src/txmempool.*"
+      - "src/util/source_generation.h"
   workflow_dispatch:
 
 permissions:
@@ -48,7 +58,7 @@ jobs:
       - name: Check out the reviewed tree
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Validate the donor and workspace inventory

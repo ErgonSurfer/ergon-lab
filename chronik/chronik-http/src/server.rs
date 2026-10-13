@@ -136,13 +136,22 @@ impl ChronikServer {
 
     /// Serve a Chronik HTTP endpoint with the given parameters.
     pub async fn serve(self) -> Result<()> {
-        let app = Self::make_router(
+        self.serve_with_router(|router| router).await
+    }
+
+    /// Ergon composition seam: wrap the unchanged upstream router in an
+    /// externally owned admission layer. No handler or indexing change.
+    pub async fn serve_with_router(
+        self,
+        wrap: impl FnOnce(Router) -> Router,
+    ) -> Result<()> {
+        let app = wrap(Self::make_router(
             self.indexer,
             self.node,
             self.pause_notify,
             self.settings,
             self.subscription_limiter,
-        );
+        ));
         let servers = self
             .tcp_listeners
             .into_iter()

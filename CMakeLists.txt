@@ -82,6 +82,17 @@ option(BUILD_CHRONIK_OBSERVER
 	"Link the optional Chronik block observer and persistent token runtime"
 	OFF
 )
+option(BUILD_CHRONIK_UPSTREAM_LINK
+	"Link the real upstream Chronik stack with runtime admission disabled"
+	OFF
+)
+option(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS
+	"Enable fixture-owned synchronous upstream archival tests (no service)"
+	OFF
+)
+if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS AND NOT BUILD_CHRONIK_UPSTREAM_LINK)
+	message(FATAL_ERROR "Archival tests require the upstream link profile")
+endif()
 
 if(ENABLE_COVERAGE)
 	include(Coverage)

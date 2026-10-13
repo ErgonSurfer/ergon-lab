@@ -1,0 +1,1287 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0045",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0045.json",
+  "purpose": {
+    "summary": "Link the existing upstream Chronik stack to Ergon through an owned, generation-bound native adapter; exercise robust startup, nonempty mempool, continuous callbacks, real HTTP routes and ALP fixtures before any daemon activation.",
+    "scope": [
+      "Reuse the pinned Bitcoin ABC indexer, token/database writers and HTTP handlers, not replacement indexing or token algorithms. The HTTP change is an explicit router-composition seam; wire structs remain unchanged.",
+      "Add synchronous nonwrapping observer identities to the active chain and mempool without changing consensus rules or the legacy mining counter.",
+      "Own and fence startup index graphs; reconcile the actual nonempty native mempool parent-first before opening fixture request admission; isolate failures from native validation.",
+      "Capture block/undo payloads outside native locks, retain shared immutable bounded windows, reconcile mempool deltas, order callbacks and positively join HTTP/Tokio/native users before teardown.",
+      "Add separate default-OFF build/link and archival-fixture flags. Daemon capability remains unconditionally false; the older observer is a separate profile.",
+      "Bind 34 technical postimages to public preimages, retain the historical donor manifest unchanged, and add portable CI for all 37 focused native cases plus compiled-out and linked-dormant mining/stop smokes."
+    ],
+    "exclusions": [
+      "No daemon init hook, runtime activation, network access to an operator, server deployment, cutover, release or desktop integration.",
+      "No token consensus, activation schedule, chain-selection, wallet, P2P, mainnet economic/network parameter or plugin changes.",
+      "No incoming reports, binaries, generated CXX outputs, build trees, caches, datadirs, private history or host-specific paths."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "8ae2e14af4765b0ffa5c8f4bd89d6ba3850ae84a",
+      "tree": "57ecce880d26044d88e26d24ff982072aedf7dc9"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "999ed6668c8454f776b75ac8a313c6318dfec31b221c8d16b6ef97615d31231b",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 5319,
+        "git_blob": "d5838c20715622be478921241fc75a001375c092",
+        "sha256": "4aa9fcd94d73ecfa0eb188e430efc8fae538ac89bb86870504a82f2ccfb05133"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5713,
+        "git_blob": "c94bea5bec3014c119eea4844f239a440be0cf97",
+        "sha256": "d1104f54d2c829f3380bf2f5bd5fc235baa4f6f5b827b1b01703ead02ca3311e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6354,
+        "git_blob": "12fa650eb4b2c3243055134fc5b1945531010b07",
+        "sha256": "d86dd302917f575423b31ac15fcef5678751e0ad42f4e351e57109061988442a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 3916,
+        "git_blob": "764fe5210cd9b5d3d2aa0c02c322791a968ff30a",
+        "sha256": "72f5e3935ef983857c306cf599336be463fe0ddfc2ab30167875f397599bedb1"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4314,
+        "git_blob": "87daca8ec46c1a7fd7436430e7d27c765b284aa2",
+        "sha256": "7832d7b0e9c73418cb76949030338131969a63500bce7c8e46f4e4b01271f8fd"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 46798,
+        "git_blob": "ca7ff27a1d672c2023e4f5369c7a0dd6e2f4889a",
+        "sha256": "849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 82576,
+        "git_blob": "35ee1bb5b52cacdb742792e4fc0951bb99dd3de1",
+        "sha256": "1c1d2daf3e0926cc68434bd6209624a60f365d370e88740ce888f402e5b4abe5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 667,
+        "git_blob": "3f6d74df97dd36ae0c7eba4492fcc4655e753452",
+        "sha256": "328ba0a85058124187563effc88560663ebdc34df781b12965e325b014ac858f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 653,
+        "git_blob": "8a490005a481751fa259539e894151a63d877b2f",
+        "sha256": "fb844947760e5ee08dea7f0d229058ce612fd9aa702d3ebc703c201e32d86ca4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "action": "add",
+      "role": "build",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6693,
+        "git_blob": "b248c1595b06d263b526a3440aad629359069aa6",
+        "sha256": "12186b0cadc5ed3cb130884a37912b60faa208670115767ce90d080ebcad7245"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-bridge/src/ffi.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 14206,
+        "git_blob": "974323c11728bd5d1eb713ec53b035bb53476830",
+        "sha256": "2c89fea3d0c3d9bdd0d8e3293429f3786ef3609a58c4386bd95baaf6215fb207"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14928,
+        "git_blob": "88217b92dddc13d3fcce44b0c9a133c97d3be280",
+        "sha256": "bfc0a8d546cc76bfc0849531b77c8109ccd730db93adcfce725119b68d3c4377"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-bridge/src/ffi.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_bridge.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 22542,
+        "git_blob": "9d54ed450aab6e1b12c464ee02caf025eea8f3ac",
+        "sha256": "be4c4641bfe3c249f1d62bdeef849b55a10e4f9680cfc3842ebad3ac5a99d931"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-cpp/chronik_bridge.cpp",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_bridge.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5436,
+        "git_blob": "6d5a682d43968dfcad56b19daf0e9dd090ad550a",
+        "sha256": "72539ca284717c258aa1070f630dfaf907425ae5f20a2bc15e14130587cc8151"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-cpp/chronik_bridge.h",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_validationinterface.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8096,
+        "git_blob": "67c692e8346f0025aaeece25723ab66ef3ef48a2",
+        "sha256": "a62c41b0ec4a979a19648d08d608e542cd8858402026e3a652f0310f8b8d9da0"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-cpp/chronik_validationinterface.cpp",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_validationinterface.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1078,
+        "git_blob": "e202d55a26be6fbdd3a82c5d6e6455d49a638ecb",
+        "sha256": "7fbb85df0cfc8cbabe29f94a7d49b14c5ce14997d4b36d76d1e0501cd78f9e13"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-cpp/chronik_validationinterface.h",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 20942,
+        "git_blob": "8e04362891262aefd2b35cdb63bfe19ab0f74e1c",
+        "sha256": "b533d2169a41e1055da2e923a4476a201c04544e0242ca3669a2c93b3aa4b7a3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2757,
+        "git_blob": "5fd987bd0303f32573a2e78a1bda240e3639e64f",
+        "sha256": "4a3fc4670c1de64bf665bddac6b68fe96b8c5b8398c528e3620b3dd549df3b6e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11075,
+        "git_blob": "84a657b72b8b6ff7225b567b6da2b34e3cb2db0e",
+        "sha256": "a3a944fa3315f0dc2eeb4db4a53aa664b7c6f0061b7486d0444d0aaea6461d6e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2411,
+        "git_blob": "997a1160307d0a192f0ee1cf8dc605303485e095",
+        "sha256": "9ac9824e99d41a6ca4b381142c01bbf00169a6cd1c91cac58883556b8b70829b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_node_access.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1571,
+        "git_blob": "3389d500cfbb8ac50dcdab94750182ddd9fa18ce",
+        "sha256": "3ee9bb1d25b6eacfb370b24ad1755368e352974b4231ece923125224ce96beb5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_position_reader.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 13284,
+        "git_blob": "19ca04b1a863df5f7804edf6b356a74314f97f69",
+        "sha256": "e9bf03bef1d59b6506fa6bdd4c213aa09bc140eb17ba31935b1b37f92fc8589f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_position_reader.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1347,
+        "git_blob": "be2035209f949c36d68f9eebca6f2d6741924fc9",
+        "sha256": "451b45e9988b7f3b1fb30579b51d55fec268b064bb686137e8789900fee604db"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-http/src/server.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 28586,
+        "git_blob": "bf7b4604d2e49d66bd85256468e186d7fed05fd6",
+        "sha256": "900a035097b3a799701eb026e713698332ffa10b38aedad2a07bc98037ebb3ba"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 28916,
+        "git_blob": "05bafd208554884bea4dfdc8dbbca2820e657c66",
+        "sha256": "1313e9347cde06e5bb9c2b2b4367307f8574c580656874021432169fe7ba8b51"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-http/src/server.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 1036,
+        "git_blob": "456ee6311981b3dbab366bbfcb2e7bbbb2c4ee4f",
+        "sha256": "3bfe71c25e463e90650eae0271b9a5297e08fb9a3c90db6f9e94e29f9163e8a9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1352,
+        "git_blob": "158f5828d09145207a3afd92320d5a1f6df84a3e",
+        "sha256": "8a25148597eecf4726fdabadb22d1614d4e8390093071935f872eb5ddce081c7"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-lib/Cargo.toml",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/build.rs",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 368,
+        "git_blob": "e58cf7d7f1d5cca272c9d859a8eea89d4604d792",
+        "sha256": "545a78d36b902cf0387f65bbddca9fdfb6f1af0a68593f26bf5d4686d2b0b4df"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1114,
+        "git_blob": "a09bd3912020b914493b62510f20e587c3526d27",
+        "sha256": "839516606b8c91008630857534adfde0684f7a0b7b7e4580944cd72bd410a0dd"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-lib/build.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/bridge.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 18642,
+        "git_blob": "3a5ec142e989d67b0e22ab493d81d764e24d8831",
+        "sha256": "43b9543bf2b0c8c834273296633a88c9dfadfefec271630869f0a4a03a1806c3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 18646,
+        "git_blob": "d211fd7849787b4a8ee6dd39692ad3daf2ef37ad",
+        "sha256": "599373153915344e56f9245c9a27256d9633e8854ccbfbf80ae54bf83d11d7d4"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-lib/src/bridge.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 55966,
+        "git_blob": "8deb9af0b9c41cb49825fc309c0bf8d4d89d5eb0",
+        "sha256": "f654a23c02a437f54144093aaf2d4e82c030e71a30d898808514f7f2d1168216"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_http_tests.rs",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12055,
+        "git_blob": "80bfb22238aef56da6730a1ad65e7998e6194edf",
+        "sha256": "5cdb28a55b2176315bc787d6d9501f053a1de5238a85eff8b79d09564dc965ae"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_runtime.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1470,
+        "git_blob": "17f3d16392a06c1738ae97497bfa57b7bb6ae3f4",
+        "sha256": "44b5f64bd63e5bd2b7dc698f9a2eee8b83ed1330403048523f11175cb7843367"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_service.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9373,
+        "git_blob": "2ee942c0c539965143eb96e098af763c46f2cba8",
+        "sha256": "1ccc013453731bdeaf4a1265f0b610016683db73a1b0fc142d83ecb2f814438a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ffi.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 6366,
+        "git_blob": "e576797add16b089caa508f1728e339c6f40e08b",
+        "sha256": "d489ceb91ebc5d74b3991a95644bd72820bdf17e035276ed3448eb56c9a9ebe9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6531,
+        "git_blob": "1971bb4087a37e22a8d3a0530de5544becac833a",
+        "sha256": "c5984a31eb423e579c321bc64d03934f7d2a9605bb4a76f9f6d0328e6537be05"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-lib/src/ffi.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 744,
+        "git_blob": "7476d9d6517c626fe0f657bd2c15b18e4917316c",
+        "sha256": "4fe06a1300da5b0e76f7c2f82b48acbbc804977831956f2603cd1545ee25148d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1265,
+        "git_blob": "6da02df5cab43751f35c731f3a08023547f92cc2",
+        "sha256": "101faaea65ee4ca09bf3261e3d31d869694d8788a3da42368a01a83b9c3772a2"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784+A1-host-adaptation",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "chronik/chronik-lib/src/lib.rs",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream-link profile only. Fixture-owned indexing/HTTP additionally requires archival test construction; daemon runtime admission remains unconditionally closed.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-host-adaptation-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 15527,
+        "git_blob": "20739af9f6f496ee141b202b87a666455b02ba31",
+        "sha256": "1afc5a22248a4a7f1a5e5f8962b2ce775a8ecc326404ee33559dfb368d911b8e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Separate historical donor identities from current host adaptations; bind exact reviewed inputs."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-registry-additions-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2512,
+        "git_blob": "5253bb2a65086fa66d3c4711ca74abe50c993a5c",
+        "sha256": "feca1e9ac714e3d88ba72adc5c3e3107b6d454cab9d4f19b299db6718512754c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Separate historical donor identities from current host adaptations; bind exact reviewed inputs."
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 17029,
+        "git_blob": "6f21a268e9443ebed067241d5fb9081efabdce01",
+        "sha256": "4e8bd7be605564f006dfe200bf36bf6eb238fd75330a827fb83194e855255c68"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 17128,
+        "git_blob": "1b29b4da39e21244b15a374aa28ee701d851a810",
+        "sha256": "9e975eab8059ee8011043363665499115d429441e006ddbb10c4c63db7c73003"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/chain.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 6390,
+        "git_blob": "48ac80373e0f0a3853c36ed69a33f6e6d8319029",
+        "sha256": "0b75e8c23aceeab55cf82332168c8487ef2738a23a60e86ad6259dcb8f4753b8"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6619,
+        "git_blob": "471a5dad9176892a8854bb2b213cbefd237ead13",
+        "sha256": "aa01397e722d60b68c080c3ac869caca06ae6e85366501285c5ad4d6954de7b1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Always-compiled synchronous observer-generation bookkeeping only. No consensus rule or legacy mining-counter change.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/chain.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 13923,
+        "git_blob": "7b592a6e899378202f63cb7d567901cb8270b770",
+        "sha256": "32dfd2b9b74a063822698b070e609ca0235dfef7a3dd66644147f385b9af5ba4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14182,
+        "git_blob": "b7a39a1b864635867125e465f29413b3ec4fbfad",
+        "sha256": "a8a61663cbffde8a7d9506e98d7a8586889e5f17a35ffaf91f8c524cf8bb8245"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Always-compiled synchronous observer-generation bookkeeping only. No consensus rule or legacy mining-counter change.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/test/chronik_native_upstream_bridge_tests.cpp",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 21955,
+        "git_blob": "4d99e9a71ee465b91b8ba49956825a3ab4ee791f",
+        "sha256": "c2afff37eae06f44c28f2ab7f7282d50fecf19e70389c29fa604afbf683c3e51"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 107553,
+        "git_blob": "8c84721cf186e33c52bf17aba34c454b0840b76e",
+        "sha256": "d876e8d5b662681ab1e40d3c38aa75e26e2c8c5b6bfc7e34f503adcdff90d90b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/txmempool.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 53141,
+        "git_blob": "23e27744135a0c73a5ab68b966b50c6998c793e8",
+        "sha256": "a5e183f6633241e7888c136e4b198866d8ae35ad6a835aec9a8f8d1ba34dc4b9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 53433,
+        "git_blob": "a541ef0a81032cd1c105c5f0cfd43c307b2460c9",
+        "sha256": "e25b3a870d621d7c6f6cf87b2c9088ef5b2bede82886cd8783bf21c508a56e1a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Always-compiled synchronous observer-generation bookkeeping only. No consensus rule or legacy mining-counter change.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/txmempool.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 39208,
+        "git_blob": "a2a801323a96047a0a44e052f618d9275a97fe4f",
+        "sha256": "f0946cbda0f0f8d3c56357751ab4e73997220a857ac1a360c1c5d734a7052811"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 39403,
+        "git_blob": "48d18982bae1c92cd1671be7f1d4a6e42f842045",
+        "sha256": "70489b3d8047abf6408d60ac8e1f2d83c0a3141987b7a7d1a352c60e9a294238"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Always-compiled synchronous observer-generation bookkeeping only. No consensus rule or legacy mining-counter change.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "src/util/source_generation.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1104,
+        "git_blob": "a1542d16e4975d3bd426263e40e0da01039f6514",
+        "sha256": "46970fe0bffdcbc0771d141098850f77140f20c3e1457cdaa6065ac1d15750a6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Always-compiled synchronous observer-generation bookkeeping only. No consensus rule or legacy mining-counter change.",
+      "test_reachability": "Exercise the separately built native upstream profile; no full-suite, deployment or independent reproduction claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 19280,
+        "git_blob": "eb6cb20b15f5beb2b658315ddb6a6d2c97c502cf",
+        "sha256": "b7775c76267a29628aa227f80c04ebe4b38a2b4d21e7b20c79e3ff9ec55c4808"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Fail closed on source/build/profile, case/assertion identity, output stability, cleanup, privacy or overwrite contradictions."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8562,
+        "git_blob": "5a0f938b3848c1076e850359f8057963202198c9",
+        "sha256": "6ff12bfb7d822c2ed60f161f107e0ee073961fe70a5290f0fd6f69520d14afc3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Fail closed on source/build/profile, case/assertion identity, output stability, cleanup, privacy or overwrite contradictions."
+    },
+    {
+      "path": "tools/engineering/check_chronik_port_core.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 14874,
+        "git_blob": "aa566b2eb499ffbd4cd78e10a782d0fab9e0239b",
+        "sha256": "ab7b03d390496e4cc3b5d374ed63aa46fa050173b6333071f1bfe3282662195e"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16515,
+        "git_blob": "e51546c477d6a23eae2b55f9878a3d48493c1743",
+        "sha256": "3b1f5996507678f7fc9aa270fb776ef39d1ef3538dca571b6fe52d3b4668a94d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Fail closed on source/build/profile, case/assertion identity, output stability, cleanup, privacy or overwrite contradictions."
+    },
+    {
+      "path": "tools/engineering/check_chronik_upstream_link.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 18567,
+        "git_blob": "dddbd65b7ef4c88473df87ae12e5d188e4b79290",
+        "sha256": "6782bf4f2d4f7f427c12206236254b621c5aa7dcc386eea8e4cfdaacbcf4721c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, source-policy or fixture construction only; no daemon runtime activation.",
+      "test_reachability": "Fail closed on source/build/profile, case/assertion identity, output stability, cleanup, privacy or overwrite contradictions."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build bitcoind and test_bitcoin with both upstream flags and BUILD_CHRONIK_OBSERVER=OFF in the separate compiled-out CI matrix job. Run the isolated 0-to-3 zero-subsidy regtest mining and positive-stop smoke."
+        ],
+        "expected_results": [
+          "Native mining and shutdown work without linking Rust/Chronik; no Chronik state or external peer connection is created."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Retain the older observer CI profile unchanged. Separately build the actual upstream stack with BUILD_CHRONIK_UPSTREAM_LINK=ON, archival fixtures enabled and BUILD_CHRONIK_OBSERVER=OFF; mine and stop without any runtime opt-in."
+        ],
+        "expected_results": [
+          "The two optional profiles are never combined. Upstream linking alone creates no daemon Chronik runtime, database or listener."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Retain existing observer functional matrices and Rust 1.85.0 corpus coverage. Separately run the upstream native archival fixtures using Rust 1.93.1: four disjoint groups, 10 fresh-process repetitions each, exact 37 cases and 2129 assertions per repetition, fixed 60-second process deadlines."
+        ],
+        "expected_results": [
+          "Owned startup/nonempty pool, generation and callback fencing, real upstream HTTP/ALP, reconciliation, reopen and joined-stop fixtures pass. Older observer pruning/reindex results are not attributed to the new upstream profile."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the locked offline chronik-observer Rust tests, native query-admission suite and feature_chronik_token_http.py functional canary. Separately run all 37 upstream archival component cases via tests/compatibility/upstream-chronik/run_repetitions.py repeat, including actual read routes and synthetic ALP lifecycle.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both routes preserve canonical confirmed protobufs; invalid IDs are 400, current missing IDs are 404, and closed/busy/unavailable reads are 503.",
+          "Token host buffers release once on success and rejection; both cross-route busy directions reject immediately; shutdown joins a blocked token callback."
+        ],
+        "failure_conditions": [
+          "Stale or unconfirmed token metadata, identity mismatch, unbounded queued work, cross-route admission overlap, leaked/double-released host payload, premature host-context destruction, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Restart the HTTP canary node and compare the exact confirmed Tx bytes; run the retained-window observer restart scenario. Separately exercise upstream owned startup and database reopen in the fixture-only profile, including a nonempty parent/child mempool.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Confirmed bytes remain identical after restart and no orphan or unbound response is served."
+        ],
+        "failure_conditions": [
+          "Restart drift, stale query, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run feature_chronik_token_http.py: extend to height 290 in bounded batches, disconnect below the retained projection anchor, reconsider, verify mismatched restart leaves HTTP disabled, then explicitly full-reindex. Separately exercise upstream retained-anchor and source-generation contradictions; the fixture observer closes while native progress continues.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both known and unknown token/transaction IDs return protobuf 503 after observer closure, never stale 200 or misleading 404.",
+          "Node RPC and chain selection continue; reconsider does not reopen observation. A persistent-tip mismatch disables HTTP on restart and logs recovery=reindex. Explicit full reindex restores canonical token metadata and byte-identical confirmed transaction output."
+        ],
+        "failure_conditions": [
+          "Any accepted response after irreversible closure, missing-ID 404 from a degraded view, HTTP serving from a mismatched restarted runtime, missing mismatch diagnostic, failed canonical reindex recovery, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04-ci-required-not-yet-observed",
+        "macos-26-arm64-local-component-profile"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "The public record remains Open Question / record-review-only with no imported evidence. CI must regenerate observations from this public source; no automatic Reproduced promotion.",
+    "Daemon runtime capability remains false. There is no production init hook, startup option, deployment, cutover, packaging or desktop integration in this change.",
+    "Fixtures use unpruned local regtest, startup height at most 2000 and at most 4096 index entries; no mainnet replay, pruning or production full/chainstate reindex claim for the upstream profile.",
+    "The retained window is at most 288 blocks, transient capture at most 576 blocks, pool at most 4096 entries and raw retained payload at most 64 MiB. These caps do not bound total process RSS or concurrent decode/cross-language allocation.",
+    "Startup owns a native index graph and can still perform parent traversal with quadratic worst-case work. The native position catalogue scales with chain height. New or generation-invalidated coin reads may still read disk under native locks.",
+    "Positive shutdown joins preserve foreign ownership but may wait for stalled storage/tasks. There is no production shutdown deadline, crash-recovery proof or formal concurrency/noninterference proof.",
+    "Plugin context is empty and plugins are not enabled. No custom plugin migration or operator database compatibility is claimed.",
+    "Zero-value ALP and mining fixtures establish mechanics, not economic funding or activation of token consensus on Ergon.",
+    "Cargo.lock fixes the 344-package Rust closure (328 registry packages); apt, SDK/compiler system libraries and runner image are not fully locked. CMake/source binding is not binary-to-source provenance.",
+    "Four disjoint process groups cover the same 37 cases; this is not a single-process whole-suite 60-second bound or a full native suite result.",
+    "Historical donor validation uses exact immutable public preimages for altered donor paths. Current adaptations are checked separately and are never represented as unchanged donor bytes."
+  ],
+  "counterevidence": [
+    "Same tip hashes can recur after native ABA or delayed callbacks; synchronous chain/pool generation identities are required in addition to tip equality.",
+    "A stale observation must reject requests until explicit healthy reconciliation. Ordinary post-startup native progress is not itself a permanent index failure; startup drift and stable storage contradictions still quarantine the fixture database.",
+    "A successfully compiled archive does not prove real upstream code was linked. The link helper forces the actual indexer/server archive into the native target and keeps runtime permission separately closed.",
+    "A populated parent/child mempool cannot be treated as an empty startup state; fixtures require native-prevout binding, topological insertion, reopen and actual handler queries.",
+    "Passing older observer pruning or reindex scenarios cannot establish those behaviors for the upstream-linked profile. The two source/runtime profiles remain distinct.",
+    "Focused repeated fixtures, synthetic cleanup tests and YAML syntax checks do not replace a portable integrated CI build or independent public reproduction."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

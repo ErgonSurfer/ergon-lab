@@ -9,6 +9,11 @@
  * CChain implementation
  */
 void CChain::SetTip(CBlockIndex *pindex) {
+    // Count before mutation, including a transient branch that later returns
+    // to the same tip. No asynchronous callback or wrapping counter involved.
+    if (Tip() != pindex) {
+        m_source_generation.Advance();
+    }
     if (pindex == nullptr) {
         vChain.clear();
         return;

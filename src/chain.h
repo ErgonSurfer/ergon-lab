@@ -16,6 +16,7 @@
 #include <sync.h>
 #include <tinyformat.h>
 #include <uint256.h>
+#include <util/source_generation.h>
 
 #include <unordered_map>
 #include <vector>
@@ -357,8 +358,13 @@ public:
 class CChain {
 private:
     std::vector<CBlockIndex *> vChain;
+    // Synchronous native observer identity; active-chain access uses cs_main.
+    SourceGeneration m_source_generation;
 
 public:
+    uint64_t GetSourceGeneration() const noexcept {
+        return m_source_generation.Value();
+    }
     /**
      * Returns the index entry for the genesis block of this chain, or nullptr
      * if none.

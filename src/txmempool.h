@@ -15,6 +15,7 @@
 #include <primitives/transaction.h>
 #include <random.h>
 #include <sync.h>
+#include <util/source_generation.h>
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -479,6 +480,8 @@ private:
     uint32_t nCheckFrequency GUARDED_BY(cs);
     //! Used by getblocktemplate to trigger CreateNewBlock() invocation
     unsigned int nTransactionsUpdated;
+    // Separate observer identity; preserve the legacy mining counter/API.
+    SourceGeneration m_source_generation;
 
     //! sum of all mempool tx's sizes.
     uint64_t totalTxSize;
@@ -648,6 +651,7 @@ public:
     void queryHashes(std::vector<uint256> &vtxid) const;
     bool isSpent(const COutPoint &outpoint) const;
     unsigned int GetTransactionsUpdated() const;
+    uint64_t GetSourceGeneration() const;
     void AddTransactionsUpdated(unsigned int n);
     /**
      * Check that none of this transactions inputs are in the mempool, and thus

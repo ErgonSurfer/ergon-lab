@@ -1,0 +1,457 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 The Ergon developers
+#include <algorithm>
+#include <chainparams.h>
+#include <chronik-bridge/src/ffi.rs.h>
+#include <chronik-cpp/chronik_bridge.h>
+#include <chronik-cpp/ergon_archival_probe.h>
+#include <chronik_lib/src/ergon_archival.rs.h>
+#include <clientversion.h>
+#include <coins.h>
+#include <config.h>
+#include <map>
+#include <set>
+#include <shutdown.h>
+#include <stdexcept>
+#include <tuple>
+#include <txmempool.h>
+#include <undo.h>
+#include <validation.h>
+#include <vector>
+namespace ergon_archival {
+void StartupHook::run() const {
+    AssertLockNotHeld(cs_main);
+    if (callback)
+        callback();
+}
+namespace {
+// Values only: no borrowed native index, parent pointer or hash address.
+struct CaptureReference {
+    CBlockHeader header;
+    BlockHash hash;
+    BlockStatus status;
+    FlatFilePos data, undo;
+    int height;
+};
+} // namespace
+void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node) {
+    LOCK2(cs_main, node.mempool.cs);
+    if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
+        fPruneMode || ShutdownRequested() || node.index_failed.load() ||
+        !ChainActive().GetSourceGeneration() ||
+        !node.mempool.GetSourceGeneration() || ChainActive().Height() < 0 ||
+        ChainActive().Height() > 2000 || node.mempool.size() > 4096 ||
+        !pcoinsTip) {
+        throw std::runtime_error(
+            "Archival probe requires a healthy, unpruned, bounded-mempool "
+            "regtest fixture (height <= 2000)");
+    }
+}
+std::unique_ptr<chronik_bridge::ChronikBridge>
+make_startup_bridge(const chronik_bridge::ErgonNodeAccess &node) {
+    auto bridge = chronik_bridge::make_bridge(node);
+    bridge->capture_startup_snapshot();
+    return bridge;
+}
+void finish_startup_bridge(const chronik_bridge::ChronikBridge &bridge) {
+    // The Rust UniquePtr is exclusively owned by synchronous startup. This
+    // bridge cannot yet be shared with workers or requests.
+    bridge.finish_startup_snapshot();
+}
+bool reconcile_startup(ArchivalProbe &probe,
+                       const chronik_bridge::ErgonNodeAccess &node) {
+    return reconcile_captured(probe, node);
+}
+uint64_t
+archival_mempool_revision(const chronik_bridge::ErgonNodeAccess &node) {
+    return node.mempool.GetSourceGeneration();
+}
+uint64_t archival_chain_generation(const chronik_bridge::ErgonNodeAccess &) {
+    AssertLockHeld(cs_main);
+    return ChainActive().GetSourceGeneration();
+}
+void archival_reconcile_guard(const chronik_bridge::ErgonNodeAccess &node) {
+    AssertLockHeld(cs_main);
+    AssertLockHeld(node.mempool.cs);
+    if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
+        fPruneMode || ShutdownRequested() || node.index_failed.load() ||
+        !ChainActive().GetSourceGeneration() ||
+        !node.mempool.GetSourceGeneration() || !pcoinsTip ||
+        ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
+        node.mempool.size() > 4096) {
+        throw std::runtime_error(
+            "Reconciliation requires a healthy bounded regtest fixture");
+    }
+}
+void archival_database_guard(const chronik_bridge::ErgonNodeAccess &node) {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(node.mempool.cs);
+    if (node.index_failed.load())
+        throw std::runtime_error("Captured index unavailable");
+}
+bool reconcile_captured(ArchivalProbe &probe,
+                        const chronik_bridge::ErgonNodeAccess &node,
+                        const std::function<void()> &after_capture,
+                        const std::function<void()> &before_disk,
+                        CaptureStats *stats) {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(node.mempool.cs);
+    constexpr int WINDOW = 288;
+    if (stats)
+        *stats = {};
+    auto native_hash = [](const auto &bytes) {
+        uint256 hash;
+        std::copy(bytes.begin(), bytes.end(), hash.begin());
+        return hash;
+    };
+    try {
+        for (int attempt = 0; attempt < 4; ++attempt) {
+            if (stats)
+                ++stats->attempts;
+            const auto retained = probe.capture_inventory(node);
+            const auto pool = probe.pool_capture_inventory(node);
+            std::map<TxId, size_t> cached;
+            for (size_t i = 0; i < pool.size(); ++i)
+                if (!cached.emplace(TxId(native_hash(pool[i].txid)), i).second)
+                    throw std::runtime_error(
+                        "Duplicate retained pool identity");
+            auto captured = [&] {
+                LOCK2(cs_main, node.mempool.cs);
+                archival_reconcile_guard(node);
+                const int height = ChainActive().Height();
+                const auto generation = archival_chain_generation(node);
+                const int base = retained.empty()
+                                     ? std::max(0, height + 1 - WINDOW)
+                                     : retained[0].height;
+                if (!retained.empty()) {
+                    auto found = mapBlockIndex.find(
+                        BlockHash(native_hash(retained.back().hash)));
+                    if (found == mapBlockIndex.end())
+                        throw std::runtime_error(
+                            "Retained native tip unavailable");
+                    const auto *fork = ChainActive().FindFork(found->second);
+                    if (!fork || fork->nHeight < base)
+                        throw std::runtime_error("Native reorg below retained "
+                                                 "anchor; rebuild required");
+                }
+                if (height < base || height - base + 1 > 2 * WINDOW)
+                    throw std::runtime_error(
+                        "Native capture span exceeds bounded profile");
+                auto source = new_capture(
+                    node, base, height,
+                    chronik_bridge::get_block_info(*ChainActive().Tip()).hash,
+                    generation, archival_mempool_revision(node));
+                size_t bytes = 0;
+                auto charge = [&](size_t amount) {
+                    if (amount > 64 * 1024 * 1024 - bytes)
+                        throw std::runtime_error(
+                            "Captured source payload budget exceeded");
+                    bytes += amount;
+                };
+                auto matches = [&](const auto &old) {
+                    if (stats)
+                        ++stats->metadata_checked;
+                    const auto *index = ChainActive()[old.height];
+                    return index &&
+                           old.hash ==
+                               chronik_bridge::get_block_info(*index).hash &&
+                           !index->GetBlockPos().IsNull() &&
+                           old.file_num ==
+                               uint32_t(index->GetBlockPos().nFile) &&
+                           old.data_pos == index->GetBlockPos().nPos &&
+                           old.undo_pos == (index->GetUndoPos().IsNull()
+                                                ? 0
+                                                : index->GetUndoPos().nPos);
+                };
+                size_t common = 0;
+                while (common < retained.size() &&
+                       retained[common].height <= height &&
+                       matches(retained[common])) {
+                    charge(retained[common].wire_bytes);
+                    ++common;
+                }
+                // Only fresh suffix headers are copied under the native fence.
+                // Prefix checking is bounded by the retained window, not
+                // height.
+                std::vector<CaptureReference> references;
+                references.reserve(height - base + 1 - common);
+                for (int h = base + int(common); h <= height; ++h) {
+                    const auto &index = *ChainActive()[h];
+                    references.push_back({index.GetBlockHeader(),
+                                          index.GetBlockHash(), index.nStatus,
+                                          index.GetBlockPos(),
+                                          index.GetUndoPos(), h});
+                    if (stats)
+                        ++stats->metadata_copied;
+                }
+                std::map<TxId, TxMempoolInfo> entries;
+                for (const auto &entry : node.mempool.infoAll())
+                    if (!entry.tx ||
+                        !entries.emplace(entry.tx->GetId(), entry).second)
+                        throw std::runtime_error(
+                            "Invalid captured native entry");
+                // Deterministic parent-before-child schedule, one edge per
+                // parent identity even if multiple outputs of it are spent.
+                std::map<TxId, size_t> degree;
+                std::map<TxId, std::set<TxId>> children;
+                std::set<TxId> ready;
+                for (const auto &[id, entry] : entries) {
+                    std::set<TxId> parents;
+                    for (const auto &input : entry.tx->vin)
+                        if (entries.count(input.prevout.GetTxId()))
+                            parents.insert(input.prevout.GetTxId());
+                    degree[id] = parents.size();
+                    if (parents.empty())
+                        ready.insert(id);
+                    for (const auto &parent : parents)
+                        children[parent].insert(id);
+                }
+                size_t emitted = 0;
+                CCoinsViewMemPool view(pcoinsTip.get(), node.mempool);
+                while (!ready.empty()) {
+                    const auto id = *ready.begin();
+                    ready.erase(ready.begin());
+                    const auto &entry = entries.at(id);
+                    const auto found = cached.find(id);
+                    if (found != cached.end() &&
+                        pool[found->second].chain_generation == generation &&
+                        pool[found->second].time == entry.nTime) {
+                        charge(pool[found->second].wire_bytes);
+                        probe.seed_pool_entry(*source, found->second, node);
+                        if (stats)
+                            ++stats->pool_reused;
+                    } else {
+                        size_t entry_bytes =
+                            ::GetSerializeSize(*entry.tx, CLIENT_VERSION);
+                        if (entry_bytes > 64 * 1024 * 1024)
+                            throw std::runtime_error(
+                                "Captured pool entry exceeds budget");
+                        std::vector<Coin> coins;
+                        for (const auto &input : entry.tx->vin) {
+                            Coin coin;
+                            if (stats)
+                                ++stats->prevout_reads;
+                            if (!view.GetCoin(input.prevout, coin) ||
+                                coin.IsSpent())
+                                throw std::runtime_error(
+                                    "Missing actual captured native prevout");
+                            const auto amount =
+                                ::GetSerializeSize(coin, CLIENT_VERSION);
+                            if (amount > 64 * 1024 * 1024 - entry_bytes)
+                                throw std::runtime_error(
+                                    "Captured pool entry exceeds budget");
+                            entry_bytes += amount;
+                            coins.push_back(std::move(coin));
+                        }
+                        charge(entry_bytes);
+                        source->capture_mempool(*entry.tx, coins, entry.nTime,
+                                                entry_bytes, node);
+                        if (stats)
+                            ++stats->pool_captured;
+                    }
+                    ++emitted;
+                    for (const auto &child : children[id])
+                        if (--degree[child] == 0)
+                            ready.insert(child);
+                }
+                if (emitted != entries.size())
+                    throw std::runtime_error("Captured dependency cycle");
+                return std::make_tuple(std::move(source), std::move(entries),
+                                       ChainActive().Tip()->GetBlockHash(),
+                                       generation,
+                                       archival_mempool_revision(node),
+                                       std::move(references), bytes, common);
+            }();
+            auto current = [&] {
+                AssertLockHeld(cs_main);
+                AssertLockHeld(node.mempool.cs);
+                const auto *tip = ChainActive().Tip();
+                if (!tip || fPruneMode || ShutdownRequested() ||
+                    tip->GetBlockHash() != std::get<2>(captured) ||
+                    archival_chain_generation(node) != std::get<3>(captured) ||
+                    archival_mempool_revision(node) != std::get<4>(captured))
+                    return false;
+                for (size_t i = 0; i < std::get<7>(captured); ++i) {
+                    if (stats)
+                        ++stats->metadata_checked;
+                    const auto &old = retained[i];
+                    const auto *index = ChainActive()[old.height];
+                    if (!index ||
+                        old.hash !=
+                            chronik_bridge::get_block_info(*index).hash ||
+                        index->GetBlockPos().IsNull() ||
+                        old.file_num != uint32_t(index->GetBlockPos().nFile) ||
+                        old.data_pos != index->GetBlockPos().nPos ||
+                        old.undo_pos != (index->GetUndoPos().IsNull()
+                                             ? 0
+                                             : index->GetUndoPos().nPos))
+                        return false;
+                }
+                for (const auto &ref : std::get<5>(captured)) {
+                    if (stats)
+                        ++stats->metadata_checked;
+                    const auto *index = ChainActive()[ref.height];
+                    if (!index || index->GetBlockHash() != ref.hash ||
+                        index->GetBlockPos() != ref.data ||
+                        index->GetUndoPos() != ref.undo)
+                        return false;
+                }
+                return true;
+            };
+            archival_database_guard(node);
+            const auto common = std::get<7>(captured);
+            probe.seed_capture(*std::get<0>(captured), common, node);
+            if (stats)
+                stats->reused_blocks += common;
+            if (before_disk)
+                before_disk();
+            try {
+                auto bridge = chronik_bridge::make_bridge(node);
+                size_t bytes = std::get<6>(captured);
+                for (const auto &ref : std::get<5>(captured)) {
+                    AssertLockNotHeld(cs_main);
+                    AssertLockNotHeld(node.mempool.cs);
+                    CBlockIndex index(ref.header), parent;
+                    index.phashBlock = &ref.hash;
+                    parent.phashBlock = &ref.header.hashPrevBlock;
+                    index.pprev = ref.height ? &parent : nullptr;
+                    index.nHeight = ref.height;
+                    index.nStatus = ref.status;
+                    index.nFile = ref.data.nFile;
+                    index.nDataPos = ref.data.nPos;
+                    index.nUndoPos = ref.undo.IsNull() ? 0 : ref.undo.nPos;
+                    if (stats)
+                        ++stats->block_read_calls;
+                    auto block = bridge->load_block(index);
+                    if (stats)
+                        ++stats->undo_load_calls;
+                    auto undo = bridge->load_block_undo(index);
+                    uint64_t wire_bytes = 0;
+                    for (auto amount :
+                         {::GetSerializeSize(*block, CLIENT_VERSION),
+                          ::GetSerializeSize(*undo, CLIENT_VERSION)}) {
+                        if (amount > 64 * 1024 * 1024 - bytes)
+                            throw std::runtime_error(
+                                "Captured source payload budget exceeded");
+                        bytes += amount;
+                        wire_bytes += amount;
+                    }
+                    std::get<0>(captured)->capture_block(*block, *undo, index,
+                                                         wire_bytes, node);
+                }
+            } catch (...) {
+                LOCK2(cs_main, node.mempool.cs);
+                if (!current()) {
+                    if (stats)
+                        ++stats->discarded_before_db;
+                    continue;
+                }
+                throw;
+            }
+            {
+                LOCK2(cs_main, node.mempool.cs);
+                if (!current()) {
+                    if (stats)
+                        ++stats->discarded_before_db;
+                    continue;
+                }
+            }
+            if (after_capture)
+                after_capture();
+            probe.apply_capture(*std::get<0>(captured), node);
+            {
+                LOCK2(cs_main, node.mempool.cs);
+                archival_reconcile_guard(node);
+                if (!current())
+                    continue;
+                const auto actual = node.mempool.infoAll();
+                const auto &expected = std::get<1>(captured);
+                if (actual.size() != expected.size())
+                    continue;
+                bool match = true;
+                for (const auto &entry : actual) {
+                    const auto found = expected.find(entry.tx->GetId());
+                    if (found == expected.end() ||
+                        found->second.nTime != entry.nTime)
+                        match = false;
+                }
+                if (!match)
+                    continue;
+                if (probe.publish_capture(*std::get<0>(captured), node))
+                    return true;
+            }
+        }
+        return false;
+    } catch (...) {
+        probe.fail_reconcile();
+        throw;
+    }
+}
+void reconcile_archival(ArchivalProbe &probe,
+                        const chronik_bridge::ErgonNodeAccess &node) {
+    LOCK2(cs_main, node.mempool.cs);
+    archival_reconcile_guard(node);
+    const auto revision = archival_mempool_revision(node);
+    std::map<TxId, TxMempoolInfo> entries;
+    size_t bytes = 0;
+    for (const auto &entry : node.mempool.infoAll()) {
+        if (!entry.tx || !entries.emplace(entry.tx->GetId(), entry).second)
+            throw std::runtime_error("Invalid native mempool entry");
+        bytes += ::GetSerializeSize(*entry.tx, CLIENT_VERSION);
+        if (bytes > 64 * 1024 * 1024)
+            throw std::runtime_error(
+                "Fixture mempool serialized budget exceeded");
+    }
+    // Actual dependencies, deterministic parent-before-child order. Validate
+    // all native coins BEFORE changing the index; never synthesize a prevout.
+    std::vector<TxMempoolInfo> ordered;
+    std::set<TxId> emitted;
+    while (ordered.size() < entries.size()) {
+        bool progress = false;
+        for (const auto &[id, entry] : entries) {
+            if (emitted.count(id))
+                continue;
+            bool ready = true;
+            for (const auto &input : entry.tx->vin)
+                if (entries.count(input.prevout.GetTxId()) &&
+                    !emitted.count(input.prevout.GetTxId()))
+                    ready = false;
+            if (!ready)
+                continue;
+            ordered.push_back(entry);
+            emitted.insert(id);
+            progress = true;
+        }
+        if (!progress)
+            throw std::runtime_error("Native mempool dependency cycle");
+    }
+    CCoinsViewMemPool view(pcoinsTip.get(), node.mempool);
+    std::vector<std::vector<Coin>> coins;
+    for (const auto &entry : ordered) {
+        coins.emplace_back();
+        for (const auto &input : entry.tx->vin) {
+            Coin coin;
+            if (!view.GetCoin(input.prevout, coin) || coin.IsSpent())
+                throw std::runtime_error(
+                    "Missing actual native mempool prevout");
+            coins.back().push_back(std::move(coin));
+        }
+    }
+    std::vector<uint8_t> ids;
+    for (const auto &[id, entry] : entries)
+        ids.insert(ids.end(), id.begin(), id.end());
+    try {
+        probe.begin_reconcile(node);
+        for (size_t i = 0; i < ordered.size(); ++i)
+            probe.add_native_mempool(*ordered[i].tx, coins[i], ordered[i].nTime,
+                                     node);
+        if (archival_mempool_revision(node) != revision)
+            throw std::runtime_error(
+                "Mempool changed within native lock barrier");
+        probe.finish_reconcile({ids.data(), ids.size()}, node);
+    } catch (...) {
+        probe.fail_reconcile();
+        throw;
+    }
+}
+} // namespace ergon_archival

@@ -7,7 +7,7 @@
 use std::{
     net::{AddrParseError, IpAddr, SocketAddr},
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::Duration,
 };
 
@@ -34,7 +34,9 @@ use chronik_indexer::{
 use chronik_plugin::{context::PluginContext, params::PluginParams};
 use chronik_util::{log, log_chronik, mount_loggers, Loggers};
 use thiserror::Error;
-use tokio::{runtime::Runtime, sync::RwLock};
+use tokio::sync::RwLock;
+
+use crate::ergon_runtime::JoinedRuntime;
 
 use crate::ffi::{self, StartChronikValidationInterface};
 
@@ -67,8 +69,11 @@ use self::ChronikError::*;
 /// Setup the Chronik bridge. Returns a ChronikIndexer object.
 pub fn setup_chronik(
     params: ffi::SetupParams,
-    node: &ffi::NodeContext,
+    node: &ffi::ErgonNodeAccess,
 ) -> bool {
+    if !ffi::upstream_runtime_permitted(node) {
+        return false;
+    }
     match try_setup_chronik(params, node) {
         Ok(()) => true,
         Err(report) => {
@@ -80,7 +85,7 @@ pub fn setup_chronik(
 
 fn try_setup_chronik(
     params: ffi::SetupParams,
-    node_context: &ffi::NodeContext,
+    node_context: &ffi::ErgonNodeAccess,
 ) -> Result<()> {
     abc_rust_error::install();
     mount_loggers(Loggers {
@@ -217,7 +222,7 @@ fn try_setup_chronik(
         node: Arc::clone(&node),
         indexer,
         pause,
-        runtime: Mutex::new(Some(runtime)),
+        runtime: JoinedRuntime::new(runtime),
     });
     StartChronikValidationInterface(node_context, chronik);
     Ok(())
@@ -289,9 +294,9 @@ pub struct Chronik {
     /// Tokio runtime driving HTTP and Electrum. Wrapped so
     /// [`Chronik::interrupt`] can shut it down before the node is torn down
     /// and before RocksDB is closed, ensuring no async task touches either
-    /// during teardown. The Option is needed to allow for the runtime to
-    /// be consumed before the Chronik struct is dropped.
-    runtime: Mutex<Option<Runtime>>,
+    /// during teardown. Concurrent interrupt calls wait for the same positive
+    /// join; a stuck task retains its owner rather than escaping teardown.
+    runtime: JoinedRuntime,
 }
 
 impl Chronik {
@@ -395,10 +400,7 @@ impl Chronik {
     /// RocksDB anymore. Chronik keeps indexing validation interface events
     /// after this returns; only [`Chronik::stop`] tears the indexer down.
     pub fn interrupt(&self) {
-        let mut runtime_guard = self.runtime.lock().unwrap();
-        if let Some(runtime) = runtime_guard.take() {
-            runtime.shutdown_timeout(Duration::from_secs(60));
-        }
+        self.runtime.stop();
     }
 
     /// Stop Chronik to prepare for shutdown.
@@ -531,13 +533,17 @@ impl Chronik {
     }
 
     fn block_if_paused(&self) {
-        let handle = {
-            let guard = self.runtime.lock().unwrap();
-            guard.as_ref().map(|runtime| runtime.handle().clone())
-        };
+        let handle = self.runtime.handle();
         if let Some(handle) = handle {
             self.pause.block_if_paused(&handle);
         }
+    }
+}
+
+impl Drop for Chronik {
+    fn drop(&mut self) {
+        // Also protect exceptional owner destruction, before field teardown.
+        self.interrupt();
     }
 }
 

@@ -8,6 +8,10 @@ members = [
     "bitcoinsuite-core",
     "bitcoinsuite-slp",
     "chronik-db",
+    "chronik-bridge",
+    "chronik-http",
+    "chronik-indexer",
+    "chronik-lib",
     "chronik-observer",
     "chronik-plugin",
     "chronik-plugin-common",
@@ -22,12 +26,6 @@ default-members = [
     "chronik-db",
     "chronik-proto",
     "chronik-runtime",
-]
-exclude = [
-    "chronik-bridge",
-    "chronik-http",
-    "chronik-indexer",
-    "chronik-lib",
 ]
 resolver = "2"
 

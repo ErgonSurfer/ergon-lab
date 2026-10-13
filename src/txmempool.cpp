@@ -415,6 +415,12 @@ unsigned int CTxMemPool::GetTransactionsUpdated() const {
 void CTxMemPool::AddTransactionsUpdated(unsigned int n) {
     LOCK(cs);
     nTransactionsUpdated += n;
+    m_source_generation.Advance(n);
+}
+
+uint64_t CTxMemPool::GetSourceGeneration() const {
+    LOCK(cs);
+    return m_source_generation.Value();
 }
 
 void CTxMemPool::addUnchecked(const CTxMemPoolEntry &entry,
@@ -460,6 +466,7 @@ void CTxMemPool::addUnchecked(const CTxMemPoolEntry &entry,
     UpdateEntryForAncestors(newit, setAncestors);
 
     nTransactionsUpdated++;
+    m_source_generation.Advance();
     totalTxSize += entry.GetTxSize();
 
     vTxHashes.emplace_back(tx.GetHash(), newit);
@@ -490,6 +497,7 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason) {
     mapLinks.erase(it);
     mapTx.erase(it);
     nTransactionsUpdated++;
+    m_source_generation.Advance();
 }
 
 // Calculates descendants of entry that are not already in setDescendants, and
@@ -648,6 +656,7 @@ void CTxMemPool::_clear() {
     blockSinceLastRollingFeeBump = false;
     rollingMinimumFeeRate = 0;
     ++nTransactionsUpdated;
+    m_source_generation.Advance();
 }
 
 void CTxMemPool::clear() {
@@ -945,6 +954,7 @@ void CTxMemPool::PrioritiseTransaction(const TxId &txid,
                              update_ancestor_state(0, nFeeDelta, 0, 0));
             }
             ++nTransactionsUpdated;
+            m_source_generation.Advance();
         }
     }
     LogPrintf("PrioritiseTransaction: %s fee += %s\n", txid.ToString(),

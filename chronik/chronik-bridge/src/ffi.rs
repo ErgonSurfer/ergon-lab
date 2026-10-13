@@ -142,19 +142,18 @@ mod ffi_inner {
 
     #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
-        include!("blockindex.h");
+        include!("chain.h");
         include!("chronik-cpp/chronik_bridge.h");
         include!("coins.h");
-        include!("node/context.h");
+        include!("chronik-cpp/ergon_node_access.h");
         include!("primitives/block.h");
         include!("primitives/transaction.h");
         include!("undo.h");
 
-        /// node::NodeContext from node/context.h
-        #[namespace = "node"]
-        type NodeContext;
+        /// Ergon host access; its owner must outlive every Chronik worker.
+        type ErgonNodeAccess;
 
-        /// ::CBlockIndex from blockindex.h
+        /// ::CBlockIndex from chain.h
         #[namespace = ""]
         type CBlockIndex;
 
@@ -199,12 +198,24 @@ mod ffi_inner {
             msg: &str,
         );
 
-        /// Make the bridge given the NodeContext
-        fn make_bridge(node: &NodeContext) -> UniquePtr<ChronikBridge>;
+        /// Make the bridge given the Ergon host access.
+        fn make_bridge(node: &ErgonNodeAccess) -> UniquePtr<ChronikBridge>;
 
         /// Return the tip of the chain of the node.
         /// Returns hash=000...000, height=-1 if there's no block on the chain.
         fn get_chain_tip(self: &ChronikBridge) -> Result<&CBlockIndex>;
+        /// Synchronous nonwrapping native mempool generation; zero is exhausted.
+        fn mempool_revision(self: &ChronikBridge) -> u64;
+        /// Synchronous nonwrapping native active-chain generation.
+        fn chain_generation(self: &ChronikBridge) -> u64;
+        /// Nonblocking source check under native chain and mempool locks.
+        fn matches_source(
+            self: &ChronikBridge,
+            hash: [u8; 32],
+            height: i32,
+            generation: u64,
+            revision: u64,
+        ) -> bool;
 
         /// Lookup the block index with the given hash, or throw an error
         /// if it couldn't be found.
@@ -389,12 +400,14 @@ mod ffi_inner {
 }
 
 /// SAFETY: All fields of ChronikBridge (const Consensus::Params &, const
-/// node::NodeContext &) can be moved betweed threads safely.
+/// ErgonNodeAccess &) can be moved between threads. The native bridge must
+/// lock all live chain/mempool accesses and join users before host teardown.
 #[allow(unsafe_code)]
 unsafe impl Send for ChronikBridge {}
 
 /// SAFETY: All fields of ChronikBridge (const Consensus::Params &, const
-/// node::NodeContext &) can be accessed from different threads safely.
+/// ErgonNodeAccess &) can be shared between threads under the same native
+/// locking and lifetime contract; this does not make CBlockIndex access safe.
 #[allow(unsafe_code)]
 unsafe impl Sync for ChronikBridge {}
 

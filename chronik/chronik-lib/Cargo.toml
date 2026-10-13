@@ -12,6 +12,7 @@ license = "MIT"
 crate-type = ["staticlib"]
 
 [features]
+ergon-archival-probe = ["dep:prost", "dep:axum", "dep:chronik-proto", "dep:bitcoinsuite-slp"]
 plugins = [
     "chronik-db/plugins",
     "chronik-indexer/plugins",
@@ -24,6 +25,7 @@ abc-rust-lint = { path = "../abc-rust-lint" }
 abc-rust-error = { path = "../abc-rust-error" }
 
 bitcoinsuite-core = { path = "../bitcoinsuite-core" }
+bitcoinsuite-slp = { path = "../bitcoinsuite-slp", optional = true }
 
 chronik-bridge = { path = "../chronik-bridge" }
 chronik-db = { path = "../chronik-db" }
@@ -31,6 +33,9 @@ chronik-http = { path = "../chronik-http" }
 chronik-indexer = { path = "../chronik-indexer" }
 chronik-plugin = { path = "../chronik-plugin" }
 chronik-util = { path = "../chronik-util" }
+prost = { version = "0.11", optional = true }
+axum = { version = "0.7", optional = true }
+chronik-proto = { path = "../chronik-proto", optional = true }
 
 # Bridge to C++
 cxx = "1.0.138"

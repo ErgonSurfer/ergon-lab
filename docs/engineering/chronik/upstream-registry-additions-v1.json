@@ -1,0 +1,62 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-upstream-registry-additions/v1",
+  "resolved_lock_sha256": "1c1d2daf3e0926cc68434bd6209624a60f365d370e88740ce888f402e5b4abe5",
+  "base_lock_sha256": "849cbce05416f1bcf6da3b276631fc0f8a94cfd0464eadae66d1155569069e17",
+  "donor": {
+    "repository": "https://github.com/Bitcoin-ABC/bitcoin-abc",
+    "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+    "lock_sha256": "9622d1e6b2511649365954f267af70b53cc215917d87df458c7bd6bd359e4f37"
+  },
+  "purpose": "Seven public registry tuples completing the enabled upstream feature closure: futures companions for the existing 0.3.34 family and want for the upstream HTTP client. Cargo verifies exact downloaded package checksums.",
+  "claims": {
+    "rust_registry_tuples_locked": true,
+    "system_dependencies_locked": false,
+    "vulnerability_audit": false,
+    "reproduced": false
+  },
+  "packages": [
+    {
+      "name": "futures",
+      "version": "0.3.34",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3"
+    },
+    {
+      "name": "futures-channel",
+      "version": "0.3.34",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4"
+    },
+    {
+      "name": "futures-executor",
+      "version": "0.3.34",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "031b47cf1a3c6cc8bc2fc76cd437f521619387907d469316e7c0bc278f1f5432"
+    },
+    {
+      "name": "futures-io",
+      "version": "0.3.34",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed"
+    },
+    {
+      "name": "futures-macro",
+      "version": "0.3.34",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "9fb9654ba8355388abeb8dcb4fc62f511300867002afc858860463bdd9fe0c44"
+    },
+    {
+      "name": "futures-sink",
+      "version": "0.3.34",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "1944426bf7d03f1d14f708785e4b33efd750b36d48a157b836b3efc15ede8e1d"
+    },
+    {
+      "name": "want",
+      "version": "0.3.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "ec4cdd0dd910afe868b7ef477227d8d538b46b3075031afee8a9f2acb0a2ed0b"
+    }
+  ]
+}

@@ -92,7 +92,7 @@ mod ffi_inner {
 
     extern "Rust" {
         type Chronik;
-        fn setup_chronik(params: SetupParams, node: &NodeContext) -> bool;
+        fn setup_chronik(params: SetupParams, node: &ErgonNodeAccess) -> bool;
 
         fn handle_tx_added_to_mempool(
             &self,
@@ -126,15 +126,15 @@ mod ffi_inner {
     }
 
     unsafe extern "C++" {
-        include!("blockindex.h");
+        include!("chain.h");
         include!("chronik-cpp/chronik_validationinterface.h");
         include!("coins.h");
         include!("config.h");
-        include!("node/context.h");
+        include!("chronik-cpp/ergon_node_access.h");
         include!("primitives/block.h");
         include!("primitives/transaction.h");
 
-        /// CBlockIndex from blockindex.h
+        /// CBlockIndex from chain.h
         #[namespace = ""]
         type CBlockIndex = chronik_bridge::ffi::CBlockIndex;
 
@@ -155,9 +155,11 @@ mod ffi_inner {
         #[namespace = ""]
         type CTransaction = chronik_bridge::ffi::CTransaction;
 
-        /// NodeContext from node/context.h
-        #[namespace = "node"]
-        type NodeContext = chronik_bridge::ffi::NodeContext;
+        /// Ergon host access from chronik-cpp/ergon_node_access.h.
+        type ErgonNodeAccess = chronik_bridge::ffi::ErgonNodeAccess;
+
+        /// Link integration alone does not authorize index/server startup.
+        fn upstream_runtime_permitted(node: &ErgonNodeAccess) -> bool;
 
         /// Bridge to bitcoind to access the node
         type ChronikBridge = chronik_bridge::ffi::ChronikBridge;
@@ -166,7 +168,7 @@ mod ffi_inner {
         /// chain updates from the node.
         #[namespace = "chronik"]
         fn StartChronikValidationInterface(
-            node: &NodeContext,
+            node: &ErgonNodeAccess,
             chronik: Box<Chronik>,
         );
     }

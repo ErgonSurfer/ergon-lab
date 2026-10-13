@@ -217,6 +217,28 @@ def generate(repository_root: Path, donor_root: Path, tree_json: Path) -> dict:
 
 
 def validate(repository_root: Path) -> dict:
+    # Preserve the historical donor manifest. In the successor profile, bind
+    # every current postimage first, then validate the original public donor
+    # preimages explicitly. Authored additions are not relabeled as donor files.
+    from check_chronik_upstream_link import MANIFEST as HOST_MANIFEST, validate as validate_host
+    historical = None
+    if (repository_root / HOST_MANIFEST).exists():
+        historical = validate_host(repository_root)
+    else:
+        require("BUILD_CHRONIK_UPSTREAM_LINK" not in
+                (repository_root / "CMakeLists.txt").read_text(),
+                "upstream profile requires its separate adaptation manifest")
+
+    def donor_bytes(relative: str) -> bytes:
+        if historical is not None and relative in historical.rows:
+            return historical.bytes(relative)
+        return (repository_root / relative).read_bytes()
+
+    def donor_mode(relative: str) -> str:
+        if historical is not None and relative in historical.rows:
+            return historical.rows[relative]["before"]["mode"]
+        return file_mode(repository_root / relative)
+
     path = repository_root / MANIFEST_PATH
     payload = json.loads(path.read_text(encoding="utf-8"))
     require(payload.get("schema") == SCHEMA, "manifest schema mismatch")
@@ -244,6 +266,7 @@ def validate(repository_root: Path) -> dict:
     expected_paths = [
         path.relative_to(repository_root).as_posix()
         for path in imported_paths(repository_root)
+        if historical is None or not historical.added(path.relative_to(repository_root).as_posix())
     ]
     require(sorted(paths + adapted_paths) == expected_paths, "donor inventory path set drift")
     require(
@@ -282,8 +305,8 @@ def validate(repository_root: Path) -> dict:
         )
         source = repository_root / relative
         require(source.is_file() and not source.is_symlink(), f"bad source type: {relative}")
-        data = source.read_bytes()
-        require(entry.get("mode") == file_mode(source), f"mode drift: {relative}")
+        data = donor_bytes(relative)
+        require(entry.get("mode") == donor_mode(relative), f"mode drift: {relative}")
         require(entry.get("bytes") == len(data), f"size drift: {relative}")
         require(entry.get("git_blob") == git_blob(data), f"blob drift: {relative}")
         require(entry.get("sha256") == sha256(data), f"SHA-256 drift: {relative}")
@@ -292,17 +315,17 @@ def validate(repository_root: Path) -> dict:
         relative = entry["path"]
         source = repository_root / relative
         require(source.is_file() and not source.is_symlink(), f"bad source type: {relative}")
-        data = source.read_bytes()
+        data = donor_bytes(relative)
         after = entry.get("after", {})
         require(entry.get("rule") == "strip-ascii-trailing-spaces", f"adaptation rule drift: {relative}")
         require(entry.get("removed_bytes", 0) > 0, f"empty adaptation: {relative}")
-        require(after.get("mode") == file_mode(source), f"adapted mode drift: {relative}")
+        require(after.get("mode") == donor_mode(relative), f"adapted mode drift: {relative}")
         require(after.get("bytes") == len(data), f"adapted size drift: {relative}")
         require(after.get("git_blob") == git_blob(data), f"adapted blob drift: {relative}")
         require(after.get("sha256") == sha256(data), f"adapted SHA-256 drift: {relative}")
 
     cargo_toml = tomllib.loads(
-        (repository_root / "chronik/Cargo.toml").read_text(encoding="utf-8")
+        donor_bytes("chronik/Cargo.toml").decode("utf-8")
     )
     workspace = cargo_toml["workspace"]
     require(tuple(workspace["members"]) == WORKSPACE_MEMBERS, "workspace members drift")
@@ -317,7 +340,7 @@ def validate(repository_root: Path) -> dict:
     )
 
     lock_path = repository_root / "chronik/Cargo.lock"
-    lock_bytes = lock_path.read_bytes()
+    lock_bytes = donor_bytes("chronik/Cargo.lock")
     require(
         payload.get("workspace", {}).get("cargo_lock_sha256") == sha256(lock_bytes),
         "Cargo.lock digest drift",
@@ -364,6 +387,8 @@ def main() -> int:
     repository_root = args.repository_root.resolve()
     try:
         if args.command == "generate":
+            require(not (repository_root / "docs/engineering/chronik/upstream-host-adaptation-v1.json").exists(),
+                    "historical donor manifest cannot be regenerated from an adapted tree")
             require(args.donor_root is not None, "--donor-root is required")
             require(args.donor_tree_json is not None, "--donor-tree-json is required")
             payload = generate(
@@ -377,6 +402,8 @@ def main() -> int:
             print(f"generated {destination.relative_to(repository_root)}")
         else:
             payload = validate(repository_root)
+            if (repository_root / "docs/engineering/chronik/upstream-host-adaptation-v1.json").exists():
+                print("Historical donor preimages checked; current postimages checked by separate host-adaptation gate")
             print(
                 "PASS: "
                 f"{payload['scope']['exact_donor_files']} donor files, "
