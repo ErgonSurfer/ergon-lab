@@ -6,6 +6,7 @@ This does not replace or rewrite the original upstream/donor adaptation record.
 The parent is a public review branch, NOT an assertion that main accepted it.
 """
 import argparse
+import json
 from pathlib import Path
 from check_chronik_upstream_link import (
     current_identity, git, identity, load_json, require,
@@ -52,13 +53,26 @@ def before_identity(root, path):
     return identity(git(root, "show", PARENT + ":" + path), mode)
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_plugin_fixtures import MANIFEST as PLUGIN_MANIFEST, PARENT as PLUGIN_PARENT
+    from check_chronik_plugin_fixtures import validate as validate_plugins
+    if not historical and (root / PLUGIN_MANIFEST).exists():
+        return validate_plugins(root) | validate(root, historical=True)
+    # The successor has already bound all current bytes. Validate this layer
+    # at its immutable public postimage, not by rewriting an older manifest.
+    def observed(path):
+        if not historical:
+            return current_identity(root, path)
+        entry = git(root, "ls-tree", PLUGIN_PARENT, "--", path).decode().split()
+        return identity(git(root, "show", PLUGIN_PARENT + ":" + path), entry[0])
+    def record_at(path):
+        return json.loads(git(root, "show", PLUGIN_PARENT + ":" + path)) if historical else load_json(root / path)
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == PARENT_TREE,
             "read-session public parent identity mismatch")
     require(git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"",
             "read-session parent is not an ancestor")
-    record = load_json(root / MANIFEST)
+    record = record_at(MANIFEST)
     require(set(record) == {"$comment", "schema", "public_parent", "parent_status",
                             "license", "contract", "files"}, "unexpected read-session fields")
     require(record["$comment"] == "SPDX-License-Identifier: MIT" and
@@ -79,18 +93,20 @@ def validate(root):
                     "src/txdb.cpp", "src/txdb.h"} else "opt-in-build-or-test-only"),
                 "read-session provenance/reachability mismatch")
         require(row["before"] == before_identity(root, row["path"]), "read-session preimage drift")
-        require(row["after"] == current_identity(root, row["path"]), "read-session postimage drift")
+        require(row["after"] == observed(row["path"]), "read-session postimage drift")
         require(row["before"] != row["after"] and row["after"]["mode"] == "100644",
                 "read-session redundant delta/mode mismatch")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, PLUGIN_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "read-session changed paths differ from exact layer")
     for path in changed:
-        require(current_identity(root, path)["mode"] == "100644", "read-session nonregular/executable path")
+        require(observed(path)["mode"] == "100644", "read-session nonregular/executable path")
     # Bind policy/docs/CI bytes as well as executable inputs. The governance
     # record alone is excluded from its own inventory (no circular digest).
     record_path = "docs/engineering/changes/ergon-change-0046.json"
-    change = load_json(root / record_path)
+    change = record_at(record_path)
     require(change["change_id"] == "ERGON-CHANGE-0046" and
             [f["path"] for f in change["files"]] == sorted(changed - {record_path}),
             "read-session governance inventory mismatch")
@@ -101,7 +117,7 @@ def validate(root):
         path = row["path"]
         parent = before_identity(root, path) if git(root, "ls-tree", PARENT, "--", path).strip() else None
         require(change_identity(row["before"]) == parent and
-                change_identity(row["after"]) == current_identity(root, path),
+                change_identity(row["after"]) == observed(path),
                 "read-session governance pre/postimage drift")
     for frozen in (
         "docs/engineering/chronik/upstream-host-adaptation-v1.json",
@@ -110,7 +126,7 @@ def validate(root):
         "chronik/Cargo.lock", "chronik/Cargo.toml", "CMakeLists.txt",
         "chronik/chronik-cpp/ergon_node_access.h",
     ):
-        require(current_identity(root, frozen) == before_identity(root, frozen),
+        require(observed(frozen) == before_identity(root, frozen),
                 "read-session changed a frozen dependency/parent/default boundary")
     return TECHNICAL | POLICY
 
@@ -121,7 +137,7 @@ def main():
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[2])
     args = parser.parse_args()
     validate(args.repository_root)
-    print("Owned chainstate read layer: exact 13 technical + 7 policy paths; no activation or evidence promotion.")
+    print("PASS: original owned read-session layer and any separately bound successor; no activation or evidence promotion")
 
 
 if __name__ == "__main__":

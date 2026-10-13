@@ -93,6 +93,15 @@ GROUPS = (
     ("owned-cold-chainstate-reads", CHAINSTATE, 106),
 )
 READ_MANIFEST = "docs/engineering/chronik/owned-chainstate-reads-v1.json"
+PLUGIN_MANIFEST = "docs/engineering/chronik/upstream-plugin-fixtures-v1.json"
+PLUGIN_GROUPS = tuple((name, (PREFIX + name,), count) for name, count in (
+    ("upstream_public_plugin_lifecycle", 55),
+    ("upstream_public_plugin_exception_is_index_only", 16),
+    ("upstream_public_plugin_invalid_output_is_index_only", 16),
+    ("upstream_public_plugin_source_and_config_drift_refused", 13),
+))
+DISABLED_GROUP = ("upstream-public-plugin-disabled",
+                  (PREFIX + "upstream_public_plugin_disabled_refuses_setup",), 6)
 READ_INPUTS = frozenset({
     "chronik/UpstreamLink.cmake", "chronik/chronik-cpp/ergon_archival_probe.cpp",
     "chronik/chronik-cpp/ergon_archival_probe.h", "chronik/chronik-lib/src/ergon_archival.rs",
@@ -117,6 +126,22 @@ ADAPTER_INPUTS = (
     "src/coins.h", "src/coins.cpp", "src/dbwrapper.h", "src/dbwrapper.cpp",
     "src/txdb.h", "src/txdb.cpp",
 )
+PLUGIN_ADAPTER_INPUTS = (
+    "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
+    "chronik/chronik-db/src/mem/mempool.rs",
+    "tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py",
+)
+PLUGIN_ENABLED_INPUTS = (
+    "chronik/chronik-plugin-impl/src/module.rs",
+    "chronik/chronik-plugin-impl/python/upstream/script.py",
+    "chronik/chronik-plugin-impl/python/upstream/slp.py",
+)
+
+def plugin_inputs():
+    # The public runner and source gate share one exact finite inventory.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools/engineering"))
+    from check_chronik_plugin_fixtures import TECHNICAL
+    return TECHNICAL
 
 class Rejected(ValueError):
     pass
@@ -135,7 +160,7 @@ def regular(path):
     require(path.is_file() and not path.is_symlink(), "regular input required")
     return path.read_bytes()
 
-def source_projection(source, manifest, read_manifest=None):
+def source_projection(source, manifest, read_manifest=None, plugin_manifest=None):
     rows = json.loads(regular(manifest))["files"]
     names = [r["path"] for r in rows]
     require(len(rows) == 34 and names == sorted(set(names)), "finite source projection required")
@@ -153,6 +178,20 @@ def source_projection(source, manifest, read_manifest=None):
             merged[row["path"]] = row
         require(len(merged) == 42, "combined source projection cardinality drift")
         rows = [merged[p] for p in sorted(merged)]
+    if plugin_manifest is not None:
+        layer = json.loads(regular(plugin_manifest))
+        require(layer["schema"] == "ergon-upstream-plugin-fixtures/v1" and
+                layer["public_parent"] == {"commit": "eaa73b03ed060af5623eb30ff4a08502d2a73c7a",
+                                           "tree": "85ca3e2bd4a0d5017cbad506aa26539f99e38d2b"},
+                "plugin projection parent/schema drift")
+        require([r["path"] for r in layer["files"]] == sorted(plugin_inputs()),
+                "finite plugin projection required")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "plugin projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -166,7 +205,9 @@ def source_projection(source, manifest, read_manifest=None):
     return digest(canonical(rows))
 
 def bind_build(source, build, profile, manifest):
-    projection = source_projection(source, manifest, source / READ_MANIFEST)
+    require(profile in ("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant"),
+            "unknown build profile")
+    projection = source_projection(source, manifest, source / READ_MANIFEST, source / PLUGIN_MANIFEST)
     require(not source.is_relative_to(build) and not build.is_relative_to(source), "separate build root required")
     cache = {}
     for line in regular(build / "CMakeCache.txt").decode("utf-8").splitlines():
@@ -178,16 +219,40 @@ def bind_build(source, build, profile, manifest):
     require(cache.get("BUILD_CHRONIK_OBSERVER") == "OFF", "observer profiles must remain separate")
     expected_link = "OFF" if profile == "compiled-out" else "ON"
     require(cache.get("BUILD_CHRONIK_UPSTREAM_LINK", "OFF") == expected_link, "link profile mismatch")
-    if profile == "archival":
+    plugins = profile in ("plugins", "upstream-plugins-dormant")
+    require(cache.get("BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS", "OFF") == ("ON" if plugins else "OFF"),
+            "plugin profile mismatch")
+    python = None
+    if profile in ("archival", "plugins", "upstream-linked-dormant", "upstream-plugins-dormant"):
         require(cache.get("BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS") == "ON", "archival fixture missing")
+        ninja = regular(build / "build.ninja").decode("utf-8")
+        inputs = ADAPTER_INPUTS + PLUGIN_ADAPTER_INPUTS
+        suffix = ""
+        if plugins:
+            versions = re.findall(r"CHRONIK_ERGON_PYTHON_VERSION=(3\.12\.[0-9]+)(?:\s|$)", ninja)
+            require(len(versions) == 1, "missing/ambiguous configured Python version")
+            executable = Path(cache["_Python3_EXECUTABLE"]).resolve(strict=True)
+            library = Path(cache["_Python3_LIBRARY_RELEASE"]).resolve(strict=True)
+            python = {"version": versions[0], "executable_sha256": digest(regular(executable)),
+                      "library_sha256": digest(regular(library))}
+            python["embedding_sha256"] = digest((python["version"] + "\n" +
+                python["executable_sha256"] + "\n" + python["library_sha256"] + "\n").encode())
+            require("CHRONIK_ERGON_PYTHON_ID=" + python["embedding_sha256"] in ninja and
+                    "--features plugins" in ninja, "configured Python embedding/features mismatch")
+            inputs += PLUGIN_ENABLED_INPUTS
+            suffix = "python-profile:" + python["embedding_sha256"] + "\n"
+        else:
+            require("--features plugins" not in ninja and "CHRONIK_ERGON_PYTHON_ID=" not in ninja,
+                    "disabled profile linked plugin feature")
         adapter = "ergon-archival-adapter/v1\n" + "".join(
-            path + ":" + digest(regular(source / path)) + "\n" for path in ADAPTER_INPUTS)
+            path + ":" + digest(regular(source / path)) + "\n" for path in inputs) + suffix
         adapter_id = digest(adapter.encode())
         require("CHRONIK_ERGON_ADAPTER_ID=" + adapter_id in regular(build / "build.ninja").decode(),
                 "configured adapter identity mismatch")
     return {"technical_projection_sha256": projection,
             "cmake_cache_sha256": digest(regular(build / "CMakeCache.txt")),
-            "profile": profile, "binary_to_source_provenance": "external-build-record-required"}
+            "profile": profile, "plugin_engine_enabled": plugins, "python_embedding": python,
+            "binary_to_source_provenance": "external-build-record-required"}
 
 def environment(run):
     child_tmp = run / "tmp"
@@ -273,11 +338,15 @@ def filter_for(cases):
     require(all(case.startswith(PREFIX) for case in cases), "unexpected suite")
     return PREFIX + ",".join(case[len(PREFIX):] for case in cases)
 
-def repeat(binary, work, forbidden, repetitions):
+def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
+    require(profile in (None, "archival", "plugins"), "unknown repetition profile")
     require(len({case for _, cases, _ in GROUPS for case in cases}) == 44, "non-disjoint test groups")
+    groups = GROUPS + (PLUGIN_GROUPS if profile == "plugins" else (DISABLED_GROUP,) if profile == "archival" else ())
+    require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
+            "plugin cases overlap inherited groups")
     result = []
-    for role, cases, assertions in GROUPS:
+    for role, cases, assertions in groups:
         first = None
         for _ in range(repetitions):
             streams = execute([str(binary), "--run_test=" + filter_for(cases),
@@ -288,8 +357,9 @@ def repeat(binary, work, forbidden, repetitions):
             first = observation
         result.append(dict(role=role, repetitions=repetitions, **first))
         print("PASS: " + role + "; " + str(len(cases)) + " cases; " + str(assertions) + " assertions", flush=True)
-    return {"groups": result, "selected_cases": 44, "assertions_per_repetition": sum(a for _, _, a in GROUPS),
-            "fresh_processes": repetitions * 6, "per_process_timeout_seconds": 60,
+    return {"groups": result, "selected_cases": sum(len(c) for _, c, _ in groups),
+            "assertions_per_repetition": sum(a for _, _, a in groups),
+            "fresh_processes": repetitions * len(groups), "per_process_timeout_seconds": 60,
             "stream_contract": "strict UTF-8, exact bytes within each group, binding paths rejected; no text retained"}
 
 def mining_address():
@@ -374,7 +444,7 @@ def main():
     parser.add_argument("--adaptation-manifest", type=Path, required=True)
     parser.add_argument("--work-parent", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument("--profile", choices=("archival", "compiled-out", "upstream-linked-dormant"), required=True)
+    parser.add_argument("--profile", choices=("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant"), required=True)
     parser.add_argument("--repetitions", type=int, default=10)
     args = parser.parse_args()
     try:
@@ -383,12 +453,12 @@ def main():
         require(not report.exists() and not report.is_symlink(), "report overwrite refused")
         require(not any(report.is_relative_to(p) for p in (source, build)), "report must remain outside source/build")
         require(not work.is_relative_to(source) and not work.is_relative_to(build), "separate disposable work parent required")
-        require((args.command == "repeat") == (args.profile == "archival"), "command/profile mismatch")
+        require((args.command == "repeat") == (args.profile in ("archival", "plugins")), "command/profile mismatch")
         binding = bind_build(source, build, args.profile, args.adaptation_manifest)
         binary = build / ("src/test/test_bitcoin" if args.command == "repeat" else "src/bitcoind")
         raw = regular(binary)
         before = digest(raw)
-        result = repeat(binary, work, (source, build, binary), args.repetitions) if args.command == "repeat" else smoke(binary, work)
+        result = repeat(binary, work, (source, build, binary), args.repetitions, args.profile) if args.command == "repeat" else smoke(binary, work)
         require(digest(regular(binary)) == before, "binary changed during observation")
         require(binding == bind_build(source, build, args.profile, args.adaptation_manifest), "source/build binding changed during observation")
         payload = {"schema": "ergon-upstream-component-observation/v1", "result": "pass",

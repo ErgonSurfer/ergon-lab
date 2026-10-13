@@ -599,6 +599,7 @@ dependencies = [
  "cxx",
  "cxx-build",
  "prost",
+ "pyo3",
  "thiserror 2.0.17",
  "tokio",
 ]

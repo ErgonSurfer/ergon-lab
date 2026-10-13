@@ -136,6 +136,11 @@ impl Mempool {
         if self.is_lokad_id_index_enabled {
             self.lokad_id_history.insert(&mempool_tx, &());
         }
+        // SPDX-License-Identifier: MIT — Ergon plugin metadata correction.
+        // The token cache omits all-None input vectors (e.g. GENESIS). That
+        // absence must not discard an existing verified TokenTx for plugins.
+        // Preserve one explicit None per input; no token rules are changed.
+        let no_input_tokens = vec![None; mempool_tx.tx.inputs.len()];
         let plugin_outputs = self.plugins.insert(
             db,
             &mempool_tx,
@@ -143,7 +148,9 @@ impl Mempool {
             if self.is_token_index_enabled {
                 self.tokens
                     .token_tx(mempool_tx.tx.txid_ref())
-                    .zip(self.tokens.tx_token_inputs(mempool_tx.tx.txid_ref()))
+                    .map(|token_tx| (token_tx, self.tokens
+                        .tx_token_inputs(mempool_tx.tx.txid_ref())
+                        .unwrap_or(&no_input_tokens)))
             } else {
                 None
             },

@@ -93,6 +93,11 @@ option(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS
 if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS AND NOT BUILD_CHRONIK_UPSTREAM_LINK)
 	message(FATAL_ERROR "Archival tests require the upstream link profile")
 endif()
+option(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS
+	"Enable public synthetic upstream plugin fixtures (no daemon admission)" OFF)
+if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS AND NOT BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
+	message(FATAL_ERROR "Plugin fixtures require the archival test profile")
+endif()
 
 if(ENABLE_COVERAGE)
 	include(Coverage)

@@ -33,3 +33,7 @@ mod ergon_service;
 // SPDX-License-Identifier: MIT — synthetic fixtures using upstream ALP builders.
 #[cfg(feature = "ergon-archival-probe")]
 mod ergon_http_tests;
+
+// SPDX-License-Identifier: MIT — public synthetic plugin fixture, no daemon API.
+#[cfg(feature = "ergon-archival-probe")]
+mod ergon_plugin_fixture;

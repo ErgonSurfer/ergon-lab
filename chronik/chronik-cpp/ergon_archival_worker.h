@@ -15,6 +15,7 @@ struct Snapshot;
 struct TxView;
 struct RequestGate;
 struct ResponseLatch;
+struct PluginFixture;
 struct WorkerStatus {
     uint64_t accepted, completed, discarded, rejected;
     size_t pending;
@@ -40,7 +41,8 @@ class ArchivalWorker {
                    std::function<void()> before_reconcile = {},
                    std::function<void()> before_notification = {},
                    std::function<void()> after_capture = {},
-                   std::function<void()> before_disk = {});
+                   std::function<void()> before_disk = {},
+                   const PluginFixture *plugins = nullptr);
     ~ArchivalWorker();
     ArchivalWorker(const ArchivalWorker &) = delete;
     ArchivalWorker &operator=(const ArchivalWorker &) = delete;

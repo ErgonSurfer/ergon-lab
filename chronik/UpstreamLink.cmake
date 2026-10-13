@@ -45,6 +45,18 @@ set(_upstream_generated
     "${CHRONIK_UPSTREAM_TARGET_DIR}/cxxbridge/chronik_lib/src/ffi.rs.cc")
 set(_upstream_features "")
 set(_upstream_probe_sources "")
+if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
+    find_package(Python3 3.12 EXACT COMPONENTS Interpreter Development.Embed REQUIRED)
+    list(APPEND _upstream_env "PYO3_PYTHON=${Python3_EXECUTABLE}"
+        "PYTHONDONTWRITEBYTECODE=1"
+        "CHRONIK_ERGON_PYTHON_VERSION=${Python3_VERSION}")
+    file(SHA256 "${Python3_EXECUTABLE}" _python_executable_sha256)
+    file(SHA256 "${Python3_LIBRARIES}" _python_library_sha256)
+    string(SHA256 _python_identity
+        "${Python3_VERSION}\n${_python_executable_sha256}\n${_python_library_sha256}\n")
+    list(APPEND _upstream_env "CHRONIK_ERGON_PYTHON_ID=${_python_identity}")
+    list(APPEND _upstream_features --features plugins)
+endif()
 if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
     # Bind the authored adapter and dependency graph, never an input path.
     set(_identity_inputs
@@ -70,6 +82,14 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
     list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_http_tests.rs)
     list(APPEND _identity_inputs src/coins.h src/coins.cpp src/dbwrapper.h
         src/dbwrapper.cpp src/txdb.h src/txdb.cpp)
+    list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_plugin_fixture.rs
+        chronik/chronik-db/src/mem/mempool.rs
+        tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py)
+    if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
+        list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs
+            chronik/chronik-plugin-impl/python/upstream/script.py
+            chronik/chronik-plugin-impl/python/upstream/slp.py)
+    endif()
     set(_identity "ergon-archival-adapter/v1\n")
     foreach(_input IN LISTS _identity_inputs)
         file(SHA256 "${CMAKE_SOURCE_DIR}/${_input}" _digest)
@@ -77,6 +97,9 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
             "${CMAKE_SOURCE_DIR}/${_input}")
     endforeach()
+    if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
+        string(APPEND _identity "python-profile:${_python_identity}\n")
+    endif()
     string(SHA256 _adapter_id "${_identity}")
     list(APPEND _upstream_env "CHRONIK_ERGON_ADAPTER_ID=${_adapter_id}")
     list(APPEND _upstream_features --features ergon-archival-probe)
@@ -108,6 +131,9 @@ target_link_libraries(chronik_upstream_native PRIVATE server Threads::Threads)
 function(ergon_link_upstream_chronik target)
 target_sources(${target} PRIVATE $<TARGET_OBJECTS:chronik_upstream_native>)
 add_dependencies(${target} chronik_upstream_rust_build)
+# A force-load linker option alone is not a Ninja file dependency. Relink when
+# Rust implementation bytes change but generated CXX signatures do not.
+set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${_upstream_archive}")
 # Do not let archive dead stripping produce a false-positive link with no
 # actual indexer/server pulled in. No native unresolved-symbol exemption.
 if(APPLE)
@@ -119,6 +145,10 @@ else()
     target_link_libraries(${target} ${CMAKE_DL_LIBS} m)
 endif()
 target_link_libraries(${target} server Threads::Threads)
+if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
+    target_link_libraries(${target} Python3::Python)
+    target_compile_definitions(${target} PRIVATE CHRONIK_ERGON_PLUGIN_TESTS=1)
+endif()
 endfunction()
 
 ergon_link_upstream_chronik(bitcoind)

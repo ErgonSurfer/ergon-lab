@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Synthetic standard-library failure-path checks; no trusted node required."""
+import copy
 import json
 import os
 from pathlib import Path
@@ -31,6 +32,118 @@ class Contract(unittest.TestCase):
         self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2285)
         self.assertEqual(len(runner.GROUPS), 6)
         self.assertEqual(runner.filter_for(runner.STARTUP).count(runner.PREFIX), 1)
+
+    def test_plugin_profiles_exact_counts_and_single_context_processes(self):
+        self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
+        for profile, groups, count, assertions, processes in (
+                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 48, 2385, 100),
+                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70)):
+            streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]
+            with patch.object(runner, "execute", side_effect=streams):
+                result = runner.repeat(Path("synthetic"), Path("unused"), (), 10, profile)
+            self.assertEqual((result["selected_cases"], result["assertions_per_repetition"],
+                              result["fresh_processes"]), (count, assertions, processes))
+        self.assertTrue(all(len(cases) == 1 for _, cases, _ in runner.PLUGIN_GROUPS))
+        out, err = self.streams(runner.PLUGIN_GROUPS[0][1], 55)
+        for n in (0, 54, 56):
+            with self.assertRaises(runner.Rejected):
+                runner.parse_streams((out, err.replace("55", str(n))), runner.PLUGIN_GROUPS[0][1], 55)
+
+    def test_disabled_profile_rejects_enabled_engine_cache(self):
+        with tempfile.TemporaryDirectory(prefix="ergon-runner-self-") as name:
+            root = Path(name).resolve()
+            source, build = root / "source", root / "build"
+            source.mkdir()
+            build.mkdir()
+            (build / "CMakeCache.txt").write_text(
+                "CMAKE_HOME_DIRECTORY:INTERNAL=" + str(source) + "\n"
+                "BUILD_CHRONIK_OBSERVER:BOOL=OFF\nBUILD_CHRONIK_UPSTREAM_LINK:BOOL=OFF\n"
+                "BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS:BOOL=ON\n")
+            with patch.object(runner, "source_projection", return_value="synthetic"), self.assertRaises(runner.Rejected):
+                runner.bind_build(source, build, "compiled-out", root / "unused")
+
+    def test_plugin_projection_rejects_inventory_parent_and_preimage_drift(self):
+        source_root = Path(__file__).resolve().parents[3]
+        names = [r["path"] for r in json.loads((source_root /
+            "docs/engineering/chronik/upstream-host-adaptation-v1.json").read_text())["files"]]
+        raw = b"synthetic\n"
+        identity = {"mode": "100644", "bytes": len(raw), "sha256": runner.digest(raw)}
+        host_rows = [dict(path=p, after=identity) for p in names]
+        read = {"schema": "ergon-owned-chainstate-reads/v1",
+                "public_parent": {"commit": "8fc7aec5a3935533fe7d4e0ccbfdf14b276abc37",
+                                   "tree": "0a97f74862c1f7ff1842ce60aa7969837b31a887"},
+                "files": [dict(path=p, before=identity if p in names else None, after=identity)
+                          for p in sorted(runner.READ_INPUTS)]}
+        old_names = set(names) | runner.READ_INPUTS
+        plugin = {"schema": "ergon-upstream-plugin-fixtures/v1",
+                  "public_parent": {"commit": "eaa73b03ed060af5623eb30ff4a08502d2a73c7a",
+                                     "tree": "85ca3e2bd4a0d5017cbad506aa26539f99e38d2b"},
+                  "files": [dict(path=p, before=identity if p in old_names else None, after=identity)
+                            for p in sorted(runner.plugin_inputs())]}
+        with tempfile.TemporaryDirectory(prefix="ergon-projection-self-") as name:
+            root = Path(name).resolve()
+            source = root / "source"
+            source.mkdir()
+            for p in old_names | runner.plugin_inputs():
+                target = source / p
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(raw)
+            host_path, read_path, plugin_path = (root / p for p in ("host.json", "read.json", "plugin.json"))
+            host_path.write_bytes(runner.canonical({"files": host_rows}))
+            read_path.write_bytes(runner.canonical(read))
+            def run(record):
+                plugin_path.write_bytes(runner.canonical(record))
+                return runner.source_projection(source, host_path, read_path, plugin_path)
+            self.assertEqual(len(run(plugin)), 64)
+            for mutate in (lambda r: r["files"].pop(), lambda r: r["files"].reverse(),
+                           lambda r: r["public_parent"].update(tree="0" * 40),
+                           lambda r: r["files"][0].update(before=None)):
+                invalid = copy.deepcopy(plugin)
+                mutate(invalid)
+                with self.assertRaises(runner.Rejected): run(invalid)
+            target = source / "chronik/chronik-lib/src/ergon_plugin_fixture.rs"
+            target.write_bytes(b"synthetic drift\n")
+            with self.assertRaises(runner.Rejected): run(plugin)
+
+    def test_python_embedding_and_adapter_binding_rejections(self):
+        with tempfile.TemporaryDirectory(prefix="ergon-python-bind-self-") as name:
+            root = Path(name).resolve()
+            source, build = root / "source", root / "build"
+            source.mkdir()
+            build.mkdir()
+            for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS:
+                target = source / p
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b"synthetic\n")
+            executable, library = root / "python", root / "library"
+            executable.write_bytes(b"synthetic executable")
+            library.write_bytes(b"synthetic library")
+            version = "3.12.9"
+            embedding = runner.digest((version + "\n" + runner.digest(executable.read_bytes()) + "\n" +
+                runner.digest(library.read_bytes()) + "\n").encode())
+            adapter = "ergon-archival-adapter/v1\n" + "".join(p + ":" + runner.digest((source / p).read_bytes()) + "\n"
+                for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS)
+            adapter += "python-profile:" + embedding + "\n"
+            ninja = ("CHRONIK_ERGON_PYTHON_VERSION=" + version + " CHRONIK_ERGON_PYTHON_ID=" + embedding +
+                     " CHRONIK_ERGON_ADAPTER_ID=" + runner.digest(adapter.encode()) + " --features plugins\n")
+            cache = ("CMAKE_HOME_DIRECTORY:INTERNAL=" + str(source) + "\nBUILD_CHRONIK_OBSERVER:BOOL=OFF\n"
+                     "BUILD_CHRONIK_UPSTREAM_LINK:BOOL=ON\nBUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS:BOOL=ON\n"
+                     "BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS:BOOL=ON\n_Python3_EXECUTABLE:INTERNAL=" + str(executable) +
+                     "\n_Python3_LIBRARY_RELEASE:INTERNAL=" + str(library) + "\n")
+            (build / "CMakeCache.txt").write_text(cache)
+            (build / "build.ninja").write_text(ninja)
+            with patch.object(runner, "source_projection", return_value="synthetic"):
+                binding = runner.bind_build(source, build, "plugins", root / "unused")
+                self.assertEqual(binding["python_embedding"]["embedding_sha256"], embedding)
+                self.assertNotIn(str(root), runner.canonical(binding).decode())
+                for invalid in (ninja.replace("3.12.9", "3.13.9"), ninja + ninja,
+                                ninja.replace(embedding, "0" * 64), ninja.replace("--features plugins", ""),
+                                ninja.replace(runner.digest(adapter.encode()), "0" * 64)):
+                    (build / "build.ninja").write_text(invalid)
+                    with self.assertRaises(runner.Rejected): runner.bind_build(source, build, "plugins", root / "unused")
+                (build / "build.ninja").write_text(ninja)
+                library.write_bytes(b"synthetic library drift")
+                with self.assertRaises(runner.Rejected): runner.bind_build(source, build, "plugins", root / "unused")
 
     def test_summary_fail_closed(self):
         out, err = self.streams()

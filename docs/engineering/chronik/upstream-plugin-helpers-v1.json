@@ -1,0 +1,18 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-upstream-plugin-helpers/v1",
+  "license": "MIT",
+  "public_parent": {"commit": "eaa73b03ed060af5623eb30ff4a08502d2a73c7a", "tree": "85ca3e2bd4a0d5017cbad506aa26539f99e38d2b"},
+  "parent_status": "public-review-branch-not-assumed-main",
+  "donor": {"repository": "https://github.com/Bitcoin-ABC/bitcoin-abc.git", "commit": "784d83de2e19eab726898d77bfe7465410d27a9c", "tree": "763739eb3c255e90a6122a2679c667089f9efad2", "authority": "technical-donor-only", "license": "MIT"},
+  "files": [
+    {"path": "chronik/chronik-plugin-impl/python/upstream/script.py", "donor_path": "test/functional/test_framework/script.py", "mode": "100644", "bytes": 19168, "git_blob": "172c2fa248dd33007bc9dc727b1f3800ba0dc226", "sha256": "89d41426d7466222a5eeded22e5caf980366f198a4909ea0b47e7f0bea24eafd", "provenance": "exact-public-donor", "notice": "upstream MIT preserved"},
+    {"path": "chronik/chronik-plugin-impl/python/upstream/slp.py", "donor_path": "test/functional/test_framework/chronik/slp.py", "mode": "100644", "bytes": 4274, "git_blob": "c4a2dbb327c62c32e102ffd419680d403452b770", "sha256": "0452a00bfec362c15d1ae663fcedd38adfd63d73c9eb559f115feebd5b1ad5c3", "provenance": "exact-public-donor", "notice": "upstream MIT preserved"}
+  ],
+  "adaptation": {"path": "chronik/chronik-plugin-impl/src/module.rs", "rule": "Replace exactly the two inherited functional-framework include paths with the two isolated helper paths. Preserve the existing scoped test_framework-to-chronik_plugin import namespace transformation."},
+  "metadata_forwarding_correction": {"path": "chronik/chronik-db/src/mem/mempool.rs", "provenance": "independently-authored-delta-over-public-MIT-source", "cause": "The token cache intentionally omits all-None spent-token vectors; zip discarded an existing verified TokenTx when passing it to plugins, including unconfirmed ALP GENESIS.", "rule": "Pass the existing verified TokenTx with one explicit None per input when the optional input cache entry is absent. Do not alter parsing, coloring, validation or native consensus.", "regression_oracle": "The real synthetic plugin sees 1000 ALP atoms on the parent output in mempool, confirmed block and post-reorg mempool."},
+  "boundaries": {"consensus_change": false, "daemon_admission": false, "native_functional_helpers_modified": false, "plugin_algorithms_replaced": false, "operator_plugins": false},
+  "knowledge_status": "Open Question",
+  "evidence_ceiling": "record-review-only",
+  "evidence_inputs": []
+}

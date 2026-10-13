@@ -36,7 +36,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
     Impl(const std::string &root, const chronik_bridge::ErgonNodeAccess &access,
          size_t limit, std::function<void()> hook,
          std::function<void()> notification_hook,
-         std::function<void()> capture_hook, std::function<void()> disk_hook)
+         std::function<void()> capture_hook, std::function<void()> disk_hook,
+         const PluginFixture *plugins)
         : node(access), capacity(limit), before(std::move(hook)),
           before_notification(std::move(notification_hook)),
           after_capture(std::move(capture_hook)),
@@ -46,7 +47,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
         // Drain old fixture events before subscribing, never under cs_main.
         SyncWithValidationInterfaceQueue();
         probe = std::make_unique<rust::Box<ArchivalProbe>>(
-            open_archival(root, node));
+            plugins ? open_archival_with_plugins(root, node, *plugins)
+                    : open_archival(root, node));
         gate =
             std::make_unique<rust::Box<RequestGate>>((*probe)->request_gate());
         response_latch = std::make_unique<rust::Box<ResponseLatch>>(
@@ -255,11 +257,12 @@ ArchivalWorker::ArchivalWorker(const std::string &root,
                                std::function<void()> before_reconcile,
                                std::function<void()> before_notification,
                                std::function<void()> after_capture,
-                               std::function<void()> before_disk)
+                               std::function<void()> before_disk,
+                               const PluginFixture *plugins)
     : m_impl(std::make_unique<Impl>(
           root, node, max_pending, std::move(before_reconcile),
           std::move(before_notification), std::move(after_capture),
-          std::move(before_disk))) {}
+          std::move(before_disk), plugins)) {}
 ArchivalWorker::~ArchivalWorker() { Stop(); }
 WorkerStatus ArchivalWorker::Status() const {
     std::lock_guard<std::mutex> lock(m_impl->mu);

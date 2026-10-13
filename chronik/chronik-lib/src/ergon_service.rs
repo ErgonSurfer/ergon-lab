@@ -204,15 +204,22 @@ struct Admission {
     gate: RequestGate,
     node: Arc<Node>,
     latch: ResponseLatch,
+    plugins: bool,
 }
 pub(crate) fn wrap(
     router: Router,
     gate: RequestGate,
     node: Arc<Node>,
     latch: ResponseLatch,
+    plugins: bool,
 ) -> Router {
     router.layer(middleware::from_fn_with_state(
-        Admission { gate, node, latch },
+        Admission {
+            gate,
+            node,
+            latch,
+            plugins,
+        },
         admit,
     ))
 }
@@ -223,7 +230,7 @@ fn error(message: &'static str) -> Response {
         .insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
     response
 }
-fn supported(request: &Request) -> bool {
+fn supported(request: &Request, plugins: bool) -> bool {
     if request.method() != Method::GET || request.uri().path().contains('%') {
         return false;
     }
@@ -244,6 +251,10 @@ fn supported(request: &Request) -> bool {
             !id.is_empty()
         }
         ["lokad-id", id, "confirmed-txs" | "history" | "unconfirmed-txs"] => !id.is_empty(),
+        ["plugin", "ergon_public_probe", "groups"] => plugins,
+        ["plugin", "ergon_public_probe", group, "utxos" | "confirmed-txs" | "history" | "unconfirmed-txs"] => {
+            plugins && *group == "7075626c6963"
+        }
         _ => false,
     }
 }
@@ -273,7 +284,7 @@ fn supported_query(request: &Request) -> bool {
     true
 }
 async fn admit(State(state): State<Admission>, request: Request, next: Next) -> Response {
-    if !supported(&request) {
+    if !supported(&request, state.plugins) {
         return error("501: Capability not enabled for this Ergon observer profile");
     }
     if !supported_query(&request) {

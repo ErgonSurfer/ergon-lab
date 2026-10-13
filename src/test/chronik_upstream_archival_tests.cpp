@@ -2722,4 +2722,249 @@ BOOST_AUTO_TEST_CASE(spent_cache_tombstone_quarantines_only_index) {
     BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
     // Native fixture teardown discards this deliberate corrupt overlay.
 }
+#ifdef CHRONIK_ERGON_PLUGIN_TESTS
+namespace {
+struct PublicPluginSignals {
+    bool standard{fRequireStandard};
+    PublicPluginSignals() {
+        fRequireStandard = false;
+        GetMainSignals().RegisterWithMempoolSignals(g_mempool);
+    }
+    ~PublicPluginSignals() {
+        GetMainSignals().UnregisterWithMempoolSignals(g_mempool);
+        SyncWithValidationInterfaceQueue();
+        fRequireStandard = standard;
+    }
+};
+void AcceptPublicPluginTx(const CMutableTransaction &tx) {
+    LOCK(cs_main);
+    CValidationState state;
+    BOOST_REQUIRE_MESSAGE(AcceptToMemoryPool(GetConfig(), g_mempool, state,
+        MakeTransactionRef(tx), nullptr, true, Amount::zero()), FormatStateMessage(state));
+}
+bool PublicPluginReadUnavailable(uint16_t port) {
+    try {
+        const auto reply = Http(port, "/blockchain-info");
+        // A fatal worker fault tears down its HTTP owner; canonical refusal
+        // before teardown or connection closure are both fail-closed. A
+        // malformed response, timeout or successful stale body never passes.
+        return reply.status == 0 || (reply.status == 503 &&
+            ergon_archival::http_error_matches(Body(reply), "503: Ergon index view unavailable"));
+    } catch (const boost::system::system_error &error) {
+        return error.code() == boost::asio::error::connection_refused ||
+               error.code() == boost::asio::error::connection_reset ||
+               error.code() == boost::asio::error::broken_pipe;
+    }
+}
+}
+BOOST_AUTO_TEST_CASE(upstream_public_plugin_lifecycle) {
+    PublicPluginSignals signals;
+    auto plugins = ergon_archival::make_plugin_fixture(Root("plugin-source"), 0);
+    BOOST_REQUIRE_EQUAL(plugins->loaded(), 1);
+    // Never create a second Python interpreter context in this process.
+    BOOST_CHECK_THROW(ergon_archival::make_plugin_fixture(Root("duplicate-plugin"), 0), std::exception);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("plugin-index");
+    const auto &prev = *m_coinbase_txns[0];
+    CMutableTransaction parent, child;
+    parent.vin.emplace_back(COutPoint(prev.GetId(), 0));
+    auto alp = ergon_archival::fixture_alp_script(0, {});
+    CScript metadata(alp.data(), alp.data() + alp.size());
+    metadata << std::vector<uint8_t>{'E','R','G','N'};
+    parent.vout.emplace_back(Amount::zero(), metadata);
+    parent.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    parent.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    std::vector<uint8_t> signature;
+    BOOST_REQUIRE(coinbaseKey.SignECDSA(SignatureHash(prev.vout[0].scriptPubKey,
+        CTransaction(parent), 0, SigHashType().withForkId(), Amount::zero()), signature));
+    signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+    parent.vin[0].scriptSig << signature;
+    child.vin.emplace_back(COutPoint(CTransaction(parent).GetId(), 1));
+    child.vout.emplace_back(Amount::zero(), CScript() << OP_RETURN
+        << std::vector<uint8_t>{'E','R','G','N'} << std::vector<uint8_t>(64, 0));
+    child.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    const auto parent_id = CTransaction(parent).GetId();
+    const auto child_id = CTransaction(child).GetId();
+    std::vector<uint8_t> ids(parent_id.begin(), parent_id.end());
+    ids.insert(ids.end(), child_id.begin(), child_id.end());
+    std::vector<uint8_t> points(parent_id.begin(), parent_id.end());
+    points.insert(points.end(), {2,0,0,0});
+    points.insert(points.end(), child_id.begin(), child_id.end());
+    points.insert(points.end(), {1,0,0,0});
+    {
+        ergon_archival::ArchivalWorker worker(root, access, 128, {}, {}, {}, {}, &*plugins);
+        const auto port = worker.StartHttpFixture();
+        AcceptPublicPluginTx(parent);
+        AcceptPublicPluginTx(child);
+        SyncWithValidationInterfaceQueue();
+        BOOST_REQUIRE(worker.WaitThrough(worker.Status().accepted, 5000));
+        auto check = [&] {
+            auto p = Http(port, "/tx/" + parent_id.ToString());
+            auto c = Http(port, "/tx/" + child_id.ToString());
+            BOOST_REQUIRE_EQUAL(p.status, 200);
+            BOOST_REQUIRE_EQUAL(c.status, 200);
+            BOOST_CHECK(ergon_archival::http_plugin_tx_matches(Body(p), 1, 0, 1000));
+            BOOST_CHECK(ergon_archival::http_plugin_tx_matches(Body(c), 1, 1, 0));
+            auto groups = Http(port, "/plugin/ergon_public_probe/groups?page_size=10");
+            BOOST_REQUIRE_EQUAL(groups.status, 200);
+            BOOST_CHECK(ergon_archival::http_plugin_group_matches(Body(groups), 0, {}));
+            auto utxos = Http(port, "/plugin/ergon_public_probe/7075626c6963/utxos");
+            BOOST_REQUIRE_EQUAL(utxos.status, 200);
+            BOOST_CHECK(ergon_archival::http_plugin_group_matches(Body(utxos), 1, {points.data(), points.size()}));
+            auto history = Http(port, "/plugin/ergon_public_probe/7075626c6963/history");
+            BOOST_REQUIRE_EQUAL(history.status, 200);
+            const std::array<uint64_t,3> expected{2,1,0};
+            BOOST_CHECK(ergon_archival::http_fixture_check(5, Body(history), {ids.data(), ids.size()}, {expected.data(), expected.size()}));
+        };
+        check();
+        auto pending = Http(port, "/plugin/ergon_public_probe/7075626c6963/unconfirmed-txs");
+        BOOST_REQUIRE_EQUAL(pending.status, 200);
+        const std::array<uint64_t,3> both{2,1,0};
+        BOOST_CHECK(ergon_archival::http_fixture_check(5, Body(pending), {ids.data(), ids.size()}, {both.data(), both.size()}));
+        CreateAndProcessBlock({parent, child}, prev.vout[0].scriptPubKey);
+        SyncWithValidationInterfaceQueue();
+        BOOST_REQUIRE(worker.WaitThrough(worker.Status().accepted, 5000));
+        BOOST_CHECK_EQUAL(worker.ReadTx(Bytes(child_id), 1).height, 101);
+        check();
+        auto confirmed = Http(port, "/plugin/ergon_public_probe/7075626c6963/confirmed-txs");
+        BOOST_REQUIRE_EQUAL(confirmed.status, 200);
+        BOOST_CHECK(ergon_archival::http_fixture_check(5, Body(confirmed), {ids.data(), ids.size()}, {both.data(), both.size()}));
+        CValidationState state;
+        BOOST_REQUIRE(InvalidateBlock(GetConfig(), state, ChainActive().Tip()));
+        BOOST_REQUIRE(ActivateBestChain(GetConfig(), state));
+        SyncWithValidationInterfaceQueue();
+        BOOST_REQUIRE(worker.WaitThrough(worker.Status().accepted, 5000));
+        BOOST_CHECK_EQUAL(g_mempool.size(), 2);
+        check();
+        worker.Stop();
+        BOOST_CHECK(worker.Status().joined);
+        BOOST_CHECK(!access.index_failed.load());
+        BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+    }
+    // Share the existing owned Python/plugin context, never reinitialize it.
+    auto reopened = ergon_archival::open_archival_with_plugins(root, access, *plugins);
+    const auto port = reopened->start_http_fixture();
+    auto response = Http(port, "/tx/" + child_id.ToString());
+    BOOST_REQUIRE_EQUAL(response.status, 200);
+    BOOST_CHECK(ergon_archival::http_plugin_tx_matches(Body(response), 1, 1, 0));
+    BOOST_CHECK_THROW(ergon_archival::open_archival(root, access), std::exception);
+    reopened->stop_http_fixture();
+}
+
+BOOST_AUTO_TEST_CASE(upstream_public_plugin_exception_is_index_only) {
+    PublicPluginSignals signals;
+    auto plugins = ergon_archival::make_plugin_fixture(Root("throw-plugin-source"), 1);
+    BOOST_REQUIRE_EQUAL(plugins->loaded(), 1);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("throw-plugin-index");
+    ergon_archival::ArchivalWorker worker(root, access, 128, {}, {}, {}, {}, &*plugins);
+    const auto port = worker.StartHttpFixture();
+    BOOST_REQUIRE_EQUAL(Http(port, "/blockchain-info").status, 200);
+    const auto &prev = *m_coinbase_txns[0];
+    CMutableTransaction tx;
+    tx.vin.emplace_back(COutPoint(prev.GetId(), 0));
+    tx.vout.emplace_back(Amount::zero(), CScript() << OP_RETURN
+        << std::vector<uint8_t>{'E','R','G','N'} << std::vector<uint8_t>(64, 0));
+    tx.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    std::vector<uint8_t> signature;
+    BOOST_REQUIRE(coinbaseKey.SignECDSA(SignatureHash(prev.vout[0].scriptPubKey,
+        CTransaction(tx), 0, SigHashType().withForkId(), Amount::zero()), signature));
+    signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+    tx.vin[0].scriptSig << signature;
+    const auto shutdown = ShutdownRequested();
+    AcceptPublicPluginTx(tx);
+    SyncWithValidationInterfaceQueue();
+    BOOST_CHECK(!worker.WaitThrough(worker.Status().accepted, 5000));
+    BOOST_CHECK(worker.Status().failed);
+    BOOST_CHECK(access.index_failed.load());
+    BOOST_CHECK(PublicPluginReadUnavailable(port));
+    BOOST_CHECK_EQUAL(g_mempool.size(), 1);
+    BOOST_CHECK_EQUAL(ShutdownRequested(), shutdown);
+    CreateAndProcessBlock({}, CScript() << OP_2);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(fs::exists(fs::path(root) / "probe.failed"));
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+}
+BOOST_AUTO_TEST_CASE(upstream_public_plugin_invalid_output_is_index_only) {
+    PublicPluginSignals signals;
+    auto plugins = ergon_archival::make_plugin_fixture(Root("bad-plugin-source"), 2);
+    BOOST_REQUIRE_EQUAL(plugins->loaded(), 1);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("bad-plugin-index");
+    ergon_archival::ArchivalWorker worker(root, access, 128, {}, {}, {}, {}, &*plugins);
+    const auto port = worker.StartHttpFixture();
+    BOOST_REQUIRE_EQUAL(Http(port, "/blockchain-info").status, 200);
+    const auto &prev = *m_coinbase_txns[0];
+    CMutableTransaction tx;
+    tx.vin.emplace_back(COutPoint(prev.GetId(), 0));
+    tx.vout.emplace_back(Amount::zero(), CScript() << OP_RETURN
+        << std::vector<uint8_t>{'E','R','G','N'} << std::vector<uint8_t>(64, 0));
+    tx.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    std::vector<uint8_t> signature;
+    BOOST_REQUIRE(coinbaseKey.SignECDSA(SignatureHash(prev.vout[0].scriptPubKey,
+        CTransaction(tx), 0, SigHashType().withForkId(), Amount::zero()), signature));
+    signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+    tx.vin[0].scriptSig << signature;
+    const auto shutdown = ShutdownRequested();
+    AcceptPublicPluginTx(tx);
+    SyncWithValidationInterfaceQueue();
+    BOOST_CHECK(!worker.WaitThrough(worker.Status().accepted, 5000));
+    BOOST_CHECK(worker.Status().failed);
+    BOOST_CHECK(access.index_failed.load());
+    BOOST_CHECK(PublicPluginReadUnavailable(port));
+    BOOST_CHECK_EQUAL(g_mempool.size(), 1);
+    BOOST_CHECK_EQUAL(ShutdownRequested(), shutdown);
+    CreateAndProcessBlock({}, CScript() << OP_2);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(fs::exists(fs::path(root) / "probe.failed"));
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+}
+BOOST_AUTO_TEST_CASE(upstream_public_plugin_source_and_config_drift_refused) {
+    const auto source = Root("drift-plugin-source");
+    BOOST_CHECK_THROW(ergon_archival::make_plugin_fixture(source, 99), std::exception);
+    auto plugins = ergon_archival::make_plugin_fixture(source, 0);
+    BOOST_REQUIRE_EQUAL(plugins->loaded(), 1);
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("drift-plugin-index");
+    const auto config = fs::path(source) / "plugins.toml";
+    std::ifstream original_file(config.string());
+    const std::string original((std::istreambuf_iterator<char>(original_file)),
+                               std::istreambuf_iterator<char>());
+    {
+        std::ofstream altered(config.string(), std::ios::app);
+        altered << "# unexpected configuration drift\n";
+    }
+    BOOST_CHECK_THROW(ergon_archival::open_archival_with_plugins(root, access, *plugins), std::exception);
+    BOOST_CHECK(!fs::exists(fs::path(root) / "indexes"));
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 100);
+    {
+        std::ofstream restored(config.string(), std::ios::trunc);
+        restored << original;
+    }
+    {
+        std::ofstream altered((fs::path(source) / "ergon_public_probe.py").string(), std::ios::app);
+        altered << "# unexpected public source drift\n";
+    }
+    BOOST_CHECK_THROW(ergon_archival::open_archival_with_plugins(root, access, *plugins), std::exception);
+    BOOST_CHECK(!fs::exists(fs::path(root) / "indexes"));
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+    BOOST_CHECK(!access.index_failed.load());
+}
+#else
+BOOST_AUTO_TEST_CASE(upstream_public_plugin_disabled_refuses_setup) {
+    const auto source = Root("disabled-plugin-source");
+    const auto shutdown = ShutdownRequested();
+    BOOST_CHECK_THROW(ergon_archival::make_plugin_fixture(source, 0), std::exception);
+    BOOST_CHECK(fs::is_empty(fs::path(source)));
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 100);
+    BOOST_CHECK_EQUAL(g_mempool.size(), 0);
+    BOOST_CHECK_EQUAL(ShutdownRequested(), shutdown);
+}
+#endif
 BOOST_AUTO_TEST_SUITE_END()

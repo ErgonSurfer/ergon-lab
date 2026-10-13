@@ -24,7 +24,7 @@ pub fn chronik_plugin(
     PyModule::from_code(
         py,
         CString::new(include_str!(
-            "../../../test/functional/test_framework/script.py"
+            "../python/upstream/script.py"
         ))?
         .as_c_str(),
         CString::new("script.py")?.as_c_str(),
@@ -35,7 +35,7 @@ pub fn chronik_plugin(
         py,
         CString::new(
             include_str!(
-                "../../../test/functional/test_framework/chronik/slp.py"
+                "../python/upstream/slp.py"
             )
             .replace("test_framework", "chronik_plugin"),
         )?

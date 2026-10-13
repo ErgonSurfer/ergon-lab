@@ -14,6 +14,7 @@ crate-type = ["staticlib"]
 [features]
 ergon-archival-probe = ["dep:prost", "dep:axum", "dep:chronik-proto", "dep:bitcoinsuite-slp"]
 plugins = [
+    "dep:pyo3",
     "chronik-db/plugins",
     "chronik-indexer/plugins",
     "chronik-http/plugins",
@@ -35,6 +36,7 @@ chronik-plugin = { path = "../chronik-plugin" }
 chronik-util = { path = "../chronik-util" }
 prost = { version = "0.11", optional = true }
 axum = { version = "0.7", optional = true }
+pyo3 = { version = "0.23.2", optional = true }
 chronik-proto = { path = "../chronik-proto", optional = true }
 
 # Bridge to C++

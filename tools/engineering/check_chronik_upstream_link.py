@@ -205,6 +205,9 @@ def validate(root: Path) -> HistoricalView:
     from check_chronik_chainstate_reads import MANIFEST as READ_MANIFEST
     from check_chronik_chainstate_reads import validate as validate_reads, before_identity as read_parent_identity
     from check_chronik_chainstate_reads import TECHNICAL as READ_TECHNICAL
+    from check_chronik_plugin_fixtures import MANIFEST as PLUGIN_MANIFEST, TECHNICAL as PLUGIN_TECHNICAL
+    from check_chronik_plugin_fixtures import before_identity as plugin_parent_identity
+    plugin_layer = (root / PLUGIN_MANIFEST).exists()
     read_layer = validate_reads(root) if (root / READ_MANIFEST).exists() else frozenset()
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == PARENT_TREE,
             "public parent tree mismatch or missing history")
@@ -220,7 +223,9 @@ def validate(root: Path) -> HistoricalView:
     view = HistoricalView(root, {row["path"]: row for row in rows})
     for row in rows:
         path = public_path(row["path"])
-        observed = read_parent_identity(root, path) if read_layer and path in READ_TECHNICAL else current_identity(root, path)
+        observed = (read_parent_identity(root, path) if read_layer and path in READ_TECHNICAL else
+                    plugin_parent_identity(root, path) if plugin_layer and path in PLUGIN_TECHNICAL else
+                    current_identity(root, path))
         require(observed == row["after"], "technical postimage drift: " + path)
         tree_entry = git(root, "ls-tree", PARENT, "--", path).decode().strip()
         if row["before"] is None:
@@ -287,6 +292,12 @@ def validate(root: Path) -> HistoricalView:
     cmake = (root / "CMakeLists.txt").read_text()
     for flag in ("BUILD_CHRONIK_UPSTREAM_LINK", "BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS"):
         require(re.search(r"option\(" + flag + r"\s+\"[^\"]+\"\s+OFF\s*\)", cmake), "compile default is not OFF")
+    if plugin_layer:
+        # Original donor rows stay historical. New exact helpers are a separate
+        # reviewed import, not fictitious entries in the older donor corpus.
+        for path in sorted(PLUGIN_TECHNICAL):
+            if path.startswith("chronik/") and path not in view.rows:
+                view.rows[path] = {"before": plugin_parent_identity(root, path)}
     return view
 
 def main():

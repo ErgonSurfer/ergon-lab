@@ -1,0 +1,983 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0047",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0047.json",
+  "purpose": {
+    "summary": "Exercise the existing upstream Chronik plugin engine and two exact public Python helpers on native Ergon transactions, with separate disabled/enabled test profiles and closed daemon admission.",
+    "scope": [
+      "Retain the real upstream plugin context, database indexes, ALP metadata and HTTP handlers; admit only the public synthetic ERGN plugin in opt-in native fixtures.",
+      "Bind exact CPython 3.12 interpreter/library bytes and configured patch version. Own one initial interpreter and share its context across worker shutdown and database reopen; ignore environment/site startup and bytecode writes.",
+      "Import exactly two public MIT helper modules from immutable Bitcoin ABC commit 784d83de2e19eab726898d77bfe7465410d27a9c without changing the native functional helper; adapt exactly two upstream include paths.",
+      "Preserve GENESIS output token metadata for plugins when the mempool spent-token vector is intentionally omitted. No parser, coloring or validation algorithm is replaced.",
+      "Add an explicit Rust archive link dependency, so unchanged CXX signatures cannot leave a native executable linked to an older Rust body.",
+      "Retain 44 existing native cases and 2285 assertions. The enabled profile adds four single-process cases (55/16/16/13 assertions): 48/2385 over 100 fresh processes at ten repetitions. The disabled profile adds a setup refusal (6 assertions): 45/2291 over 70 processes.",
+      "Add separate compiled-out, archival without plugins and plugin fixture CI jobs. Bind current source/build inputs, reject ambiguity and verify cleanup before exclusive path-free reports.",
+      "Preserve the earlier host/donor/read manifests and records at immutable public identities. The parent is the public PR #52 checkpoint, not assumed main acceptance."
+    ],
+    "exclusions": [
+      "No daemon startup hook, activation, operator plugin transfer, server access, deployment, cutover, release, merge or desktop integration.",
+      "No native consensus, chain selection, economic/network parameter or token validation change. No registry package/version/source/checksum changes.",
+      "No incoming report, binary, generated output, cache, datadir, private history or host metadata."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "eaa73b03ed060af5623eb30ff4a08502d2a73c7a",
+      "tree": "85ca3e2bd4a0d5017cbad506aa26539f99e38d2b"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "ef3947037d24d82c169f5443d3b15b1e320bc727efd6c565529fd82463d63860",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 6770,
+        "git_blob": "b390813235d4ae3863013a1785717d4e5b611847",
+        "sha256": "4b2c003ddda4533c46cdf5d678bfe41d6d7371d447086faa8d22287dc5c56de4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 7474,
+        "git_blob": "1945d1408c4ca9e3050b9330af275c3f0d76e145",
+        "sha256": "4e30e61365f818cdeef507b366b592d8bd2c4b31f6980cf6ad93724b9d410171"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 4314,
+        "git_blob": "87daca8ec46c1a7fd7436430e7d27c765b284aa2",
+        "sha256": "7832d7b0e9c73418cb76949030338131969a63500bce7c8e46f4e4b01271f8fd"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4604,
+        "git_blob": "d5e20ccb24678c5f88e1f35f19c0ddf22d26d9b8",
+        "sha256": "3ce8e20869d9afe8cc97dac348b0e14bd7e59a249a94fe9111035037768cee9a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/Cargo.lock",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 82576,
+        "git_blob": "35ee1bb5b52cacdb742792e4fc0951bb99dd3de1",
+        "sha256": "1c1d2daf3e0926cc68434bd6209624a60f365d370e88740ce888f402e5b4abe5"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 82585,
+        "git_blob": "d8cc67c4a7614d6d95bcfea0b609c12b0b30b297",
+        "sha256": "fc2b8a19056454a53fd5259f833119b484c8257562774b1f0c4b081d10a205fc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 6819,
+        "git_blob": "3e5402b3b7608d134e59d593681af4effaedd2da",
+        "sha256": "2131bd3b3b36fae50217ef0f1b476e87a900571050599ae7d56ad8c11a244ff6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8511,
+        "git_blob": "c18eaf7aced16c6ba8458ee18671772455291211",
+        "sha256": "0d6b24b41ea7b08b538f3ae5f09f85d4ca6a83c4ea1b654aae67692d51fafbea"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 12908,
+        "git_blob": "cbf9bec34227699f6b168757e5ffbfb1f4ca84b3",
+        "sha256": "bb6ce4a7ee8ea37568f2e22eddd5b88d165369fc3d9edf5aab33af2a28a86547"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13098,
+        "git_blob": "0382324a5e0edea9606592f84c976b77824208fc",
+        "sha256": "17caba6d3784de2888308552e0ca75779f000a453a5976da99d51ecc15beb2c6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2801,
+        "git_blob": "1ec9dbda47ec111c4551b2cf96770da1384de54f",
+        "sha256": "01c0134da3e35554a0ea753c498f4d90e382bf5ae4bc3fca53b308e4745a3d75"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2882,
+        "git_blob": "271d2bbb90b5ff4c0dc94aadfe6a98e86f94c3db",
+        "sha256": "1c0c4ffa4b19155bdd3741bf30d76bc872c944f36e398544fcd9b3e425bd8804"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-db/src/mem/mempool.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 10629,
+        "git_blob": "00360e2870d8038207b78508a765586371ac5414",
+        "sha256": "aed97375af1f19b9670b70fae5ec4e6943a57dbc41b7a2f48de667b7d19e3f3c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11110,
+        "git_blob": "aec5e9d5f86bb01a535fc379b4f4b2cccb023d40",
+        "sha256": "04f94c44b357c611dcb7efa2f58d4ab5d06ec187f101ffd1a22590032dbd0a34"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-lib/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 1352,
+        "git_blob": "158f5828d09145207a3afd92320d5a1f6df84a3e",
+        "sha256": "8a25148597eecf4726fdabadb22d1614d4e8390093071935f872eb5ddce081c7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1415,
+        "git_blob": "0737ffedd4bb1f520e6dc85ff345026dadb8a94f",
+        "sha256": "750f26bdfcb1af5700acd512e7be6fd0857a00037bf032878d1cc02a94da8779"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-lib/build.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1114,
+        "git_blob": "a09bd3912020b914493b62510f20e587c3526d27",
+        "sha256": "839516606b8c91008630857534adfde0684f7a0b7b7e4580944cd72bd410a0dd"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1955,
+        "git_blob": "d6a9ec970f1a9226b65d8b8603f7c87dc6f73472",
+        "sha256": "19d0856e665c568746bf82e66b8bcf077dc1fcd9acd9cdd42d6682105188c2ec"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 56973,
+        "git_blob": "a9a36b9bac6daa1ede9742c201bff6a30da76cc7",
+        "sha256": "2696d6d9d0408333166e59950910bf093da86f2b780d7c5db3ac129704657d92"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 58707,
+        "git_blob": "bdcc949abd6951c93e1a686bb3c13bd01891bf51",
+        "sha256": "42b9d9db4d9a4e5be196ba7349bf1b5126b498f51d4f2fcd9a75b941ee8f3a48"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7436,
+        "git_blob": "f7b32b4fb7d7fd7781ae854a7d712be3ee873d0f",
+        "sha256": "c14ea759ea80c9ad6f9c667ba45c8b22ec925e9f528215060267cec88e77dcbe"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_service.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 9539,
+        "git_blob": "0a0815c8cbb5e8cb19bfef6979e91c866e16c21e",
+        "sha256": "579a0eafdc43cb0bbfe90ea32b1c7249e3065850f1e887ea1b48f39da6597088"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9906,
+        "git_blob": "61f86f7e21a51b3846efe3fba3c0027932716ac2",
+        "sha256": "3e47a15e7f3fea32e1dc59cde3ff602596264f0818d516f133153808c4df1cd6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-lib/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1265,
+        "git_blob": "6da02df5cab43751f35c731f3a08023547f92cc2",
+        "sha256": "101faaea65ee4ca09bf3261e3d31d869694d8788a3da42368a01a83b9c3772a2"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1417,
+        "git_blob": "9fa23843f6af163c66dbe0e7cf27784d185498ec",
+        "sha256": "69e65abd3e551e530629987d47b1039dcfd28531ea1b9559f973a9a56a53e0fb"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/python/upstream/script.py",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 19168,
+        "git_blob": "172c2fa248dd33007bc9dc727b1f3800ba0dc226",
+        "sha256": "89d41426d7466222a5eeded22e5caf980366f198a4909ea0b47e7f0bea24eafd"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784D-exact",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "test/functional/test_framework/script.py",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/python/upstream/slp.py",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4274,
+        "git_blob": "c4a2dbb327c62c32e102ffd419680d403452b770",
+        "sha256": "0452a00bfec362c15d1ae663fcedd38adfd63d73c9eb559f115feebd5b1ad5c3"
+      },
+      "provenance": {
+        "kind": "public-source",
+        "code": "ABC784D-exact",
+        "license": "MIT",
+        "source": {
+          "url": "https://github.com/Bitcoin-ABC/bitcoin-abc.git",
+          "commit": "784d83de2e19eab726898d77bfe7465410d27a9c",
+          "path": "test/functional/test_framework/chronik/slp.py",
+          "license": "MIT"
+        }
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/src/module.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2456,
+        "git_blob": "81f1980c285ac856050a952c9c1004c3aaecf957",
+        "sha256": "dee5163ded088509f6e53dcec1957a5bea0bc1c561df865b45893849b032b4ef"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2406,
+        "git_blob": "789f2c1bac2f0d97ef12aa0b27b3953f21fdf855",
+        "sha256": "9beaf9c35e34f6b185d4b711d0c7c02489f354bd55b18294d49a3cd119762680"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-fixtures-v1.json",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12097,
+        "git_blob": "ff4dc8451467a5592282ccceeb2cf7f4ed71133d",
+        "sha256": "6e1dfa34639c6a052f9886c19b816b5f7cb37dda86bf72119f9df69365bac009"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-fixtures.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5732,
+        "git_blob": "882589924811679f236d02992cb4377f41e6a02b",
+        "sha256": "e6c2887c9f18f77ca0039cc70738fa4305368f675ddb15ebf987e4faa1c8a102"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-helpers-v1.json",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2542,
+        "git_blob": "67250a217ff979dd68e7fbfe8ea0f639177d52ff",
+        "sha256": "0f34c560522b7c9e6eeeeb410f25c982d69d773b53a4f97426a4e56fd4511102"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 130018,
+        "git_blob": "bf35ab6814fec26605cddc6c6869fb7f40f3f233",
+        "sha256": "cab8b9607474dba3eb02cf974f8a698053a7a7be2c3708ff314e7b58579f693c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 143146,
+        "git_blob": "0ae59547ca55b2d418746e04912b425cc840c2a7",
+        "sha256": "8b163da8dfe56a74255b0ab26ea4cfdab854f2c1cb482b2d6fa42abbe8115e91"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1385,
+        "git_blob": "bb9bce5eca67eb7d56114305fb942bf1f2d06355",
+        "sha256": "ec4ecab07f2244cf2160c435b9b55c1322203fccb7e97be077c2be9ebac2d991"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugins/self_test.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3242,
+        "git_blob": "8edaa549e40fbc0ae661bf696fa847a159afd454",
+        "sha256": "7fe9e90412eedc3749215248a292a7d5ce9c978bef06bc00af1623184df2fd39"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 21542,
+        "git_blob": "170b1761f2dfcd1ad72915db54654004633f2ff8",
+        "sha256": "c100202a56c345be9a14b53148bae6b8251b2e9829b62aee9ee308acce53fda3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 25981,
+        "git_blob": "bd93e428fe1d74460fe1578c47ba3d95da15c894",
+        "sha256": "34943e0b4296b3f2c95604b4fa628631c8da5ef7486c04e8f207687cadd9e32c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 8610,
+        "git_blob": "f2d79e9c93b7acb78909a2321990bc0f96780252",
+        "sha256": "fa14585ba4cf39271483c1cd568f5e201d6f85628c60aeed5a522b65a5cf0eb9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16398,
+        "git_blob": "3972335fe05b3d33b4f3e2f8ed63f8cfb5b30577",
+        "sha256": "a263e3ea1dc89a32b0f084d65b136d332c3d811294375ec470a8186cf8eb8b99"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tools/engineering/check_chronik_chainstate_reads.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 6759,
+        "git_blob": "ae25583c3196bb08568366782022db061bef6bc2",
+        "sha256": "62097aff37f7615e40d707d72e8cf18ef6f487bbaa978917e97c6d219fa91a62"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 7690,
+        "git_blob": "38b495e970fae2538649912ada55f2e81198f82d",
+        "sha256": "4fca7ce314a3a8612bf0c532b5dc54ffd31158d4abdd7ee8bd9fd7ccbf7b2e0d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tools/engineering/check_chronik_chainstate_reads_self_test.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 7744,
+        "git_blob": "25e22808e9df4eb7391810bee54892aaa4d616c2",
+        "sha256": "fa59eb2377f67fed876d3197e2b470c3df3ae956e58fcc0ce9526d3bf6ab1007"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 7909,
+        "git_blob": "13a87c50ab33579fe831092a9bec7248f2ad4b9e",
+        "sha256": "6063997ebfdd788fc557a121a23a88593a8f2256234cdbdf1788412d56b80cb8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_fixtures.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 10422,
+        "git_blob": "5f859d259bd6c01be74b4c471b4b9b2ea99eb327",
+        "sha256": "8c8f825217cc579b1489dc6eb6cca0235a6507e6f64c6d4d7886fd7c5c684955"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_fixtures_self_test.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4648,
+        "git_blob": "a315d4e81cb43cfd03fe686701deca5c58b2508e",
+        "sha256": "5c910c68fc01cac488d3f2da11d300a2ce0b36839c0b3ef053e1f9c453dcb614"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    },
+    {
+      "path": "tools/engineering/check_chronik_upstream_link.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 19271,
+        "git_blob": "bedc992832a3d5d06b7f8600e01721bece370b4a",
+        "sha256": "f1748847cb2fb836758cf91c2cf3a1dc1921697b862c01de62e0998ec6342122"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20019,
+        "git_blob": "4a1498b33d53cbbb76a2bc69be6ff112f998a593",
+        "sha256": "fbe75618d7eb09e2b23b18a22a48715e4544f550a2679714d829af188c8c3e0f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Separate opt-in build/test adapter or existing linked upstream index path; daemon admission remains closed. Trusted Python is not sandboxed.",
+      "test_reachability": "Exact native plugin lifecycle, index-only failure, disabled refusal and retained native cases; source-policy tests are not execution evidence."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the independent compiled-out profile with all upstream/plugin/observer flags OFF; execute the existing native zero-subsidy mining and positive-stop smoke."
+        ],
+        "expected_results": [
+          "Native mining and shutdown work without linking Rust/Chronik; no Chronik state or external peer connection is created."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build archival fixtures with upstream link ON, plugin fixtures OFF and observer OFF in an independent native/Rust target root. Run 45 cases / 2291 assertions at ten repetitions (70 fresh processes), including explicit plugin setup refusal; run dormant daemon smoke."
+        ],
+        "expected_results": [
+          "No Python plugin implementation is selected; setup refuses before plugin files or state are created. Linking upstream alone starts no daemon index or listener."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the plugins fixture profile with upstream link, archival and plugin flags ON, observer OFF, Rust 1.93.1 and configured CPython 3.12 embedding. Run all standard-library/source gates and 48 cases / 2385 assertions at ten repetitions (100 fresh processes), then dormant daemon smoke."
+        ],
+        "expected_results": [
+          "Real plugin metadata/index/HTTP handling covers native zero-value mempool parent/child, ALP GENESIS outputs, confirmation, reorg, Stop/reopen, source/config drift and index-only errors. One interpreter context is used per fresh plugin case. No daemon admission or independent reproduction claim."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the six exact upstream groups via run_repetitions.py repeat, including the five owned/cold-chainstate cases (file-backed native DB reads outside both fences). Retain the existing observer-profile canaries separately; they are not upstream service evidence.",
+        "expected_results": [
+          "Exact 44 cases / 2285 assertions per repetition; stable normalized commitments and cleanup across 60 fresh processes.",
+          "Cold reads do not fill the native cache; spent overlays never fall back to the database. Old source/cache/DB owner captures cannot publish Ready.",
+          "Positive Stop joins paused readers while native validation still progresses; stable fixture contradictions quarantine only the index."
+        ],
+        "failure_conditions": [
+          "Borrowed native cache/DB ownership after release; cold database Get under either native lock; lost spent tombstone; stale source/owner publication; partial Ready; native shutdown; skip, wrong selection/count, instability, timeout, nonzero exit or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Restart the HTTP canary node and compare the exact confirmed Tx bytes; run the retained-window observer restart scenario. Separately exercise upstream owned startup and database reopen in the fixture-only profile, including a nonempty parent/child mempool.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Confirmed bytes remain identical after restart and no orphan or unbound response is served."
+        ],
+        "failure_conditions": [
+          "Restart drift, stale query, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run feature_chronik_token_http.py: extend to height 290 in bounded batches, disconnect below the retained projection anchor, reconsider, verify mismatched restart leaves HTTP disabled, then explicitly full-reindex. Separately exercise upstream retained-anchor and source-generation contradictions; the fixture observer closes while native progress continues.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both known and unknown token/transaction IDs return protobuf 503 after observer closure, never stale 200 or misleading 404.",
+          "Node RPC and chain selection continue; reconsider does not reopen observation. A persistent-tip mismatch disables HTTP on restart and logs recovery=reindex. Explicit full reindex restores canonical token metadata and byte-identical confirmed transaction output."
+        ],
+        "failure_conditions": [
+          "Any accepted response after irreversible closure, missing-ID 404 from a degraded view, HTTP serving from a mismatched restarted runtime, missing mismatch diagnostic, failed canonical reindex recovery, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04-ci-required-not-yet-observed",
+        "macos-26-arm64-local-component-profile"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "The public review parent is PR #52 head, not assumed accepted main. Rebind and rerun if parent acceptance changes its identity.",
+    "Open Question / record-review-only, empty public artifacts. Newly generated runner observations do not automatically constitute independent reproduction or service readiness.",
+    "Python initialization flags isolate startup inputs, not arbitrary trusted Python code. There is no security sandbox, production interpreter policy or support for unreviewed operator plugins.",
+    "The same owned context is reused in-process. Cross-process version/reindex migration and operational plugin loading remain unproved.",
+    "Unpruned bounded zero-value regtest fixtures only; no economically funded path, mainnet replay, full-chain resource bound or custom plugin compatibility claim.",
+    "The default profile refuses setup without an implementation; plugin-enabled cases require one actual process-once context. No daemon lifecycle hook is introduced.",
+    "The 344-package/328-registry closure is unchanged; one local chronik_lib edge selects existing PyO3. System dependencies, Python patch version, SDK and CI runner are not locked. Source/CMake binding is not binary-to-source provenance.",
+    "Older observer pruning/reindex canaries remain separate; none of their claims transfer to the upstream-linked service.",
+    "No service deployment, operator database migration, packaging, cutover, native consensus-token activation or desktop integration claim."
+  ],
+  "counterevidence": [
+    "Two initial ten-repetition plugin-disabled invocations were rejected before capture-group completion, with no passing report. The first error class was not retained; the second was TimeoutExpired at the unchanged 60-second process bound. Isolated capture/query execution then passed ten fresh repetitions with identical signatures and exact 13 cases / 1063 assertions, taking about 15 to 28 seconds per process. A subsequent full nonconcurrent invocation passed all 45 cases / 2291 assertions per repetition in 70 fresh processes with verified cleanup. These separate observations do not erase the refusals or establish their cause. Public CI and independent review remain distinct checks; no timeout criterion or assertion was relaxed.",
+    "The original native script helper imports modules unavailable to the embedded plugin package, and the second embedded helper path was absent. Exact standalone public helpers solve that input mismatch without replacing the engine.",
+    "Before the mempool correction the strict native lifecycle oracle reported 53 of 55 assertions passing: ALP GENESIS metadata vanished before confirmation and after reorg because an intentionally omitted empty spent-token vector discarded the whole token transaction. This diagnostic is not an incoming evidence artifact; public runs must be regenerated.",
+    "A Cargo rebuild with unchanged CXX signatures did not necessarily relink native executables. The explicit static-archive dependency prevents that stale link; public build construction still requires its own record.",
+    "After a fatal worker/plugin fault the HTTP owner can close the connection, not emit 503. The oracle requires a prior healthy 200 and then canonical protobuf unavailability or recognized closure, never stale success, malformed text or an arbitrary timeout.",
+    "Bounded native/plugin and source-policy success cannot replace public CI, independent review, cross-process migration tests or operational readiness."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

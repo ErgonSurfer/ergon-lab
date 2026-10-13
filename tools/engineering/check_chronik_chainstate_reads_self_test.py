@@ -14,6 +14,8 @@ import check_chronik_chainstate_reads as gate
 class Contract(unittest.TestCase):
     def setUp(self):
         self.root = Path(__file__).resolve().parents[2]
+        self.synthetic_root = tempfile.TemporaryDirectory(prefix="synthetic-read-policy-")
+        self.addCleanup(self.synthetic_root.cleanup)
         self.before = gate.identity(b"synthetic preimage\n", "100644")
         self.after = gate.identity(b"synthetic postimage\n", "100644")
         self.record = {
@@ -64,7 +66,7 @@ class Contract(unittest.TestCase):
         with patch.object(gate, "git", self.git), patch.object(gate, "load_json", side_effect=loaded), \
              patch.object(gate, "before_identity", return_value=self.before), \
              patch.object(gate, "current_identity", observed):
-            return gate.validate(self.root)
+            return gate.validate(Path(self.synthetic_root.name))
 
     def test_exact_layer(self):
         self.assertEqual(self.run_gate(), gate.TECHNICAL | gate.POLICY)

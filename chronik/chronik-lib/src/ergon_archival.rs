@@ -4,6 +4,9 @@
 //! is separate from DB application. No daemon admission; legacy lock-fenced
 //! reconciliation remains only as a synchronous comparison oracle.
 
+use crate::ergon_plugin_fixture::{
+    http_plugin_group_matches, http_plugin_tx_matches, make_plugin_fixture, PluginFixture,
+};
 use crate::ergon_service::{Binding, RequestGate, ResponseLatch};
 use abc_rust_error::{bail, Report, Result};
 use bitcoinsuite_core::{
@@ -122,6 +125,21 @@ mod ffi {
     }
     extern "Rust" {
         type ArchivalProbe;
+        type PluginFixture;
+        fn make_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>>;
+        fn loaded(self: &PluginFixture) -> u32;
+        fn open_archival_with_plugins(
+            root: &str,
+            node: &ErgonNodeAccess,
+            plugins: &PluginFixture,
+        ) -> Result<Box<ArchivalProbe>>;
+        fn http_plugin_tx_matches(
+            body: &[u8],
+            output: u32,
+            parents: u32,
+            atoms: u64,
+        ) -> Result<bool>;
+        fn http_plugin_group_matches(body: &[u8], kind: u8, points: &[u8]) -> Result<bool>;
         type CapturedSource;
         fn capture_inventory(
             self: &ArchivalProbe,
@@ -274,6 +292,7 @@ pub struct ArchivalProbe {
     request_gate: RequestGate,
     response_latch: ResponseLatch,
     service: Option<HttpFixture>,
+    plugins: Option<PluginFixture>,
 }
 
 struct HttpFixture {
@@ -484,19 +503,28 @@ fn decompress(script: &[u8]) -> Result<Vec<u8>> {
 }
 
 pub fn open_archival(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
-    open_archival_impl(root, access, None)
+    open_archival_impl(root, access, None, None)
+}
+pub fn open_archival_with_plugins(
+    root: &str,
+    access: &native::ErgonNodeAccess,
+    plugins: &PluginFixture,
+) -> Result<Box<ArchivalProbe>> {
+    plugins.check()?;
+    open_archival_impl(root, access, None, Some(plugins))
 }
 pub fn open_archival_with_hook(
     root: &str,
     access: &native::ErgonNodeAccess,
     hook: &ffi::StartupHook,
 ) -> Result<Box<ArchivalProbe>> {
-    open_archival_impl(root, access, Some(hook))
+    open_archival_impl(root, access, Some(hook), None)
 }
 fn open_archival_impl(
     root: &str,
     access: &native::ErgonNodeAccess,
     hook: Option<&ffi::StartupHook>,
+    plugins: Option<&PluginFixture>,
 ) -> Result<Box<ArchivalProbe>> {
     ffi::archival_fixture_guard(access)?;
     chronik_util::mount_loggers(chronik_util::Loggers {
@@ -515,7 +543,19 @@ fn open_archival_impl(
     let node = Arc::new(Node {
         bridge: ffi::make_startup_bridge(access)?,
     });
-    let expected = identity(node.bridge.get_genesis_hash().data);
+    let mut expected = identity(node.bridge.get_genesis_hash().data);
+    if let Some(plugins) = plugins {
+        let original = String::from_utf8(expected)?;
+        expected = original
+            .replace(
+                "\"plugins\":false",
+                &format!(
+                    "\"plugins\":true,\"plugin_fixture_sha256\":\"{}\"",
+                    plugins.binding
+                ),
+            )
+            .into_bytes();
+    }
     let id_path = root.join("ergon-identity.json");
     if id_path.exists() {
         if fs::read(&id_path)? != expected {
@@ -557,7 +597,9 @@ fn open_archival_impl(
                 script_history: GroupHistorySettings {
                     is_member_hash_index_enabled: true,
                 },
-                plugin_ctx: Arc::new(PluginContext::default()),
+                plugin_ctx: plugins
+                    .map(|p| p.context.clone())
+                    .unwrap_or_else(|| Arc::new(PluginContext::default())),
                 decompress_script_fn: decompress,
             },
             node.clone(),
@@ -608,6 +650,7 @@ fn open_archival_impl(
         request_gate: RequestGate::new(),
         response_latch: ResponseLatch::new(),
         service: None,
+        plugins: plugins.cloned(),
     });
     // No requests or callback worker exist yet. Capture actual native pool
     // coins/times parent-first and reconcile through unchanged upstream
@@ -624,6 +667,9 @@ impl ArchivalProbe {
         node: &native::ErgonNodeAccess,
     ) -> Result<Vec<ffi::CaptureEntry>> {
         ffi::archival_database_guard(node)?;
+        if let Some(plugins) = &self.plugins {
+            plugins.check()?;
+        }
         if self.access_address != node as *const _ as usize {
             bail!("Capture inventory owner mismatch");
         }
@@ -755,9 +801,12 @@ impl ArchivalProbe {
         let gate = self.request_gate.clone();
         let node = self.node.clone();
         let latch = self.response_latch.clone();
+        let plugins = self.plugins.is_some();
         let task = handle.spawn(async move {
             server
-                .serve_with_router(|router| crate::ergon_service::wrap(router, gate, node, latch))
+                .serve_with_router(|router| {
+                    crate::ergon_service::wrap(router, gate, node, latch, plugins)
+                })
                 .await
         });
         self.service = Some(HttpFixture { runtime, task });
