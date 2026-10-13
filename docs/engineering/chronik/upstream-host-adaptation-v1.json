@@ -176,9 +176,9 @@
       "path": "chronik/chronik-cpp/ergon_archival_worker.cpp",
       "before": null,
       "after": {
-        "bytes": 11075,
-        "sha256": "a3a944fa3315f0dc2eeb4db4a53aa664b7c6f0061b7486d0444d0aaea6461d6e",
-        "git_blob_sha1": "84a657b72b8b6ff7225b567b6da2b34e3cb2db0e",
+        "bytes": 12908,
+        "sha256": "bb6ce4a7ee8ea37568f2e22eddd5b88d165369fc3d9edf5aab33af2a28a86547",
+        "git_blob_sha1": "cbf9bec34227699f6b168757e5ffbfb1f4ca84b3",
         "mode": "100644"
       }
     },
@@ -186,9 +186,9 @@
       "path": "chronik/chronik-cpp/ergon_archival_worker.h",
       "before": null,
       "after": {
-        "bytes": 2411,
-        "sha256": "9ac9824e99d41a6ca4b381142c01bbf00169a6cd1c91cac58883556b8b70829b",
-        "git_blob_sha1": "997a1160307d0a192f0ee1cf8dc605303485e095",
+        "bytes": 2801,
+        "sha256": "01c0134da3e35554a0ea753c498f4d90e382bf5ae4bc3fca53b308e4745a3d75",
+        "git_blob_sha1": "1ec9dbda47ec111c4551b2cf96770da1384de54f",
         "mode": "100644"
       }
     },
@@ -286,9 +286,9 @@
       "path": "chronik/chronik-lib/src/ergon_archival.rs",
       "before": null,
       "after": {
-        "bytes": 55966,
-        "sha256": "f654a23c02a437f54144093aaf2d4e82c030e71a30d898808514f7f2d1168216",
-        "git_blob_sha1": "8deb9af0b9c41cb49825fc309c0bf8d4d89d5eb0",
+        "bytes": 56589,
+        "sha256": "fb0e1f17c00b457ff4eaaa8bee30cff47739b2c284dd77f2e8e7929173699eff",
+        "git_blob_sha1": "86f5063c4c238f53adf4d34c61361f392cd26f6f",
         "mode": "100644"
       }
     },
@@ -316,9 +316,9 @@
       "path": "chronik/chronik-lib/src/ergon_service.rs",
       "before": null,
       "after": {
-        "bytes": 9373,
-        "sha256": "1ccc013453731bdeaf4a1265f0b610016683db73a1b0fc142d83ecb2f814438a",
-        "git_blob_sha1": "2ee942c0c539965143eb96e098af763c46f2cba8",
+        "bytes": 9539,
+        "sha256": "579a0eafdc43cb0bbfe90ea32b1c7249e3065850f1e887ea1b48f39da6597088",
+        "git_blob_sha1": "0a0815c8cbb5e8cb19bfef6979e91c866e16c21e",
         "mode": "100644"
       }
     },
@@ -411,9 +411,9 @@
       "path": "src/test/chronik_upstream_archival_tests.cpp",
       "before": null,
       "after": {
-        "bytes": 107553,
-        "sha256": "d876e8d5b662681ab1e40d3c38aa75e26e2c8c5b6bfc7e34f503adcdff90d90b",
-        "git_blob_sha1": "8c84721cf186e33c52bf17aba34c454b0840b76e",
+        "bytes": 116088,
+        "sha256": "81938f47b27d1f9fec5bf5dae019ed1a070cc066c9bf1b1dfec0316e42910392",
+        "git_blob_sha1": "62f11e8ee76e63fb334d868c45ef938eaadc4d95",
         "mode": "100644"
       }
     },

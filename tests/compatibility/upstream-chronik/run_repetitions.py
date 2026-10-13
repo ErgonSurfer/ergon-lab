@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Fresh-process component observations, never automatic proof promotion.
 
-Four disjoint native groups have a fixed 60-second process deadline. Reports
+Five disjoint native groups have a fixed 60-second process deadline. Reports
 exclude process text and binding paths. The source projection and CMake cache
 are checked, but are not a substitute for recorded binary construction.
 """
@@ -73,11 +73,16 @@ STOP = tuple(PREFIX + name for name in (
     "native_barrier_parent_child_mining_reorg_and_conflict",
     "native_barrier_owner_mismatch_isolates_failure",
 ))
+LIVENESS = tuple(PREFIX + name for name in (
+    "silent_mempool_generation_recovers_without_callback",
+    "control_handles_do_not_wait_behind_native_capture",
+))
 GROUPS = (
     ("native-bridge-and-disk", BRIDGE, 166),
     ("owned-startup", STARTUP, 593),
     ("capture-and-query-controls", CAPTURE, 1063),
     ("runtime-stop-and-reopen-controls", STOP, 307),
+    ("silent-generation-and-control-locks", LIVENESS, 50),
 )
 ADAPTER_INPUTS = (
     "chronik/Cargo.lock", "chronik/chronik-bridge/src/ffi.rs",
@@ -237,7 +242,7 @@ def filter_for(cases):
 
 def repeat(binary, work, forbidden, repetitions):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
-    require(len({case for _, cases, _ in GROUPS for case in cases}) == 37, "non-disjoint test groups")
+    require(len({case for _, cases, _ in GROUPS for case in cases}) == 39, "non-disjoint test groups")
     result = []
     for role, cases, assertions in GROUPS:
         first = None
@@ -250,8 +255,8 @@ def repeat(binary, work, forbidden, repetitions):
             first = observation
         result.append(dict(role=role, repetitions=repetitions, **first))
         print("PASS: " + role + "; " + str(len(cases)) + " cases; " + str(assertions) + " assertions", flush=True)
-    return {"groups": result, "selected_cases": 37, "assertions_per_repetition": 2129,
-            "fresh_processes": repetitions * 4, "per_process_timeout_seconds": 60,
+    return {"groups": result, "selected_cases": 39, "assertions_per_repetition": 2179,
+            "fresh_processes": repetitions * 5, "per_process_timeout_seconds": 60,
             "stream_contract": "strict UTF-8, exact bytes within each group, binding paths rejected; no text retained"}
 
 def mining_address():

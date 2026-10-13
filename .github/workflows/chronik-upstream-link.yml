@@ -122,7 +122,7 @@ jobs:
       - name: Build standalone daemon and native boundary fixtures
         run: cmake --build "$RUNNER_TEMP/ergon-upstream-build" --target bitcoind test_bitcoin -j2
 
-      - name: Re-run all 37 component cases in 40 fresh processes
+      - name: Re-run all 39 component cases in 50 fresh processes
         if: matrix.profile == 'archival'
         run: |
           python3 -B tests/compatibility/upstream-chronik/run_repetitions.py repeat \

@@ -14,7 +14,8 @@
       "Own and fence startup index graphs; reconcile the actual nonempty native mempool parent-first before opening fixture request admission; isolate failures from native validation.",
       "Capture block/undo payloads outside native locks, retain shared immutable bounded windows, reconcile mempool deltas, order callbacks and positively join HTTP/Tokio/native users before teardown.",
       "Add separate default-OFF build/link and archival-fixture flags. Daemon capability remains unconditionally false; the older observer is a separate profile.",
-      "Bind 34 technical postimages to public preimages, retain the historical donor manifest unchanged, and add portable CI for all 37 focused native cases plus compiled-out and linked-dormant mining/stop smokes."
+      "Bind 34 technical postimages to public preimages, retain the historical donor manifest unchanged, and add portable CI for all 39 focused native cases plus compiled-out and linked-dormant mining/stop smokes.",
+      "Notice silent native generations with an idle 100ms scalar check and healthy retry after the queued callback fence, without fabricating notification tickets. Clone fixture controls independently of the data mutex; keep stale-response refusal and positive shutdown."
     ],
     "exclusions": [
       "No daemon init hook, runtime activation, network access to an operator, server deployment, cutover, release or desktop integration.",
@@ -56,7 +57,7 @@
   },
   "provenance_inventory": {
     "inventory_schema": "ergon-authorship-inventory/v1",
-    "inventory_sha256": "999ed6668c8454f776b75ac8a313c6318dfec31b221c8d16b6ef97615d31231b",
+    "inventory_sha256": "4ba729cbe4d425e943e1cc80df84fba956b7247d695ccfae4acfe365198084fa",
     "license": "MIT",
     "standing_policy": "PUBLICATION_POLICY.md",
     "exclusions": [
@@ -109,8 +110,8 @@
       "after": {
         "mode": "100644",
         "bytes": 6354,
-        "git_blob": "12fa650eb4b2c3243055134fc5b1945531010b07",
-        "sha256": "d86dd302917f575423b31ac15fcef5678751e0ad42f4e351e57109061988442a"
+        "git_blob": "d9b45832a1d0b903c22ec9945e0f44cb4b9345f9",
+        "sha256": "c6847c978ab133b2e2560269e517ff160e3e9ed50c12911ac8d5639eb6db901d"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -398,9 +399,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 11075,
-        "git_blob": "84a657b72b8b6ff7225b567b6da2b34e3cb2db0e",
-        "sha256": "a3a944fa3315f0dc2eeb4db4a53aa664b7c6f0061b7486d0444d0aaea6461d6e"
+        "bytes": 12908,
+        "git_blob": "cbf9bec34227699f6b168757e5ffbfb1f4ca84b3",
+        "sha256": "bb6ce4a7ee8ea37568f2e22eddd5b88d165369fc3d9edf5aab33af2a28a86547"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -418,9 +419,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 2411,
-        "git_blob": "997a1160307d0a192f0ee1cf8dc605303485e095",
-        "sha256": "9ac9824e99d41a6ca4b381142c01bbf00169a6cd1c91cac58883556b8b70829b"
+        "bytes": 2801,
+        "git_blob": "1ec9dbda47ec111c4551b2cf96770da1384de54f",
+        "sha256": "01c0134da3e35554a0ea753c498f4d90e382bf5ae4bc3fca53b308e4745a3d75"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -622,9 +623,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 55966,
-        "git_blob": "8deb9af0b9c41cb49825fc309c0bf8d4d89d5eb0",
-        "sha256": "f654a23c02a437f54144093aaf2d4e82c030e71a30d898808514f7f2d1168216"
+        "bytes": 56589,
+        "git_blob": "86f5063c4c238f53adf4d34c61361f392cd26f6f",
+        "sha256": "fb0e1f17c00b457ff4eaaa8bee30cff47739b2c284dd77f2e8e7929173699eff"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -682,9 +683,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 9373,
-        "git_blob": "2ee942c0c539965143eb96e098af763c46f2cba8",
-        "sha256": "1ccc013453731bdeaf4a1265f0b610016683db73a1b0fc142d83ecb2f814438a"
+        "bytes": 9539,
+        "git_blob": "0a0815c8cbb5e8cb19bfef6979e91c866e16c21e",
+        "sha256": "579a0eafdc43cb0bbfe90ea32b1c7249e3065850f1e887ea1b48f39da6597088"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -765,8 +766,8 @@
       "after": {
         "mode": "100644",
         "bytes": 15527,
-        "git_blob": "20739af9f6f496ee141b202b87a666455b02ba31",
-        "sha256": "1afc5a22248a4a7f1a5e5f8962b2ce775a8ecc326404ee33559dfb368d911b8e"
+        "git_blob": "8f0a2c63b5174b5042cc7098038a1ad984c5c543",
+        "sha256": "93044f4acd60c317417b79e39a5987ffa7f4192dbe858afb44789d2945065719"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -899,9 +900,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 107553,
-        "git_blob": "8c84721cf186e33c52bf17aba34c454b0840b76e",
-        "sha256": "d876e8d5b662681ab1e40d3c38aa75e26e2c8c5b6bfc7e34f503adcdff90d90b"
+        "bytes": 116088,
+        "git_blob": "62f11e8ee76e63fb334d868c45ef938eaadc4d95",
+        "sha256": "81938f47b27d1f9fec5bf5dae019ed1a070cc066c9bf1b1dfec0316e42910392"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -989,9 +990,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 19280,
-        "git_blob": "eb6cb20b15f5beb2b658315ddb6a6d2c97c502cf",
-        "sha256": "b7775c76267a29628aa227f80c04ebe4b38a2b4d21e7b20c79e3ff9ec55c4808"
+        "bytes": 19503,
+        "git_blob": "5490ca0e914c6f85e775a08f17a9fc95d4281f78",
+        "sha256": "0722df8487bb7bb7f0cae0efb0dd237738a98729a1eceb52d605778711eb4010"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -1009,9 +1010,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 8562,
-        "git_blob": "5a0f938b3848c1076e850359f8057963202198c9",
-        "sha256": "6ff12bfb7d822c2ed60f161f107e0ee073961fe70a5290f0fd6f69520d14afc3"
+        "bytes": 8610,
+        "git_blob": "a7dfef0b487c2265947d892a9d6850231970af4a",
+        "sha256": "fa2eda0b1d7498235536d7923fce7c26d19f81fbf4bb16f3a308e502e781b428"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -1118,7 +1119,7 @@
       {
         "role": "local-regtest-indexing",
         "commands": [
-          "Retain existing observer functional matrices and Rust 1.85.0 corpus coverage. Separately run the upstream native archival fixtures using Rust 1.93.1: four disjoint groups, 10 fresh-process repetitions each, exact 37 cases and 2129 assertions per repetition, fixed 60-second process deadlines."
+          "Retain existing observer functional matrices and Rust 1.85.0 corpus coverage. Separately run the upstream native archival fixtures using Rust 1.93.1: five disjoint groups, 10 fresh-process repetitions each, exact 39 cases and 2179 assertions per repetition, fixed 60-second process deadlines."
         ],
         "expected_results": [
           "Owned startup/nonempty pool, generation and callback fencing, real upstream HTTP/ALP, reconciliation, reopen and joined-stop fixtures pass. Older observer pruning/reindex results are not attributed to the new upstream profile."
@@ -1128,7 +1129,7 @@
     "scenarios": [
       {
         "id": "index-local-regtest-opt-in",
-        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the locked offline chronik-observer Rust tests, native query-admission suite and feature_chronik_token_http.py functional canary. Separately run all 37 upstream archival component cases via tests/compatibility/upstream-chronik/run_repetitions.py repeat, including actual read routes and synthetic ALP lifecycle.",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the locked offline chronik-observer Rust tests, native query-admission suite and feature_chronik_token_http.py functional canary. Separately run all 39 upstream archival component cases via tests/compatibility/upstream-chronik/run_repetitions.py repeat, including actual read routes and synthetic ALP lifecycle.",
         "expected_results": [
           "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
           "Both routes preserve canonical confirmed protobufs; invalid IDs are 400, current missing IDs are 404, and closed/busy/unavailable reads are 503.",
@@ -1270,8 +1271,9 @@
     "Plugin context is empty and plugins are not enabled. No custom plugin migration or operator database compatibility is claimed.",
     "Zero-value ALP and mining fixtures establish mechanics, not economic funding or activation of token consensus on Ergon.",
     "Cargo.lock fixes the 344-package Rust closure (328 registry packages); apt, SDK/compiler system libraries and runner image are not fully locked. CMake/source binding is not binary-to-source provenance.",
-    "Four disjoint process groups cover the same 37 cases; this is not a single-process whole-suite 60-second bound or a full native suite result.",
-    "Historical donor validation uses exact immutable public preimages for altered donor paths. Current adaptations are checked separately and are never represented as unchanged donor bytes."
+    "Five disjoint process groups cover all 39 cases; this is not a single-process whole-suite 60-second bound or a full native suite result.",
+    "Historical donor validation uses exact immutable public preimages for altered donor paths. Current adaptations are checked separately and are never represented as unchanged donor bytes.",
+    "The 100ms idle poll is not a service-latency guarantee: queued native callbacks, active capture, storage and positive shutdown may still stall. No readiness is granted merely because a timer fires or a control handle is retrieved."
   ],
   "counterevidence": [
     "Same tip hashes can recur after native ABA or delayed callbacks; synchronous chain/pool generation identities are required in addition to tip equality.",
@@ -1279,7 +1281,10 @@
     "A successfully compiled archive does not prove real upstream code was linked. The link helper forces the actual indexer/server archive into the native target and keeps runtime permission separately closed.",
     "A populated parent/child mempool cannot be treated as an empty startup state; fixtures require native-prevout binding, topological insertion, reopen and actual handler queries.",
     "Passing older observer pruning or reindex scenarios cannot establish those behaviors for the upstream-linked profile. The two source/runtime profiles remain distinct.",
-    "Focused repeated fixtures, synthetic cleanup tests and YAML syntax checks do not replace a portable integrated CI build or independent public reproduction."
+    "Focused repeated fixtures, synthetic cleanup tests and YAML syntax checks do not replace a portable integrated CI build or independent public reproduction.",
+    "Fee prioritisation advances native mempool identity without a transaction callback. Callback-only waking can strand an otherwise healthy view; a four-attempt source race must remain unavailable and later recover autonomously when quiet.",
+    "Retrieving fixture controls through a blocking data mutex while holding native locks can invert the capture order. Metadata-only shared handles must remain independent of that mutex, including while the worker is busy or closed.",
+    "A current view can conservatively refuse a concurrent request when a native fence is busy or a queued notification invalidates its permit. The control witness drains queued notifications, requires canonical stale-body refusal if it occurs, and then requires bounded recovery with the exact active-chain identity."
   ],
   "decision": {
     "status": "pending"

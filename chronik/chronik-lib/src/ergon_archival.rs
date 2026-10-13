@@ -179,11 +179,14 @@ mod ffi {
             node: &ErgonNodeAccess,
         ) -> Result<bool>;
         fn assert_current_capture(self: &ArchivalProbe, node: &ErgonNodeAccess) -> Result<()>;
+        fn source_current(self: &ArchivalProbe) -> bool;
         fn runtime_probe(self: &mut ArchivalProbe) -> Result<RuntimeObservation>;
         type RequestGate;
         type ResponseLatch;
         fn request_gate(self: &ArchivalProbe) -> Box<RequestGate>;
         fn response_latch(self: &ArchivalProbe) -> Box<ResponseLatch>;
+        fn clone_handle(self: &RequestGate) -> Box<RequestGate>;
+        fn clone_handle(self: &ResponseLatch) -> Box<ResponseLatch>;
         fn invalidate(self: &RequestGate);
         fn close(self: &RequestGate);
         fn fail(self: &RequestGate);
@@ -1049,6 +1052,17 @@ impl ArchivalProbe {
             bail!("Native source changed before callback registration");
         }
         Ok(())
+    }
+    /// Scalar observation only: no indexer/DB access or readiness promotion.
+    /// The worker tries both native fences before polling this binding.
+    pub fn source_current(&self) -> bool {
+        !self.reconciling
+            && self.node.bridge.matches_source(
+                self.bound_hash,
+                self.bound_height,
+                self.bound_generation,
+                self.bound_revision,
+            )
     }
     fn check_source(&self) -> Result<()> {
         if self.reconciling

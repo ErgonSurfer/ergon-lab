@@ -29,6 +29,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
         before_disk;
     std::unique_ptr<rust::Box<ArchivalProbe>> probe;
     std::unique_ptr<rust::Box<RequestGate>> gate;
+    // Immutable control handles share metadata only, never the indexer/node.
+    std::unique_ptr<rust::Box<ResponseLatch>> response_latch;
     std::thread worker;
 
     Impl(const std::string &root, const chronik_bridge::ErgonNodeAccess &access,
@@ -47,6 +49,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             open_archival(root, node));
         gate =
             std::make_unique<rust::Box<RequestGate>>((*probe)->request_gate());
+        response_latch = std::make_unique<rust::Box<ResponseLatch>>(
+            (*probe)->response_latch());
         if (!reconcile_captured(**probe, node))
             throw std::runtime_error("Native source busy at worker startup");
         // Register without a native source mutation gap. The fixture owner
@@ -123,20 +127,52 @@ struct ArchivalWorker::Impl final : CValidationInterface {
     }
     void Run() noexcept {
         try {
+            bool retry = false;
             for (;;) {
-                uint64_t ticket;
+                uint64_t ticket =
+                    0; // Zero denotes observation, not a callback.
                 {
                     std::unique_lock<std::mutex> lock(mu);
-                    cv.wait(lock, [&] {
-                        return stopping || failed || !tickets.empty();
+                    cv.wait_for(lock, std::chrono::milliseconds(100), [&] {
+                        return stopping || closed || failed || !tickets.empty();
                     });
-                    if (stopping || failed)
+                    if (stopping || closed || failed)
                         break;
-                    ticket = tickets.front();
-                    tickets.pop_front();
-                    if (ticket != completed + 1)
-                        throw std::runtime_error("Callback ticket order gap");
+                    if (!tickets.empty()) {
+                        ticket = tickets.front();
+                        tickets.pop_front();
+                    }
                 }
+                if (!ticket) {
+                    {
+                        std::lock_guard<std::mutex> data(data_mu);
+                        // A quiet poll neither waits for native owners nor
+                        // traverses the chain/pool or touches disk/database.
+                        TRY_LOCK(cs_main, chain_lock);
+                        if (!chain_lock)
+                            continue;
+                        TRY_LOCK(node.mempool.cs, pool_lock);
+                        if (!pool_lock)
+                            continue;
+                        if (!retry && (*probe)->source_current())
+                            continue;
+                    }
+                    // Preserve queued native notification order before a
+                    // silent refresh. This fence owns no data/native mutex.
+                    // Like Stop's drain, it is not a production latency bound.
+                    SyncWithValidationInterfaceQueue();
+                    std::lock_guard<std::mutex> lock(mu);
+                    if (stopping || closed || failed)
+                        break;
+                    if (!tickets.empty()) {
+                        ticket = tickets.front();
+                        tickets.pop_front();
+                    }
+                    ready = false;
+                    (*gate)->invalidate();
+                }
+                if (ticket && ticket != completed + 1)
+                    throw std::runtime_error("Callback ticket order gap");
                 if (before)
                     before();
                 bool published;
@@ -145,10 +181,13 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                     published = reconcile_captured(**probe, node, after_capture,
                                                    before_disk);
                 }
+                retry = !published; // A quiet healthy source can recover later.
                 {
                     std::lock_guard<std::mutex> lock(mu);
-                    completed = ticket;
-                    --pending;
+                    if (ticket) {
+                        completed = ticket;
+                        --pending;
+                    }
                     ready = published && !closed && !failed && pending == 0;
                     cv.notify_all();
                 }
@@ -271,13 +310,9 @@ uint16_t ArchivalWorker::StartHttpFixture() {
     return (*m_impl->probe)->start_http_fixture();
 }
 rust::Box<RequestGate> ArchivalWorker::RequestAdmission() {
-    std::lock_guard<std::mutex> data(m_impl->data_mu);
-    m_impl->QueryGuard();
-    return (*m_impl->probe)->request_gate();
+    return (*m_impl->gate)->clone_handle();
 }
 rust::Box<ResponseLatch> ArchivalWorker::ResponseBarrier() {
-    std::lock_guard<std::mutex> data(m_impl->data_mu);
-    m_impl->QueryGuard();
-    return (*m_impl->probe)->response_latch();
+    return (*m_impl->response_latch)->clone_handle();
 }
 } // namespace ergon_archival

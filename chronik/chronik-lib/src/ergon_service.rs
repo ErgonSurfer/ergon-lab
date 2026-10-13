@@ -55,6 +55,9 @@ impl Clone for RequestGate {
     }
 }
 impl RequestGate {
+    pub fn clone_handle(&self) -> Box<Self> {
+        Box::new(self.clone())
+    }
     pub(crate) fn new() -> Self {
         Self {
             state: Arc::new(Mutex::new(Readiness {
@@ -151,6 +154,9 @@ impl Clone for ResponseLatch {
     }
 }
 impl ResponseLatch {
+    pub fn clone_handle(&self) -> Box<Self> {
+        Box::new(self.clone())
+    }
     pub(crate) fn new() -> Self {
         Self {
             inner: Arc::new(LatchInner {

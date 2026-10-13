@@ -965,6 +965,192 @@ BOOST_AUTO_TEST_CASE(actual_http_worker_admission_and_generation_rejection) {
     BOOST_CHECK(reopened->snapshot().logical_digest ==
                 before_stop.logical_digest);
 }
+BOOST_AUTO_TEST_CASE(silent_mempool_generation_recovers_without_callback) {
+    struct Policy {
+        bool standard{fRequireStandard};
+        Policy() { fRequireStandard = false; }
+        ~Policy() { fRequireStandard = standard; }
+    } policy;
+    const auto &prev = *m_coinbase_txns[0];
+    CMutableTransaction tx;
+    tx.vin.emplace_back(COutPoint(prev.GetId(), 0));
+    tx.vout.emplace_back(Amount::zero(), CScript() << OP_1);
+    std::vector<uint8_t> signature;
+    BOOST_REQUIRE(coinbaseKey.SignECDSA(
+        SignatureHash(prev.vout[0].scriptPubKey, CTransaction(tx), 0,
+                      SigHashType().withForkId(), Amount::zero()),
+        signature));
+    signature.push_back(SIGHASH_ALL | SIGHASH_FORKID);
+    tx.vin[0].scriptSig << signature;
+    {
+        LOCK(cs_main);
+        CValidationState state;
+        BOOST_REQUIRE_MESSAGE(AcceptToMemoryPool(GetConfig(), g_mempool, state,
+                                                 MakeTransactionRef(tx),
+                                                 nullptr, true, Amount::zero()),
+                              FormatStateMessage(state));
+    }
+    SyncWithValidationInterfaceQueue();
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("archival-silent-generation");
+    std::atomic<int> drift{0};
+    const auto id = CTransaction(tx).GetId();
+    ergon_archival::ArchivalWorker worker(root, access, 128, {}, {}, [&] {
+        if (drift.load() > 0) {
+            --drift;
+            g_mempool.PrioritiseTransaction(id, FIXOSHI);
+        }
+    });
+    const auto port = worker.StartHttpFixture();
+    auto latch = worker.ResponseBarrier();
+    BOOST_REQUIRE_EQUAL(Http(port, "/tx/" + id.ToString()).status, 200);
+    BOOST_REQUIRE(latch->arm());
+    auto stale = std::async(std::launch::async,
+                            [&] { return Http(port, "/blockchain-info"); });
+    const bool entered = latch->wait(5000);
+    const auto old_revision = g_mempool.GetSourceGeneration();
+    // Exhaust one four-attempt capture, then leave the source quiet. The
+    // autonomous retry must recover too, without any synthetic callback.
+    drift.store(4);
+    g_mempool.PrioritiseTransaction(id, FIXOSHI);
+    latch->release();
+    const auto refused = stale.get();
+    BOOST_REQUIRE(entered);
+    BOOST_CHECK_EQUAL(refused.status, 503);
+    BOOST_CHECK(g_mempool.GetSourceGeneration() != old_revision);
+    // No native block or transaction notification is manufactured to recover.
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    HttpReply recovered;
+    do {
+        recovered = Http(port, "/tx/" + id.ToString());
+        if (recovered.status == 200)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    } while (std::chrono::steady_clock::now() < deadline);
+    BOOST_CHECK_EQUAL(recovered.status, 200);
+    BOOST_CHECK_EQUAL(drift.load(), 0);
+    BOOST_CHECK(recovered.protobuf && recovered.no_store);
+    BOOST_CHECK_EQUAL(g_mempool.size(), 1);
+    BOOST_CHECK_EQUAL(worker.ReadTx(Bytes(id), 0).height, -1);
+    BOOST_CHECK_EQUAL(worker.Status().accepted, 0);
+    BOOST_CHECK(worker.Status().ready);
+    BOOST_CHECK(!worker.Status().failed);
+    BOOST_CHECK(!access.index_failed.load());
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.failed"));
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+}
+BOOST_AUTO_TEST_CASE(control_handles_do_not_wait_behind_native_capture) {
+    // The escape throws BEFORE the worker next takes a native lock. Thus the
+    // old blocking implementation fails this regression without deadlocking.
+    for (bool pool_lock : {false, true}) {
+        chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+        const auto root = Root(pool_lock ? "archival-control-pool"
+                                         : "archival-control-chain");
+        CallbackLatch disk;
+        std::atomic<bool> armed{false}, escape{false};
+        ergon_archival::ArchivalWorker worker(
+            root, access, 128, {}, {}, {}, [&] {
+                if (armed.load()) {
+                    disk.Block();
+                    if (escape.load())
+                        throw std::runtime_error("Regression deadlock escape");
+                }
+            });
+        const auto port = worker.StartHttpFixture();
+        auto original_gate = worker.RequestAdmission();
+        auto original_latch = worker.ResponseBarrier();
+        armed.store(true);
+        CreateAndProcessBlock({}, CScript() << OP_1);
+        SyncWithValidationInterfaceQueue();
+        const bool at_disk = disk.Wait();
+        std::unique_ptr<rust::Box<ergon_archival::RequestGate>> gate;
+        std::unique_ptr<rust::Box<ergon_archival::ResponseLatch>> latch;
+        std::promise<void> native_locked;
+        auto locked = native_locked.get_future();
+        auto controls = std::async(std::launch::async, [&] {
+            auto retrieve = [&] {
+                native_locked.set_value();
+                try {
+                    gate = std::make_unique<
+                        rust::Box<ergon_archival::RequestGate>>(
+                        worker.RequestAdmission());
+                    latch = std::make_unique<
+                        rust::Box<ergon_archival::ResponseLatch>>(
+                        worker.ResponseBarrier());
+                    return true;
+                } catch (const std::exception &) {
+                    return false;
+                }
+            };
+            if (pool_lock) {
+                LOCK(g_mempool.cs);
+                return retrieve();
+            }
+            LOCK(cs_main);
+            return retrieve();
+        });
+        locked.wait();
+        const bool prompt = controls.wait_for(std::chrono::milliseconds(100)) ==
+                            std::future_status::ready;
+        if (!prompt)
+            escape.store(true);
+        // On the fixed path both native locks are free for actual validation
+        // while the worker still owns its latched data mutex.
+        if (prompt) {
+            const auto height = ChainActive().Height();
+            CreateAndProcessBlock({}, CScript() << OP_2);
+            SyncWithValidationInterfaceQueue();
+            BOOST_CHECK_EQUAL(ChainActive().Height(), height + 1);
+        }
+        armed.store(false);
+        disk.Release();
+        const bool retrieved = controls.get();
+        BOOST_CHECK(at_disk);
+        BOOST_CHECK(prompt);
+        BOOST_CHECK(retrieved);
+        if (prompt && retrieved) {
+            BOOST_REQUIRE(worker.WaitThrough(worker.Status().accepted, 5000));
+            BOOST_REQUIRE((*latch)->arm());
+            auto response = std::async(std::launch::async, [&] {
+                return Http(port, "/blockchain-info");
+            });
+            const bool shared = original_latch->wait(5000);
+            original_latch->release();
+            const auto reply = response.get();
+            // The idle observer itself can briefly own a native fence. The
+            // final nonblocking source check must then discard the buffered
+            // body, not wait or invent a healthy response.
+            BOOST_CHECK(reply.status == 200 ||
+                        (reply.status == 503 &&
+                         ergon_archival::http_error_matches(
+                             Body(reply), "503: Ergon index generation changed "
+                                          "during request")));
+            BOOST_CHECK(shared);
+            const auto deadline = std::chrono::steady_clock::now() +
+                                  std::chrono::seconds(5);
+            HttpReply healthy;
+            do {
+                healthy = Http(port, "/blockchain-info");
+                if (healthy.status == 200)
+                    break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            } while (std::chrono::steady_clock::now() < deadline);
+            BOOST_CHECK_EQUAL(healthy.status, 200);
+            BOOST_CHECK(ergon_archival::http_chain_matches(
+                Body(healthy), Bytes(ChainActive().Tip()->GetBlockHash()),
+                ChainActive().Height()));
+            BOOST_CHECK_EQUAL((*gate)->dispatched(),
+                              original_gate->dispatched());
+            BOOST_CHECK(!access.index_failed.load());
+        }
+        worker.Stop();
+        BOOST_CHECK(worker.Status().joined);
+        BOOST_CHECK(!fs::exists(fs::path(root) / "probe.lock"));
+    }
+}
 BOOST_AUTO_TEST_CASE(actual_http_fault_admission_does_not_stop_native_node) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     const auto root = Root("archival-http-fault");
