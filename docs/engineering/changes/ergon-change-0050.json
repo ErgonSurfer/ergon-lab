@@ -1,0 +1,722 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0050",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0050.json",
+  "purpose": {
+    "summary": "Recover the same identity-bound bounded-regtest upstream index after actual process death using a persistent OS-locked lease, without wiping or changing node authority.",
+    "scope": [
+      "The integration parent is a signed local review checkpoint; this record does not assume it is already public main.",
+      "Only the separately opted-in daemon profile uses the new OS lease. Keep the old fixture lease semantics unchanged.",
+      "Preserve lock-file inode and identity across positive stop, real SIGKILL and upstream RocksDB reopen/resync.",
+      "Refuse unknown/partial/aliased leases and failed roots; preserve the database and keep native mining independent.",
+      "Add exact native lease rejection cases and a real-daemon crash/reopen/mining witness; retain inherited component controls and explicit limits."
+    ],
+    "exclusions": [
+      "No consensus, native mempool policy, activation, default-ON option, dependency or upstream index algorithm change.",
+      "No power-loss/corruption repair claim, arbitrary history, automatic database wipe, lease unlink, identity rewrite, plugin enablement or external listener.",
+      "No incoming evidence, private history, operator data, server access, deployment, cutover, release or desktop integration."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "a8f38542290b4fa84ec1fd27b70b54fd78c04a97",
+      "tree": "dde63dc309410d53fd22d3967d6a6c78ac47b1d7"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "4c41fc30903e62b1f6918daa820365f9cc9f7499c78d9455665f3eb551ce6f95",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 9575,
+        "git_blob": "1c9ddf1c430188eba4e8cd86f06c6754b7c80383",
+        "sha256": "f954ae855ac503d4295c71ae228ced8c8a820bc63fdb080dc1f5ddc9662d7f16"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9853,
+        "git_blob": "acef43158a13bd2a37e6edf0ed7806cfb723b0d3",
+        "sha256": "bd50aab2fb7e3696553f4dfefdd9e5d752a5ec24b550e18c7d6a53ddb9c4f6c8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 13374,
+        "git_blob": "e127dae2851c872c7f25dfad8c732bc12dc16bc9",
+        "sha256": "0db826099f72a90542763c5cdbccaec018ec75ff6aab32ea8b6142673dc8fa0a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13631,
+        "git_blob": "9212a256dc51cbed21af84e18632f14e5bbb6beb",
+        "sha256": "110006b81b6a02628d097e5916b1ad0125cf593263c102ac5d88c85985e50f44"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2882,
+        "git_blob": "271d2bbb90b5ff4c0dc94aadfe6a98e86f94c3db",
+        "sha256": "1c0c4ffa4b19155bdd3741bf30d76bc872c944f36e398544fcd9b3e425bd8804"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2931,
+        "git_blob": "4a020cece0c862ecb18ceeb563428ba84336d06c",
+        "sha256": "93491a8626ccbc58798286c8a2d2f08e703f85bc3d1317e277e2b659798148b4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_regtest_service.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2049,
+        "git_blob": "e3de48a1156b4d8ecff3de56d53e57c5c22a4b7e",
+        "sha256": "e6066fe4035d8817ee337f7756b2e1150b6cff452bf9c7404ef26c9d692bdb34"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2193,
+        "git_blob": "61776d15ef8da4482d77999ed2550af421074765",
+        "sha256": "b3dd6ec71e54cf674e5295effe91d2515e9e06fa494a79ba17bff35cc0b9f59a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "chronik/chronik-lib/Cargo.toml",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1415,
+        "git_blob": "0737ffedd4bb1f520e6dc85ff345026dadb8a94f",
+        "sha256": "750f26bdfcb1af5700acd512e7be6fd0857a00037bf032878d1cc02a94da8779"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1474,
+        "git_blob": "e167cc05db6f4d8e58bb2d35ca7d11abb6309028",
+        "sha256": "32f29c96a860cb1abd49e7e048d6e086cefb470c4a574a9dc1c38fb4272e6ba9"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 61135,
+        "git_blob": "08b6d43b49ea35c13cbbea988238b3389cbaf56a",
+        "sha256": "961414a07952e98991b46685e80cfd4f40fa8dc3095e3a0e6f832ed3dd67a5b2"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 63878,
+        "git_blob": "6e1f081c24d3cbd3216cd74b5a477f862eac4f1c",
+        "sha256": "e5efd14a9171a055dce24e88fe1a33119463c7e433d2e102b37aaaf80e42255c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-service-recovery-v1.json",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7106,
+        "git_blob": "6fafc361ccd6d0689b116b66623d5bdc5b025e8b",
+        "sha256": "d7345911f41dc628f40c7077f9d0f903a6a228a1d9eb8da5cb9bad8cf45111a8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-service-recovery.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3444,
+        "git_blob": "01eed63c635a5a6189dfc839a0cb177c9e372fef",
+        "sha256": "4ecc2ec6c678cef70f0e22e7f796331dfee867e094cd6ac837bc9b83a08a4825"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "src/test/chronik_upstream_regtest_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 2295,
+        "git_blob": "b46f710c94571bf524589264d5fdd1c4a5f7a05e",
+        "sha256": "9aa155d71bec018e5785d75c504368d514e4923131271ef78e3f62da7d47ba72"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4127,
+        "git_blob": "b57e6de182591ace893db4ca3dc04a4a8443077a",
+        "sha256": "01e92aa978de6a9f5f11adb694af780ae155eddccf097d4425e752666a5e96f2"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/regtest_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 17699,
+        "git_blob": "cebdac021fa76f0f9896328a41abcc6c3a87db78",
+        "sha256": "099798cf4647463859cedf1a91e4d06d7b5017fafc8a3e95d27358d9e41bd757"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20346,
+        "git_blob": "8d6771abeecb7f10e2c695ed0061d57afb607622",
+        "sha256": "ea8a4cff22c48dc9eb0729c28223347cafaa7db1ffc4201af2cc178c41d746d2"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/regtest_service_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 4569,
+        "git_blob": "7077001d5ef9a9c0687e480dd69ddaf973285d0a",
+        "sha256": "4e757b201f78877dafc2cf155b95b1ae214ab056e8298c0166c45bb396f52f67"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6203,
+        "git_blob": "917a24e9b142653d961a72522829bbd85aff5a7d",
+        "sha256": "8eba7bf2bf86532c2b90ec9ce673403a1261c1759484370d8979291bd375d853"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 28345,
+        "git_blob": "d1c488b36880edd794754e887f6484347efbb1f3",
+        "sha256": "5e60e1ba219c4134c96bd7a3e13ba6e342b3ab2be772e00d765243e9c7b89e7f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 30120,
+        "git_blob": "d1aca9d7044076a959cf8f847210d967c4c12cd8",
+        "sha256": "1f70ee247f1db23695a1a039c0dcbb834a098423f8a12f186ce98e52bd263b7f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8322,
+        "git_blob": "4a12ceb7ba9afd6508b2a645282a3681e678f40b",
+        "sha256": "a1eefa41918ed2fef9c29444a744e713baf9422868f3524666592e25efdc5f9c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8422,
+        "git_blob": "1a2b4c24f16e361bb6f2f6793bdd89b2a360206b",
+        "sha256": "3f6c07a7cdc2e04ae8d8724f204d1eee8fc1f6915b72737007d7d01c21cc2590"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3571,
+        "git_blob": "9fcd6f3a0d5cfa3182910712381212a4138ddef0",
+        "sha256": "3e7a55d0d552d27e666bc8176ebacedc7eafe88be5f9f23c2924b6eb30e7d4fe"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3732,
+        "git_blob": "5134b2452c4f169eceb35617615b4bfe6b697893",
+        "sha256": "6412ca1f3d21dae230fe6bf9464da77b6f00b613397a18c4f54c51199c6bfde8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_regtest_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 7647,
+        "git_blob": "098a7540232ff4b374fc88f4ab5068a32a747918",
+        "sha256": "bbacfa471543b70ff259b162dba7434891c4cdc6b2e2b7149eb11ecac043d5eb"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8468,
+        "git_blob": "f7f15fa7fb1cd227d45a27bd2170781cf0f67533",
+        "sha256": "4f1f78f58963e6ed8bc14b2925b1ba5294e46d153d016c0d06c54b9ec7b1ee34"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_regtest_service_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 2899,
+        "git_blob": "9e8c9fc07ed1b868b3024be072e599cc37cf08c8",
+        "sha256": "74dc92d6c27b86a3fbfe53d8b8c404c82ec061557a2588060ee12404ce9b187b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2989,
+        "git_blob": "ad3b38021f5878f2521889e0efb8157e105652d4",
+        "sha256": "55eedcd954a391a7c978dd52a74fa6019c5ddbf1832d4abb2c8a9987936798c5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_recovery.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7234,
+        "git_blob": "6350114e47fe5571556b86f8e2813d113f3a1a54",
+        "sha256": "ab5253c85475b88aea72d39c2a735b83215e17dbfa7b97cba1fbca6fd82361d6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_recovery_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2724,
+        "git_blob": "a37c2220d6a5be35cce4e202c74750f08098bc9d",
+        "sha256": "b88dffe2002253752cfe0192994ae6f984521f11e4ea98485f988c01827c1f82"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Only the separately compiled and explicitly enabled bounded local-regtest service; ordinary profiles remain dormant. No consensus authority.",
+      "test_reachability": "Source-policy, rejection self-tests, existing native component selections and real-daemon lifecycle; no automatic proof promotion."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the independent compiled-out profile with all upstream/plugin/observer flags OFF; execute the existing native zero-subsidy mining and positive-stop smoke."
+        ],
+        "expected_results": [
+          "Native mining and shutdown work without linking Rust/Chronik; no Chronik state or external peer connection is created."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build separate archival and plugin profiles with BUILD_CHRONIK_UPSTREAM_REGTEST=OFF; run unchanged exact native selections and dormant daemon controls. Keep the enabled daemon build independent."
+        ],
+        "expected_results": [
+          "No Python plugin implementation is selected; setup refuses before plugin files or state are created. Linking upstream alone starts no daemon index or listener."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the inherited default-OFF bounded regtest profile with plugins/Qt OFF. Run regtest_service.py --repetitions 3, exact native lease cases 9/6 and shutdown case 9, plus the retained native selections."
+        ],
+        "expected_results": [
+          "SIGKILL releases the OS lease without unlink; the same bound root reopens through upstream setup/resync with matching transaction bytes and renewed native/indexed progress. Unknown leases and failed roots remain refused."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the inherited real-daemon lifecycle extended with actual SIGKILL, same-root/inode reopen, raw byte parity and renewed native/indexed mining. Execute exact native lease and shutdown cases in fresh processes. Other inherited observer scenarios remain separate coverage, not this daemon's readiness.",
+        "expected_results": [
+          "Three repetitions: 18 fresh daemon processes including controls, 3 shutdown processes and 6 lease-case processes. Exactly four positive stops and one SIGKILL per cycle.",
+          "Identity and lock inode unchanged, no failure marker from a healthy crash, native/indexed tips and raw transaction bytes agree, final native height 104. All disposable process groups and roots removed before exclusive path-free report creation.",
+          "The bounded 104-block witness is not a complete 288-block startup stress, power-loss or production durability proof."
+        ],
+        "failure_conditions": [
+          "Wrong exact case/assertion selection, stale or changed source/view, mismatched plugin accepted, identity rewritten, disabled guard bypass, failed root adopted, native authority effect, skip, timeout, nonzero exit, instability or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the inherited real-daemon lifecycle extended with actual SIGKILL, same-root/inode reopen, raw byte parity and renewed native/indexed mining. Execute exact native lease and shutdown cases in fresh processes. Other inherited observer scenarios remain separate coverage, not this daemon's readiness.",
+        "expected_results": [
+          "Three repetitions: 18 fresh daemon processes including controls, 3 shutdown processes and 6 lease-case processes. Exactly four positive stops and one SIGKILL per cycle.",
+          "Identity and lock inode unchanged, no failure marker from a healthy crash, native/indexed tips and raw transaction bytes agree, final native height 104. All disposable process groups and roots removed before exclusive path-free report creation.",
+          "The bounded 104-block witness is not a complete 288-block startup stress, power-loss or production durability proof."
+        ],
+        "failure_conditions": [
+          "Restart drift, stale query, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run feature_chronik_token_http.py: extend to height 290 in bounded batches, disconnect below the retained projection anchor, reconsider, verify mismatched restart leaves HTTP disabled, then explicitly full-reindex. Separately exercise upstream retained-anchor and source-generation contradictions; the fixture observer closes while native progress continues.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both known and unknown token/transaction IDs return protobuf 503 after observer closure, never stale 200 or misleading 404.",
+          "Node RPC and chain selection continue; reconsider does not reopen observation. A persistent-tip mismatch disables HTTP on restart and logs recovery=reindex. Explicit full reindex restores canonical token metadata and byte-identical confirmed transaction output."
+        ],
+        "failure_conditions": [
+          "Any accepted response after irreversible closure, missing-ID 404 from a degraded view, HTTP serving from a mismatched restarted runtime, missing mismatch diagnostic, failed canonical reindex recovery, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04-ci-required-not-yet-observed",
+        "macos-26-arm64-local-component-profile"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Startup remains synchronous before peers in this slice; stalled storage can delay initialization or joined stop. No hard I/O latency guarantee.",
+    "SIGKILL after a confirmed healthy index is process death, not a physical power loss, torn filesystem write, arbitrary DB corruption or migration test.",
+    "Unknown or partial lease bytes, legacy fixture leases, failed markers and mismatched identities require external review; no automatic adoption or repair.",
+    "Experimental unpruned regtest only: height <= 2000, native index/pool <= 4096, 288-block capture window, 128 callback tickets and 64 MiB serialized payload. Not RSS or full-chain scaling bounds.",
+    "Plugins and public exposure remain disabled. No deployment, activation, server/desktop integration or proof promotion.",
+    "Rust registry closure remains locked; system/SDK/runner inputs remain unlocked and existing dependency security alerts remain open."
+  ],
+  "counterevidence": [
+    "A supplementary single-repetition final-source retained run also refused runtime-stop-and-reopen-controls with class process-timeout at the unchanged 60-second limit. It emitted no passing report. The final-source three-cycle daemon crash/reopen witness passed, but neither that witness nor later isolated passes replace the failing retained matrix; this checkpoint is not PR-ready. A bounded local stack-sampling attempt itself exceeded its five-second diagnostic limit and yielded no usable stack; all sampler/native processes and disposable roots were cleaned.",
+    "The first complete retained matrix for this slice refused the stop/reopen group and emitted no passing report. An unchanged isolated rerun passed once in 36.26 seconds, then timed out at 60 seconds after identity_paths_and_unbound_database_fail_closed started. A separate diagnostic with detailed Boost output passed that leaf in 1.89 seconds and the complete 13-case/307-assertion group in 24.61 seconds; that detailed output deliberately fails the normal binding-path contract and is not a passing matrix report. The underlying cause remains unestablished. No timeout, assertion, selected case or cleanup requirement was relaxed.",
+    "Self-review found that the new standard-library file lock requires Rust 1.89 while the host crate still inherited workspace minimum 1.85. The crate now explicitly declares 1.89.0; CI remains pinned to 1.93.1. No dependency edge, registry tuple, checksum or Cargo lock is changed. Earlier local observations are not final-source evidence after this declaration and bounded lease-read correction.",
+    "Initial native compilation of this slice refused because the new synthetic test used a nonexistent fsbridge::ofstream alias. Use std::ofstream with explicit <fstream>; no runtime oracle, source policy or deadline was weakened.",
+    "The previous create_new-only fixture lease survives SIGKILL and cannot distinguish a dead owner safely. This slice adds an OS lease only for the daemon profile; it does not delete or guess ownership of old/unknown lock files.",
+    "Change 0049's unexplained stop/reopen matrix refusal and all preceding counterevidence remain preserved in their immutable records. Later passes do not establish their causes.",
+    "Zero-subsidy transactions and synthetic prioritisetransaction selection fees prove mechanics only. Actual inputs/outputs/fees remain zero; no economic funding or ALP lifecycle claim is made by this slice."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

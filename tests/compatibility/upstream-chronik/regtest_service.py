@@ -3,6 +3,7 @@
 """Real bitcoind lifecycle over public zero-value regtest transactions only."""
 import argparse
 import base64
+import fcntl
 import hashlib
 import http.client
 import json
@@ -17,6 +18,21 @@ import time
 import run_repetitions as runner
 
 SHUTDOWN = ("chronik_upstream_regtest_tests/shutdown_cancels_inflight_capture_without_failed_root", 9)
+LEASE_CASES = (
+    ("chronik_upstream_regtest_tests/service_os_lease_excludes_other_owners_and_preserves_inode", 9),
+    ("chronik_upstream_regtest_tests/service_unknown_or_partial_lease_is_not_adopted", 6),
+)
+SERVICE_LEASE = b"ergon-regtest-service-os-lock/v1\n"
+
+
+def released_service_lease(index):
+    path = index / "probe.lock"
+    # A scope refusal can precede lease creation. Otherwise the file persists:
+    # removing a lock file would permit competing owners on different inodes.
+    if path.exists():
+        runner.require(runner.regular(path) == SERVICE_LEASE, "unknown service lease")
+        with path.open("r+b") as lease:
+            fcntl.flock(lease.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
 def fields(raw):
@@ -192,7 +208,18 @@ class Daemon:
             except OSError:
                 pass
         index = self.data / "regtest/chronik-upstream-regtest"
-        runner.require(not (index / "probe.lock").exists(), "index lease survived stop")
+        released_service_lease(index)
+
+    def crash(self):
+        runner.require(self.port is not None and self.proc.poll() is None,
+                       "crash witness requires a running ready service")
+        self.proc.kill()  # Real SIGKILL, deliberately bypassing graceful Stop.
+        runner.require(self.proc.wait(timeout=10) == -9, "missing SIGKILL witness")
+        runner.stop_group(self.proc)
+        self.output.close()
+        runner.require("Chronik upstream regtest stopped joined=1" not in self.log.read_text(),
+                       "crash was an ordinary stop")
+        released_service_lease(self.data / "regtest/chronik-upstream-regtest")
 
     def cleanup(self):
         runner.stop_group(self.proc)
@@ -256,21 +283,40 @@ def observe(binary, work):
         daemon = start("reopen-confirmed")
         daemon.tip(102, confirmed)
         daemon.pool([])
+        lease = index / "probe.lock"
+        lease_inode = (lease.stat().st_dev, lease.stat().st_ino)
+        daemon.crash()
+        runner.require(runner.regular(index / "ergon-identity.json") == identity and
+                       not (index / "probe.failed").exists(), "crash changed root authority")
+        daemon = start("recover-after-sigkill")
+        daemon.tip(102, confirmed)
+        daemon.pool([])
+        for txid, raw in ((parent, raw_parent), (child, raw_child)):
+            status, body = daemon.http("/raw-tx/" + txid)
+            runner.require(status == 200 and fields(body).get(1) == [bytes.fromhex(raw)],
+                           "post-crash raw transaction parity drift")
+        recovered = daemon.rpc("generatetoaddress", (1, p2sh_true_address()))[0]
+        daemon.tip(103, recovered)
         daemon.stop()
+        runner.require(lease_inode == (lease.stat().st_dev, lease.stat().st_ino) and
+                       runner.regular(index / "ergon-identity.json") == identity,
+                       "crash recovery replaced lease or identity")
         # Synthetic failure marker, not an incoming private artifact. Preserve
         # the failed root for this phase; no auto-wipe/rebuild/identity rewrite.
         (index / "probe.failed").write_bytes(b"synthetic public refusal witness\n")
         daemon = start("refuse-failed-root", available=False)
         progressed = daemon.rpc("generatetoaddress", (1, p2sh_true_address()))
-        runner.require(len(progressed) == 1 and daemon.rpc("getblockcount") == 103,
+        runner.require(len(progressed) == 1 and daemon.rpc("getblockcount") == 104,
                        "index refusal affected native mining")
         daemon.stop()
         runner.require(runner.regular(index / "ergon-identity.json") == identity and
                        runner.regular(index / "probe.failed") == b"synthetic public refusal witness\n",
                        "failed root was silently adopted")
-        return {"network": "regtest", "initial_height": 0, "final_height": 103,
+        return {"network": "regtest", "initial_height": 0, "final_height": 104,
             "native_pending_parent_child_reopened": True, "confirmation_disconnect_reconsider": True,
             "raw_transaction_parity": True, "healthy_reopens": 2, "positive_stops": 4,
+            "sigkill_processes": 1, "crash_reopens": 1, "lease_inode_preserved": True,
+            "post_crash_native_mining_and_indexing": True,
             "failed_index_native_mining_continues": True, "external_connections": 0,
             "synthetic_fee_priority_fixoshis_per_transaction": 1000000,
             "actual_input_output_value_and_fee": 0,
@@ -329,11 +375,11 @@ def main():
     reject_scope(binary, work, "-prune=550")
     result = None
     for _ in range(args.repetitions):
-        case, assertions = SHUTDOWN
-        streams = runner.execute([str(native_test), "--run_test=" + case,
-            "--report_level=short", "--log_level=message", "--color_output=no"],
-            work, (source, build, binary, native_test))
-        runner.parse_streams(streams, (case,), assertions)
+        for case, assertions in (SHUTDOWN, *LEASE_CASES):
+            streams = runner.execute([str(native_test), "--run_test=" + case,
+                "--report_level=short", "--log_level=message", "--color_output=no"],
+                work, (source, build, binary, native_test))
+            runner.parse_streams(streams, (case,), assertions)
         current = observe(binary, work)
         runner.require(result is None or result == current, "lifecycle result instability")
         result = current
@@ -343,9 +389,11 @@ def main():
     validate(source)
     payload = {"schema": "ergon-upstream-regtest-service-observation/v1", "knowledge_status": "Observed",
         "proof_ceiling": "bounded_regtest_service_observation", "binary_sha256": before, "result": result,
-        "binding": binding, "repetitions": args.repetitions, "fresh_daemon_processes": 3 + 4 * args.repetitions,
+        "binding": binding, "repetitions": args.repetitions, "fresh_daemon_processes": 3 + 5 * args.repetitions,
         "native_shutdown_processes": args.repetitions, "native_shutdown_case": SHUTDOWN[0],
         "native_shutdown_assertions_per_process": SHUTDOWN[1], "native_test_binary_sha256": native_hash,
+        "native_lease_processes": len(LEASE_CASES) * args.repetitions,
+        "native_lease_cases": LEASE_CASES,
         "child_environment": dict(runner.ENV, TMPDIR="<runner-created-unique-directory>"),
         "disposable_roots_removed": True, "runtime_default_off_witness": True,
         "wrong_network_and_pruned_refused": True,

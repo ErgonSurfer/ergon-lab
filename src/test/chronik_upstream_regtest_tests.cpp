@@ -5,6 +5,7 @@
 #include <chronik_lib/src/ergon_archival.rs.h>
 #include <config.h>
 #include <fs.h>
+#include <fstream>
 #include <future>
 #include <primitives/block.h>
 #include <script/script.h>
@@ -15,6 +16,43 @@
 #include <validation.h>
 
 BOOST_FIXTURE_TEST_SUITE(chronik_upstream_regtest_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(service_os_lease_excludes_other_owners_and_preserves_inode) {
+    const auto directory = GetDataDir() / "regtest-service-lease";
+    BOOST_REQUIRE(fs::create_directory(directory));
+    const auto root = fs::canonical(directory).string();
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    {
+        auto probe = ergon_archival::open_regtest_service(root, access);
+        BOOST_CHECK(fs::is_regular_file(directory / "probe.lock"));
+        BOOST_CHECK_THROW(ergon_archival::open_regtest_service(root, access), rust::Error);
+        BOOST_CHECK_THROW(ergon_archival::open_archival(root, access), rust::Error);
+        BOOST_CHECK(!access.index_failed.load());
+    }
+    BOOST_CHECK(fs::is_regular_file(directory / "probe.lock"));
+    BOOST_CHECK(!fs::exists(directory / "probe.failed"));
+    {
+        auto reopened = ergon_archival::open_regtest_service(root, access);
+        BOOST_CHECK(fs::is_regular_file(directory / "indexes/chronik/CURRENT"));
+    }
+    BOOST_CHECK(!access.index_failed.load());
+}
+
+BOOST_AUTO_TEST_CASE(service_unknown_or_partial_lease_is_not_adopted) {
+    const auto directory = GetDataDir() / "regtest-service-unknown-lease";
+    BOOST_REQUIRE(fs::create_directory(directory));
+    const auto root = fs::canonical(directory).string();
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    {
+        std::ofstream unknown((directory / "probe.lock").string());
+        unknown << "partial-or-unknown\n";
+    }
+    BOOST_CHECK_THROW(ergon_archival::open_regtest_service(root, access), rust::Error);
+    BOOST_CHECK(!fs::exists(directory / "ergon-identity.json"));
+    BOOST_CHECK(!fs::exists(directory / "indexes"));
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(fs::is_regular_file(directory / "probe.lock"));
+}
+
 BOOST_AUTO_TEST_CASE(shutdown_cancels_inflight_capture_without_failed_root) {
     const auto directory = GetDataDir() / "regtest-shutdown-capture";
     BOOST_REQUIRE(fs::create_directory(directory));

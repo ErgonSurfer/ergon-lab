@@ -10,6 +10,34 @@ import run_repetitions as runner
 
 
 class Contract(unittest.TestCase):
+    def test_refusal_diagnostics_do_not_serialize_exception_paths_or_output(self):
+        import subprocess
+        private = "/synthetic-private/path/never-publish"
+        errors = ((subprocess.TimeoutExpired([private], 60, output=private), "process-timeout"),
+                  (subprocess.CalledProcessError(1, [private], output=private), "child-process-refusal"),
+                  (OSError(private), "operating-system-refusal"),
+                  (KeyError(private), "binding-field-missing"),
+                  (runner.Rejected(private), "contract-refusal"))
+        for error, expected in errors:
+            self.assertEqual(runner.refusal_class(error), expected)
+            self.assertNotIn(private, runner.refusal_class(error))
+
+    def test_persistent_lease_rejects_unknown_bytes_and_competing_owner(self):
+        with tempfile.TemporaryDirectory(prefix="synthetic-service-lease-") as name:
+            root = Path(name)
+            lease = root / "probe.lock"
+            lease.write_bytes(b"fixture-exclusive; stale lock requires external review\n")
+            with self.assertRaises(runner.Rejected):
+                service.released_service_lease(root)
+            lease.write_bytes(service.SERVICE_LEASE)
+            original = lease.stat().st_ino
+            with lease.open("r+b") as held:
+                service.fcntl.flock(held.fileno(), service.fcntl.LOCK_EX | service.fcntl.LOCK_NB)
+                with self.assertRaises(BlockingIOError):
+                    service.released_service_lease(root)
+            service.released_service_lease(root)
+            self.assertEqual(lease.stat().st_ino, original)
+
     def test_exact_shutdown_case_and_assertions(self):
         self.assertEqual(service.SHUTDOWN, (
             "chronik_upstream_regtest_tests/shutdown_cancels_inflight_capture_without_failed_root", 9))

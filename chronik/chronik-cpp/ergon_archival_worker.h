@@ -42,7 +42,8 @@ class ArchivalWorker {
                    std::function<void()> before_notification = {},
                    std::function<void()> after_capture = {},
                    std::function<void()> before_disk = {},
-                   const PluginFixture *plugins = nullptr);
+                   const PluginFixture *plugins = nullptr,
+                   bool regtest_service = false);
     ~ArchivalWorker();
     ArchivalWorker(const ArchivalWorker &) = delete;
     ArchivalWorker &operator=(const ArchivalWorker &) = delete;

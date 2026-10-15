@@ -47,8 +47,17 @@ def before_identity(root, path):
     return identity(git(root, "show", PARENT + ":" + path), entry[0]) if entry else None
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_service_recovery import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT, TECHNICAL as NEXT_TECHNICAL
+    from check_chronik_service_recovery import validate as validate_next
+    if not historical and (root / NEXT_MANIFEST).exists():
+        return validate_next(root) | validate(root, historical=True)
+    def observed(path):
+        if not historical:
+            return current_identity(root, path)
+        entry = git(root, "ls-tree", NEXT_PARENT, "--", path).decode().split()
+        return identity(git(root, "show", NEXT_PARENT + ":" + path), entry[0])
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "service public parent drift")
     manifest = load_json(root / MANIFEST)
@@ -63,10 +72,12 @@ def validate(root):
                 row["provenance"] == "PUBLIC+A1/MIT" and
                 row["reachability"] == "bounded-regtest-opt-in-or-test-only" and
                 row["before"] == before_identity(root, row["path"]) and
-                row["after"] == current_identity(root, row["path"]) and
+                row["after"] == observed(row["path"]) and
                 row["before"] != row["after"] and row["after"]["mode"] == "100644", "service postimage drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, NEXT_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected service path")
     record = load_json(root / RECORD)
     require(record["change_id"] == "ERGON-CHANGE-0049" and
@@ -78,7 +89,7 @@ def validate(root):
         return None if value is None else {("git_blob_sha1" if k == "git_blob" else k): v for k, v in value.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]) and
+                governed(row["after"]) == observed(row["path"]) and
                 row["after"]["mode"] == "100644", "service policy byte/mode drift")
     # The new profile must not silently widen upstream's old closed admission,
     # native consensus, dependencies, helper/donor bytes or historical records.
@@ -88,7 +99,9 @@ def validate(root):
                  "src/txmempool.h", "chronik/chronik-lib/src/ffi.rs", "chronik/chronik-bridge/src/ffi.rs",
                  "docs/engineering/changes/ergon-change-0048.json",
                  "docs/engineering/chronik/upstream-plugin-restart-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "service changed frozen boundary")
+        require(observed(path) == before_identity(root, path), "service changed frozen boundary")
+        if historical and path not in NEXT_TECHNICAL:
+            require(current_identity(root, path) == observed(path), "successor changed frozen service input")
     init = (root / "src/init.cpp").read_text()
     driver = ast.parse((root / "tests/compatibility/upstream-chronik/regtest_service.py").read_text())
     selections = [ast.literal_eval(n.value) for n in driver.body if isinstance(n, ast.Assign) and

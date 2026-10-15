@@ -11,7 +11,8 @@ class Contract(unittest.TestCase):
     root = Path(__file__).resolve().parents[2]
 
     def test_exact_finite_layer(self):
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY)
+        from check_chronik_service_recovery import TECHNICAL, POLICY
+        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY)
 
     def test_contract_and_inventory_drift(self):
         original = gate.load_json

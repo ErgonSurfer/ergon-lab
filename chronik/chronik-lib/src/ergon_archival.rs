@@ -25,7 +25,7 @@ use prost::Message;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{self, OpenOptions},
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -246,6 +246,7 @@ mod ffi {
         ) -> Result<bool>;
         fn http_alp_parse_failure_matches(body: &[u8], id: [u8; 32]) -> Result<bool>;
         fn open_archival(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
+        fn open_regtest_service(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
         fn open_archival_with_hook(
             root: &str,
             node: &ErgonNodeAccess,
@@ -273,11 +274,63 @@ mod ffi {
 
 struct Lease {
     root: PathBuf,
+    // The daemon profile keeps the file inode stable and owns an OS lock.
+    // Process death releases the lock, not the identity or database contents.
+    service_lock: Option<fs::File>,
 }
 impl Drop for Lease {
     fn drop(&mut self) {
-        let _ = fs::remove_file(self.root.join("probe.lock"));
+        if self.service_lock.is_none() {
+            let _ = fs::remove_file(self.root.join("probe.lock"));
+        }
     }
+}
+
+const SERVICE_LEASE: &[u8] = b"ergon-regtest-service-os-lock/v1\n";
+
+fn service_lease(root: &Path) -> Result<Lease> {
+    // A persistent lock file MUST NOT be unlinked on release: another owner
+    // could otherwise lock the old inode while a third locks a new inode.
+    let path = root.join("probe.lock");
+    let (mut file, created) = match OpenOptions::new().read(true).write(true)
+        .create_new(true).open(&path) {
+        Ok(file) => (file, true),
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists =>
+            (OpenOptions::new().read(true).write(true).open(&path)?, false),
+        Err(err) => return Err(err.into()),
+    };
+    file.try_lock()?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || fs::symlink_metadata(&path)?.file_type().is_symlink() {
+        bail!("Service lease must be a regular file");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let current = fs::metadata(&path)?;
+        if metadata.nlink() != 1 || metadata.dev() != current.dev()
+            || metadata.ino() != current.ino() {
+            bail!("Service lease inode alias refused");
+        }
+    }
+    if created {
+        file.write_all(SERVICE_LEASE)?;
+        file.sync_all()?;
+        fs::File::open(root)?.sync_all()?;
+    } else {
+        // Bounded read from the locked descriptor, not an independently
+        // reopened path. Includes old fixture leases and partial writes.
+        let mut marker = Vec::with_capacity(SERVICE_LEASE.len() + 1);
+        if metadata.len() != SERVICE_LEASE.len() as u64 {
+            bail!("Unknown or incomplete service lease; external review required");
+        }
+        (&mut file).take(SERVICE_LEASE.len() as u64 + 1).read_to_end(&mut marker)?;
+        if marker != SERVICE_LEASE {
+            // Never guess a PID, delete a stale file, or adopt an unknown root.
+            bail!("Unknown or incomplete service lease; external review required");
+        }
+    }
+    Ok(Lease { root: root.to_owned(), service_lock: Some(file) })
 }
 pub struct ArchivalProbe {
     // Drop indexer before the node and before removing the exclusive lease.
@@ -548,7 +601,7 @@ pub fn upstream_plugin_version_refusal(
     let root = checked_root(root)?;
     check_entries(&root)?;
     let _lock = OpenOptions::new().write(true).create_new(true).open(root.join("probe.lock"))?;
-    let _lease = Lease { root: root.clone() };
+    let _lease = Lease { root: root.clone(), service_lock: None };
     let node = Arc::new(Node { bridge: ffi::make_startup_bridge(access)? });
     let expected = plugin_identity(node.bridge.get_genesis_hash().data, &binding_for_mode(0)?)?;
     if fs::read(root.join("ergon-identity.json"))? != expected || !root.join("indexes/chronik").is_dir() {
@@ -564,7 +617,10 @@ pub fn upstream_plugin_version_refusal(
 }
 
 pub fn open_archival(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
-    open_archival_impl(root, access, None, None)
+    open_archival_impl(root, access, None, None, false)
+}
+pub fn open_regtest_service(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
+    open_archival_impl(root, access, None, None, true)
 }
 pub fn open_archival_with_plugins(
     root: &str,
@@ -572,27 +628,28 @@ pub fn open_archival_with_plugins(
     plugins: &PluginFixture,
 ) -> Result<Box<ArchivalProbe>> {
     plugins.check()?;
-    open_archival_impl(root, access, None, Some(plugins))
+    open_archival_impl(root, access, None, Some(plugins), false)
 }
 pub fn open_archival_with_hook(
     root: &str,
     access: &native::ErgonNodeAccess,
     hook: &ffi::StartupHook,
 ) -> Result<Box<ArchivalProbe>> {
-    open_archival_impl(root, access, Some(hook), None)
+    open_archival_impl(root, access, Some(hook), None, false)
 }
 pub fn open_archival_with_plugins_and_hook(
     root: &str, access: &native::ErgonNodeAccess,
     plugins: &PluginFixture, hook: &ffi::StartupHook,
 ) -> Result<Box<ArchivalProbe>> {
     plugins.check()?;
-    open_archival_impl(root, access, Some(hook), Some(plugins))
+    open_archival_impl(root, access, Some(hook), Some(plugins), false)
 }
 fn open_archival_impl(
     root: &str,
     access: &native::ErgonNodeAccess,
     hook: Option<&ffi::StartupHook>,
     plugins: Option<&PluginFixture>,
+    service: bool,
 ) -> Result<Box<ArchivalProbe>> {
     ffi::archival_fixture_guard(access)?;
     chronik_util::mount_loggers(chronik_util::Loggers {
@@ -601,13 +658,16 @@ fn open_archival_impl(
     });
     let root = checked_root(root)?;
     check_entries(&root)?;
-    let mut lock = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(root.join("probe.lock"))?;
-    let lease = Lease { root: root.clone() };
-    lock.write_all(b"fixture-exclusive; stale lock requires external review\n")?;
-    lock.sync_all()?;
+    let lease = if service {
+        service_lease(&root)?
+    } else {
+        let mut lock = OpenOptions::new().write(true).create_new(true)
+            .open(root.join("probe.lock"))?;
+        let lease = Lease { root: root.clone(), service_lock: None };
+        lock.write_all(b"fixture-exclusive; stale lock requires external review\n")?;
+        lock.sync_all()?;
+        lease
+    };
     let node = Arc::new(Node {
         bridge: ffi::make_startup_bridge(access)?,
     });

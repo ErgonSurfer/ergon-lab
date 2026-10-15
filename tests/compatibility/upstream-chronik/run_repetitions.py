@@ -222,6 +222,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "service projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    recovery_manifest = source / "docs/engineering/chronik/upstream-service-recovery-v1.json"
+    if recovery_manifest.exists():
+        from check_chronik_service_recovery import PARENT, TREE, TECHNICAL
+        layer = json.loads(regular(recovery_manifest))
+        require(layer["schema"] == "ergon-upstream-service-recovery/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(TECHNICAL), "service recovery projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "recovery projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -372,6 +385,20 @@ def filter_for(cases):
     require(all(case.startswith(PREFIX) for case in cases), "unexpected suite")
     return PREFIX + ",".join(case[len(PREFIX):] for case in cases)
 
+def refusal_class(error):
+    # Never serialize str(error): subprocess and OS exceptions contain paths,
+    # commands and operational output. These are fixed public categories only.
+    if isinstance(error, subprocess.TimeoutExpired):
+        return "process-timeout"
+    if isinstance(error, subprocess.SubprocessError):
+        return "child-process-refusal"
+    if isinstance(error, OSError):
+        return "operating-system-refusal"
+    if isinstance(error, KeyError):
+        return "binding-field-missing"
+    return "contract-refusal"
+
+
 def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
     require(profile in (None, "archival", "plugins", "regtest"), "unknown repetition profile")
@@ -382,13 +409,18 @@ def repeat(binary, work, forbidden, repetitions, profile=None):
     result = []
     for role, cases, assertions in groups:
         first = None
-        for _ in range(repetitions):
-            streams = execute([str(binary), "--run_test=" + filter_for(cases),
-                               "--report_level=short", "--log_level=message", "--color_output=no"],
-                              work, forbidden)
-            observation = parse_streams(streams, cases, assertions)
-            require(first is None or observation == first, "fresh-process output instability")
-            first = observation
+        for iteration in range(repetitions):
+            try:
+                streams = execute([str(binary), "--run_test=" + filter_for(cases),
+                                   "--report_level=short", "--log_level=message", "--color_output=no"],
+                                  work, forbidden)
+                observation = parse_streams(streams, cases, assertions)
+                require(first is None or observation == first, "fresh-process output instability")
+                first = observation
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+                print("REFUSED: " + role + "; repetition=" + str(iteration + 1) +
+                      "; class=" + refusal_class(error), file=sys.stderr, flush=True)
+                raise
         result.append(dict(role=role, repetitions=repetitions, **first))
         print("PASS: " + role + "; " + str(len(cases)) + " cases; " + str(assertions) + " assertions", flush=True)
     return {"groups": result, "selected_cases": sum(len(c) for _, c, _ in groups),
@@ -505,8 +537,9 @@ def main():
         write_report(report, payload)
         print("PASS: component observation; cleanup verified; exclusive path-free report")
         return 0
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
-        print("FAIL: component observation rejected; no passing report", file=sys.stderr)
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+        print("FAIL: component observation rejected; class=" + refusal_class(error) +
+              "; no passing report", file=sys.stderr)
         return 1
 
 if __name__ == "__main__":

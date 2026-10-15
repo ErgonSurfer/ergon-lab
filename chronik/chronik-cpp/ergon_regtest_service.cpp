@@ -30,7 +30,9 @@ void Start(const Config &config) noexcept {
             throw std::runtime_error("Redirected regtest service root");
         access = std::make_unique<chronik_bridge::ErgonNodeAccess>(config, g_mempool);
         worker = std::make_unique<ergon_archival::ArchivalWorker>(
-            fs::canonical(root).string(), *access);
+            fs::canonical(root).string(), *access, 128,
+            std::function<void()>{}, std::function<void()>{},
+            std::function<void()>{}, std::function<void()>{}, nullptr, true);
         const auto port = worker->StartHttpFixture();
         LogPrintf("Chronik upstream regtest listening=127.0.0.1:%u plugins=0\n", port);
     } catch (...) {
