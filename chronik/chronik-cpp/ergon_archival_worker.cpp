@@ -9,6 +9,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <shutdown.h>
 #include <txmempool.h>
 #include <validation.h>
 #include <validationinterface.h>
@@ -131,6 +132,13 @@ struct ArchivalWorker::Impl final : CValidationInterface {
         try {
             bool retry = false;
             for (;;) {
+                if (ShutdownRequested()) {
+                    (*gate)->close();
+                    std::lock_guard<std::mutex> lock(mu);
+                    closed = true;
+                    ready = false;
+                    break;
+                }
                 uint64_t ticket =
                     0; // Zero denotes observation, not a callback.
                 {

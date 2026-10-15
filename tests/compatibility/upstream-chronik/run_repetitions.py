@@ -138,6 +138,8 @@ PLUGIN_ENABLED_INPUTS = (
     "chronik/chronik-plugin-impl/python/upstream/script.py",
     "chronik/chronik-plugin-impl/python/upstream/slp.py",
 )
+SERVICE_ADAPTER_INPUTS = ("CMakeLists.txt", "src/init.cpp",
+    "chronik/chronik-cpp/ergon_regtest_service.h", "chronik/chronik-cpp/ergon_regtest_service.cpp")
 
 def plugin_inputs():
     # The public runner and source gate share one exact finite inventory.
@@ -207,6 +209,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "restart projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    service_manifest = source / "docs/engineering/chronik/upstream-regtest-service-v1.json"
+    if service_manifest.exists():
+        from check_chronik_regtest_service import PARENT, TREE, TECHNICAL
+        layer = json.loads(regular(service_manifest))
+        require(layer["schema"] == "ergon-upstream-regtest-service/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(TECHNICAL), "regtest service projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "service projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -220,7 +235,7 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
     return digest(canonical(rows))
 
 def bind_build(source, build, profile, manifest):
-    require(profile in ("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant"),
+    require(profile in ("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant", "regtest"),
             "unknown build profile")
     projection = source_projection(source, manifest, source / READ_MANIFEST, source / PLUGIN_MANIFEST, source / RESTART_MANIFEST)
     require(not source.is_relative_to(build) and not build.is_relative_to(source), "separate build root required")
@@ -232,16 +247,20 @@ def bind_build(source, build, profile, manifest):
             cache[match[1]] = match[2]
     require(Path(cache["CMAKE_HOME_DIRECTORY"]).resolve() == source, "build source mismatch")
     require(cache.get("BUILD_CHRONIK_OBSERVER") == "OFF", "observer profiles must remain separate")
+    require(cache.get("BUILD_CHRONIK_UPSTREAM_REGTEST", "OFF") == ("ON" if profile == "regtest" else "OFF"),
+            "regtest service profile mismatch")
+    if profile == "regtest":
+        require(cache.get("BUILD_BITCOIN_QT") == "OFF", "regtest service excludes Qt")
     expected_link = "OFF" if profile == "compiled-out" else "ON"
     require(cache.get("BUILD_CHRONIK_UPSTREAM_LINK", "OFF") == expected_link, "link profile mismatch")
     plugins = profile in ("plugins", "upstream-plugins-dormant")
     require(cache.get("BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS", "OFF") == ("ON" if plugins else "OFF"),
             "plugin profile mismatch")
     python = None
-    if profile in ("archival", "plugins", "upstream-linked-dormant", "upstream-plugins-dormant"):
+    if profile in ("archival", "plugins", "upstream-linked-dormant", "upstream-plugins-dormant", "regtest"):
         require(cache.get("BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS") == "ON", "archival fixture missing")
         ninja = regular(build / "build.ninja").decode("utf-8")
-        inputs = ADAPTER_INPUTS + PLUGIN_ADAPTER_INPUTS
+        inputs = ADAPTER_INPUTS + PLUGIN_ADAPTER_INPUTS + SERVICE_ADAPTER_INPUTS
         suffix = ""
         if plugins:
             versions = re.findall(r"CHRONIK_ERGON_PYTHON_VERSION=(3\.12\.[0-9]+)(?:\s|$)", ninja)
@@ -355,9 +374,9 @@ def filter_for(cases):
 
 def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
-    require(profile in (None, "archival", "plugins"), "unknown repetition profile")
+    require(profile in (None, "archival", "plugins", "regtest"), "unknown repetition profile")
     require(len({case for _, cases, _ in GROUPS for case in cases}) == 44, "non-disjoint test groups")
-    groups = GROUPS + (PLUGIN_GROUPS if profile == "plugins" else (DISABLED_GROUP,) if profile == "archival" else ())
+    groups = GROUPS + (PLUGIN_GROUPS if profile == "plugins" else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
     require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
             "plugin cases overlap inherited groups")
     result = []
@@ -459,7 +478,7 @@ def main():
     parser.add_argument("--adaptation-manifest", type=Path, required=True)
     parser.add_argument("--work-parent", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument("--profile", choices=("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant"), required=True)
+    parser.add_argument("--profile", choices=("archival", "plugins", "compiled-out", "upstream-linked-dormant", "upstream-plugins-dormant", "regtest"), required=True)
     parser.add_argument("--repetitions", type=int, default=10)
     args = parser.parse_args()
     try:
@@ -468,7 +487,7 @@ def main():
         require(not report.exists() and not report.is_symlink(), "report overwrite refused")
         require(not any(report.is_relative_to(p) for p in (source, build)), "report must remain outside source/build")
         require(not work.is_relative_to(source) and not work.is_relative_to(build), "separate disposable work parent required")
-        require((args.command == "repeat") == (args.profile in ("archival", "plugins")), "command/profile mismatch")
+        require(args.profile == "regtest" or (args.command == "repeat") == (args.profile in ("archival", "plugins")), "command/profile mismatch")
         binding = bind_build(source, build, args.profile, args.adaptation_manifest)
         binary = build / ("src/test/test_bitcoin" if args.command == "repeat" else "src/bitcoind")
         raw = regular(binary)

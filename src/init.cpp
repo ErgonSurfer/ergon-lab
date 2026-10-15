@@ -58,6 +58,10 @@
 #include <walletinitinterface.h>
 #include <warnings.h>
 
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+#include <chronik-cpp/ergon_regtest_service.h>
+#endif
+
 #ifdef ENABLE_CHRONIK_OBSERVER
 #include <chronik/node-observer.h>
 
@@ -247,6 +251,12 @@ void Shutdown(InitInterfaces &interfaces) {
 
     StopTorControl();
 
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+    // The callback queue must still be serviced while Stop drains it. Joining
+    // after threadGroup.join_all would deadlock SyncWithValidationInterfaceQueue.
+    ergon_regtest::Stop();
+#endif
+
     // After everything has been shut down, but before things get flushed, stop
     // the CScheduler/checkqueue threadGroup
     threadGroup.interrupt_all();
@@ -428,6 +438,13 @@ void SetupServerArgs() {
                  "Execute command when the best block changes (%s in cmd is "
                  "replaced by block hash)",
                  false, OptionsCategory::OPTIONS);
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+    gArgs.AddArg("-chronikupstreamregtest",
+                 "Enable experimental bounded Chronik upstream service on "
+                 "local regtest only (unpruned, height <= 2000, plugins OFF; "
+                 "default: 0; ephemeral loopback HTTP port logged at startup)",
+                 false, OptionsCategory::OPTIONS);
+#endif
 #ifdef ENABLE_CHRONIK_OBSERVER
     gArgs.AddArg("-chronikobserver",
                  "Enable volatile block observation on local regtest "
@@ -1652,6 +1669,14 @@ bool AppInitParameterInteraction(Config &config) {
     const CChainParams &chainparams = config.GetChainParams();
     // Step 2: parameter interactions
 
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+    if (gArgs.GetBoolArg("-chronikupstreamregtest", false) &&
+        (chainparams.NetworkIDString() != CBaseChainParams::REGTEST ||
+         gArgs.GetArg("-prune", 0) != 0)) {
+        return InitError("-chronikupstreamregtest requires unpruned local regtest");
+    }
+#endif
+
 #ifdef ENABLE_CHRONIK_OBSERVER
     const int64_t chronik_observer_failpoint =
         gArgs.GetArg("-chronikobserverfailpoint", 0);
@@ -2706,6 +2731,19 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
     }
 
     // Step 12: start node
+
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+    if (gArgs.GetBoolArg("-chronikupstreamregtest", false)) {
+        // ThreadImport owns reindex/import and native mempool restoration.
+        // Do not open an index against a pre-import tip or an empty stand-in
+        // mempool. No native lock is held during this optional wait or startup.
+        while (!g_mempool.IsLoaded() && !ShutdownRequested())
+            MilliSleep(50);
+        if (ShutdownRequested())
+            return false;
+        ergon_regtest::Start(config);
+    }
+#endif
 
     //// Ensure g_best_block (used by mining RPC) is initialized
     {

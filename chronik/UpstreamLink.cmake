@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 The Ergon developers
-# Dormant build/link integration. There is no runtime option or init hook.
+# Ordinary link builds are dormant. A separate default-OFF regtest profile owns
+# the bounded experimental runtime; this is not general daemon admission.
 
 if(CMAKE_VERSION VERSION_LESS "3.20")
     message(FATAL_ERROR "Upstream Chronik link integration requires CMake 3.20+")
 endif()
 if(WIN32)
     message(FATAL_ERROR "The upstream link profile is not yet validated on Windows")
+endif()
+if(BUILD_CHRONIK_UPSTREAM_REGTEST AND BUILD_BITCOIN_QT)
+    message(FATAL_ERROR "Experimental regtest service requires Qt OFF")
 endif()
 if(BUILD_CHRONIK_OBSERVER)
     message(FATAL_ERROR "Upstream link and the older observer are separate profiles")
@@ -86,6 +90,9 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         chronik/chronik-db/src/mem/mempool.rs
         tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py
         src/test/main.cpp)
+    list(APPEND _identity_inputs CMakeLists.txt src/init.cpp
+        chronik/chronik-cpp/ergon_regtest_service.h
+        chronik/chronik-cpp/ergon_regtest_service.cpp)
     if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
         list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs
             chronik/chronik-plugin-impl/python/upstream/script.py
@@ -116,7 +123,7 @@ add_custom_target(chronik_upstream_rust_build
         --manifest-path "${CMAKE_SOURCE_DIR}/chronik/Cargo.toml"
         --package chronik_lib --no-default-features ${_upstream_features} --locked --offline -j2
     BYPRODUCTS "${_upstream_archive}" ${_upstream_generated}
-    COMMENT "Building the real upstream indexer and server (runtime admission closed)"
+    COMMENT "Building the real upstream indexer and server (runtime opt-in separately governed)"
     USES_TERMINAL VERBATIM)
 set_source_files_properties(${_upstream_generated} PROPERTIES GENERATED TRUE)
 add_library(chronik_upstream_native OBJECT
@@ -153,6 +160,14 @@ endif()
 endfunction()
 
 ergon_link_upstream_chronik(bitcoind)
+if(BUILD_CHRONIK_UPSTREAM_REGTEST)
+    target_sources(chronik_upstream_native PRIVATE
+        "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_regtest_service.cpp")
+    target_include_directories(server PRIVATE "${CMAKE_SOURCE_DIR}/chronik")
+    target_compile_definitions(server PRIVATE ENABLE_CHRONIK_UPSTREAM_REGTEST=1)
+    target_include_directories(bitcoind PRIVATE
+        "${CMAKE_SOURCE_DIR}/chronik" "${CHRONIK_UPSTREAM_TARGET_DIR}/cxxbridge")
+endif()
 if(TARGET test_bitcoin)
     ergon_link_upstream_chronik(test_bitcoin)
     target_sources(test_bitcoin PRIVATE
@@ -160,6 +175,10 @@ if(TARGET test_bitcoin)
     if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         target_sources(test_bitcoin PRIVATE
             "${CMAKE_SOURCE_DIR}/src/test/chronik_upstream_archival_tests.cpp")
+    endif()
+    if(BUILD_CHRONIK_UPSTREAM_REGTEST)
+        target_sources(test_bitcoin PRIVATE
+            "${CMAKE_SOURCE_DIR}/src/test/chronik_upstream_regtest_tests.cpp")
     endif()
     target_include_directories(test_bitcoin PRIVATE
         "${CMAKE_SOURCE_DIR}/chronik" "${CHRONIK_UPSTREAM_TARGET_DIR}/cxxbridge")

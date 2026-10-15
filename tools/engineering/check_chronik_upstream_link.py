@@ -208,6 +208,9 @@ def validate(root: Path) -> HistoricalView:
     from check_chronik_plugin_fixtures import MANIFEST as PLUGIN_MANIFEST, TECHNICAL as PLUGIN_TECHNICAL
     from check_chronik_plugin_fixtures import before_identity as plugin_parent_identity
     plugin_layer = (root / PLUGIN_MANIFEST).exists()
+    from check_chronik_regtest_service import MANIFEST as SERVICE_MANIFEST, TECHNICAL as SERVICE_TECHNICAL
+    from check_chronik_regtest_service import before_identity as service_parent_identity
+    service_layer = (root / SERVICE_MANIFEST).exists()
     read_layer = validate_reads(root) if (root / READ_MANIFEST).exists() else frozenset()
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == PARENT_TREE,
             "public parent tree mismatch or missing history")
@@ -225,6 +228,7 @@ def validate(root: Path) -> HistoricalView:
         path = public_path(row["path"])
         observed = (read_parent_identity(root, path) if read_layer and path in READ_TECHNICAL else
                     plugin_parent_identity(root, path) if plugin_layer and path in PLUGIN_TECHNICAL else
+                    service_parent_identity(root, path) if service_layer and path in SERVICE_TECHNICAL else
                     current_identity(root, path))
         require(observed == row["after"], "technical postimage drift: " + path)
         tree_entry = git(root, "ls-tree", PARENT, "--", path).decode().strip()
@@ -288,7 +292,7 @@ def validate(root: Path) -> HistoricalView:
                 "additional registry tuple mismatch")
     host = (root / "chronik/chronik-cpp/ergon_node_access.h").read_text()
     require("inline bool upstream_runtime_permitted(const ErgonNodeAccess &) noexcept {\n    return false;\n}" in host,
-            "daemon admission is not unconditionally closed")
+            "ordinary upstream setup admission is not unconditionally closed")
     cmake = (root / "CMakeLists.txt").read_text()
     for flag in ("BUILD_CHRONIK_UPSTREAM_LINK", "BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS"):
         require(re.search(r"option\(" + flag + r"\s+\"[^\"]+\"\s+OFF\s*\)", cmake), "compile default is not OFF")
@@ -307,7 +311,7 @@ def main():
     args = parser.parse_args()
     try:
         validate(args.repository_root)
-        print("PASS: 34 exact host adaptations; historical donor preimages preserved; daemon admission closed")
+        print("PASS: 34 historical host adaptations preserved; current finite successors checked; ordinary upstream setup closed")
     except (ValueError, OSError, KeyError, subprocess.SubprocessError) as error:
         print("FAIL: upstream source-identity gate: " + type(error).__name__, file=sys.stderr)
         return 1

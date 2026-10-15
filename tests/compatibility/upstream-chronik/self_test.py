@@ -54,7 +54,8 @@ class Contract(unittest.TestCase):
         self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
         for profile, groups, count, assertions, processes in (
                 ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 48, 2385, 100),
-                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70)):
+                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70),
+                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70)):
             streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]
             with patch.object(runner, "execute", side_effect=streams):
                 result = runner.repeat(Path("synthetic"), Path("unused"), (), 10, profile)
@@ -128,7 +129,7 @@ class Contract(unittest.TestCase):
             source, build = root / "source", root / "build"
             source.mkdir()
             build.mkdir()
-            for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS:
+            for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.SERVICE_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS:
                 target = source / p
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(b"synthetic\n")
@@ -139,7 +140,7 @@ class Contract(unittest.TestCase):
             embedding = runner.digest((version + "\n" + runner.digest(executable.read_bytes()) + "\n" +
                 runner.digest(library.read_bytes()) + "\n").encode())
             adapter = "ergon-archival-adapter/v1\n" + "".join(p + ":" + runner.digest((source / p).read_bytes()) + "\n"
-                for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS)
+                for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.SERVICE_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS)
             adapter += "python-profile:" + embedding + "\n"
             ninja = ("CHRONIK_ERGON_PYTHON_VERSION=" + version + " CHRONIK_ERGON_PYTHON_ID=" + embedding +
                      " CHRONIK_ERGON_ADAPTER_ID=" + runner.digest(adapter.encode()) + " --features plugins\n")

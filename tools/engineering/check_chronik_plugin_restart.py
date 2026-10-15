@@ -56,8 +56,17 @@ def before_identity(root, path):
     return identity(git(root, "show", PARENT + ":" + path), entry[0]) if entry else None
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_regtest_service import MANIFEST as SERVICE_MANIFEST, PARENT as SERVICE_PARENT, TECHNICAL as SERVICE_TECHNICAL
+    from check_chronik_regtest_service import validate as validate_service
+    if not historical and (root / SERVICE_MANIFEST).exists():
+        return validate_service(root) | validate(root, historical=True)
+    def observed(path):
+        if not historical:
+            return current_identity(root, path)
+        entry = git(root, "ls-tree", SERVICE_PARENT, "--", path).decode().split()
+        return identity(git(root, "show", SERVICE_PARENT + ":" + path), entry[0])
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "restart parent identity/ancestry drift")
     record = load_json(root / MANIFEST)
@@ -72,12 +81,16 @@ def validate(root):
         require(set(row) == {"path", "before", "after", "provenance", "reachability"}
                 and row["provenance"] == "PUBLIC+A1/MIT" and row["reachability"] == "opt-in-build-or-test-only"
                 and row["before"] == before_identity(root, row["path"])
-                and row["after"] == current_identity(root, row["path"])
+                and row["after"] == observed(row["path"])
                 and row["before"] != row["after"] and row["after"]["mode"] == "100644", "restart pre/postimage drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, SERVICE_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected restart technical/policy path")
-    driver = ast.parse((root / "tests/compatibility/upstream-chronik/plugin_restart.py").read_text())
+    driver_path = "tests/compatibility/upstream-chronik/plugin_restart.py"
+    driver = ast.parse(git(root, "show", SERVICE_PARENT + ":" + driver_path).decode()
+                       if historical else (root / driver_path).read_text())
     validate_phases(driver)
     record_path = "docs/engineering/changes/ergon-change-0048.json"
     change = load_json(root / record_path)
@@ -90,7 +103,7 @@ def validate(root):
         return None if value is None else {("git_blob_sha1" if k == "git_blob" else k): v for k, v in value.items()}
     for row in change["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]) and
+                governed(row["after"]) == observed(row["path"]) and
                 row["after"]["mode"] == "100644", "restart policy byte/mode drift")
     # No donor, dependency, native production, default or earlier-record edits.
     for path in ("CMakeLists.txt", "chronik/Cargo.lock", "chronik/Cargo.toml",
@@ -104,7 +117,9 @@ def validate(root):
                  "docs/engineering/changes/ergon-change-0047.json",
                  "docs/engineering/chronik/upstream-plugin-fixtures-v1.json",
                  "docs/engineering/chronik/upstream-plugin-helpers-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "restart changed frozen history/default/native/donor input")
+        require(observed(path) == before_identity(root, path), "restart changed frozen history/default/native/donor input")
+        if historical and path not in SERVICE_TECHNICAL:
+            require(current_identity(root, path) == observed(path), "successor changed unreviewed frozen restart input")
     return TECHNICAL | POLICY
 
 
@@ -113,4 +128,4 @@ if __name__ == "__main__":
     parser.add_argument("command", choices=["check"])
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[2])
     validate(parser.parse_args().repository_root)
-    print("PASS: finite public plugin restart/rebuild witnesses; no daemon admission or proof promotion")
+    print("PASS: historical plugin restart/rebuild witnesses and finite successors; no production or proof promotion")

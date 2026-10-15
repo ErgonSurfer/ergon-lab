@@ -807,9 +807,7 @@ impl ArchivalProbe {
             server::{ChronikServer, ChronikServerParams, ChronikSettings},
             subscription_limits::SubscriptionLimiter,
         };
-        let reservation = std::net::TcpListener::bind("127.0.0.1:0")?;
-        let address = reservation.local_addr()?;
-        drop(reservation);
+        let address = "127.0.0.1:0".parse()?;
         let runtime = crate::ergon_runtime::JoinedRuntime::new(
             tokio::runtime::Builder::new_multi_thread()
                 .worker_threads(2)
@@ -839,6 +837,7 @@ impl ArchivalProbe {
                 subscription_limiter: SubscriptionLimiter::new_ref(8, 8),
             })?
         };
+        let port = server.single_bound_addr()?.port();
         let gate = self.request_gate.clone();
         let node = self.node.clone();
         let latch = self.response_latch.clone();
@@ -851,7 +850,7 @@ impl ArchivalProbe {
                 .await
         });
         self.service = Some(HttpFixture { runtime, task });
-        Ok(address.port())
+        Ok(port)
     }
     pub fn stop_http_fixture(&mut self) -> Result<()> {
         self.request_gate.close();

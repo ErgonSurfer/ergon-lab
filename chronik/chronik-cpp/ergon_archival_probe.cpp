@@ -82,7 +82,7 @@ void archival_reconcile_guard(const chronik_bridge::ErgonNodeAccess &node) {
     AssertLockHeld(cs_main);
     AssertLockHeld(node.mempool.cs);
     if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
-        fPruneMode || ShutdownRequested() || node.index_failed.load() ||
+        fPruneMode || node.index_failed.load() ||
         !ChainActive().GetSourceGeneration() ||
         !node.mempool.GetSourceGeneration() || !pcoinsTip || !pcoinsdbview ||
         ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
@@ -114,6 +114,11 @@ bool reconcile_captured(ArchivalProbe &probe,
     };
     try {
         for (int attempt = 0; attempt < 4; ++attempt) {
+            // Shutdown is cancellation, not persistent index corruption. The
+            // owner still retains native resources until worker/HTTP join.
+            // current() refuses publication if shutdown races this attempt.
+            if (ShutdownRequested())
+                return false;
             if (stats)
                 ++stats->attempts;
             const auto retained = probe.capture_inventory(node);

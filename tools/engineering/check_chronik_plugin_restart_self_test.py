@@ -27,7 +27,12 @@ class Contract(unittest.TestCase):
             gate.validate_phases(ast.parse("PHASES = " + repr(valid) + "\nPHASES = " + repr(valid)))
 
     def test_exact_layer(self):
-        self.assertEqual(gate.validate(Path(__file__).resolve().parents[2]), gate.TECHNICAL | gate.POLICY)
+        root = Path(__file__).resolve().parents[2]
+        from check_chronik_regtest_service import MANIFEST, TECHNICAL, POLICY
+        expected = gate.TECHNICAL | gate.POLICY
+        if (root / MANIFEST).exists():
+            expected |= TECHNICAL | POLICY
+        self.assertEqual(gate.validate(root), expected)
 
     def test_manifest_rejections(self):
         root = Path(__file__).resolve().parents[2]

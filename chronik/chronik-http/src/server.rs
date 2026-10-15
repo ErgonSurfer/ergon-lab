@@ -110,6 +110,17 @@ pub enum ChronikServerError {
 use self::ChronikServerError::*;
 
 impl ChronikServer {
+    /// Actual bound address for a single-listener host profile. Binding port
+    /// zero stays atomic: callers must not reserve/drop/rebind a socket.
+    pub fn single_bound_addr(&self) -> std::io::Result<SocketAddr> {
+        if self.tcp_listeners.len() != 1 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput, "Expected one HTTP listener",
+            ));
+        }
+        self.tcp_listeners[0].local_addr()
+    }
+
     /// Binds the Chronik server on the given hosts
     pub fn setup(params: ChronikServerParams) -> Result<Self> {
         let tcp_listeners = params
