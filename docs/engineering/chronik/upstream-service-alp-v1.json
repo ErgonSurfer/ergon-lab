@@ -1,0 +1,110 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-upstream-service-alp/v1",
+  "license": "MIT",
+  "public_parent": {
+    "commit": "6901b93780bc976fd110353efbe30167bc7c8184",
+    "tree": "7a6e254b80b089ef18098a10ff267e09b66454b6"
+  },
+  "contract": {
+    "parent_status": "signed-local-review-checkpoint-not-assumed-public-main",
+    "compile_default": false,
+    "runtime_default": false,
+    "plugins": false,
+    "network": "bounded-unpruned-regtest",
+    "maximum_height": 2000,
+    "scope": "test-only-no-production-source-or-dependency-change",
+    "template_case": "chronik_upstream_regtest_tests/export_upstream_alp_templates",
+    "template_assertions": 4,
+    "template_source": "existing-upstream-ALP-builders-through-fixture_alp_script",
+    "placeholder": "exact-one-32-byte-0x42-token-id-replaced-with-native-genesis-txid-little-endian",
+    "native_value": "zero-inputs-outputs-fees-not-funded-token-economics",
+    "synthetic_fee_priority_fixoshis_per_transaction": 1000000,
+    "cycle": [
+      "GENESIS-1000-plus-baton",
+      "MINT-500-plus-baton",
+      "SEND-1400-and-100",
+      "BURN-100"
+    ],
+    "oracle": "exact-native-first-seen-wire-colors-spenders-history-token-utxos-and-baton",
+    "lifecycle": [
+      "pending",
+      "pending-process-reopen",
+      "confirm",
+      "disconnect",
+      "reconsider",
+      "confirmed-process-reopen"
+    ],
+    "negative_controls": [
+      "native-accepted-mint-without-baton-diagnosed-invalid",
+      "native-accepted-truncated-upstream-metadata-diagnosed-malformed",
+      "native-mining-continues"
+    ],
+    "retained_matrices": "unchanged-selections-assertions-60-second-deadlines-and-cleanup",
+    "retained_stop_timeout": "unresolved-not-PR-ready-no-oracle-relaxation",
+    "consensus_change": false,
+    "incoming_evidence": [],
+    "knowledge_status": "Open Question",
+    "evidence_ceiling": "record-review-only"
+  },
+  "files": [
+    {
+      "path": "src/test/chronik_upstream_regtest_tests.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 10090,
+        "git_blob_sha1": "799afe1532fb0a4f4c0653af2ab4511991087ae0",
+        "sha256": "138e17efacdac7202130e0fa78228b553cd9a438d8384585b426fa7cd36ced48"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10797,
+        "git_blob_sha1": "7ad8c1506af15660400f6a4da7235c196e90b190",
+        "sha256": "9fdddcd573a47cce1a8d234e069dab0f66bdc93d65df78ab0988051b760d1975"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "test-only-no-daemon-runtime-change"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/alp_service.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 22403,
+        "git_blob_sha1": "c1e46b28b8fb47f7363634df93e7229a6c6085ef",
+        "sha256": "fe168a4dd2268bd7f9fbf77149b2949e0acfdfec9b0cf402672de34fd31f1df1"
+      },
+      "provenance": "A1/MIT",
+      "reachability": "test-only-no-daemon-runtime-change"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/alp_service_self_test.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9595,
+        "git_blob_sha1": "8730af9ea94d2a28b61b5f029e252ae588a8cc0e",
+        "sha256": "e1e454f7811ac85e7e110f2e639fe538ed5ad7a7f56244c630ff892dc3d517d1"
+      },
+      "provenance": "A1/MIT",
+      "reachability": "test-only-no-daemon-runtime-change"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 30947,
+        "git_blob_sha1": "090a615002799f02f018365304558ac2c972dbfc",
+        "sha256": "f1cc0afdeb1522c5b0cf77e4bad6275afdf2aa8941327a2cc42c6c9fe43d3e63"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 31730,
+        "git_blob_sha1": "27d028b042150473bdddbce06052e202ce61be86",
+        "sha256": "8a3e1e2070b2349d7ae5c3e8e24d367cb4d394a634d5a1bc4f62eaa8d82de518"
+      },
+      "provenance": "PUBLIC+A1/MIT",
+      "reachability": "test-only-no-daemon-runtime-change"
+    }
+  ]
+}

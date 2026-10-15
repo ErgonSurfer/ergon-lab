@@ -12,7 +12,9 @@ class Contract(unittest.TestCase):
 
     def test_finite_layer(self):
         from check_chronik_service_startup import TECHNICAL, POLICY
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY)
+        expected = gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY
+        from check_chronik_service_alp import TECHNICAL, POLICY
+        self.assertEqual(gate.validate(self.root), expected | TECHNICAL | POLICY)
 
     def test_contract_and_inventory_rejections(self):
         original = gate.load_json

@@ -25,6 +25,7 @@ on:
       - "docs/engineering/changes/ergon-change-0049.json"
       - "docs/engineering/changes/ergon-change-0050.json"
       - "docs/engineering/changes/ergon-change-0051.json"
+      - "docs/engineering/changes/ergon-change-0052.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -51,6 +52,7 @@ on:
       - "docs/engineering/changes/ergon-change-0049.json"
       - "docs/engineering/changes/ergon-change-0050.json"
       - "docs/engineering/changes/ergon-change-0051.json"
+      - "docs/engineering/changes/ergon-change-0052.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -102,6 +104,9 @@ jobs:
           python3 -B tools/engineering/check_chronik_service_startup.py check
           python3 -B tools/engineering/check_chronik_service_startup_self_test.py
           python3 -B tests/compatibility/upstream-chronik/regtest_service_self_test.py
+          python3 -B tools/engineering/check_chronik_service_alp.py check
+          python3 -B tools/engineering/check_chronik_service_alp_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/alp_service_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -196,6 +201,16 @@ jobs:
             --build-root "$RUNNER_TEMP/ergon-upstream-build" \
             --work-parent "$RUNNER_TEMP/ergon-regtest-service-work" \
             --repetitions 3 --report "$RUNNER_TEMP/ergon-regtest-service.json"
+
+      - name: Real daemon ALP cycle through the upstream indexer and router
+        if: matrix.profile == 'regtest'
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-regtest-alp-work"
+          python3 -B tests/compatibility/upstream-chronik/alp_service.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --build-root "$RUNNER_TEMP/ergon-upstream-build" \
+            --work-parent "$RUNNER_TEMP/ergon-regtest-alp-work" \
+            --repetitions 3 --report "$RUNNER_TEMP/ergon-regtest-alp.json"
 
       - name: Mine and stop with Chronik runtime default OFF
         shell: bash

@@ -10,12 +10,14 @@
 #include <fs.h>
 #include <fstream>
 #include <future>
+#include <iostream>
 #include <primitives/block.h>
 #include <script/script.h>
 #include <shutdown.h>
 #include <test/setup_common.h>
 #include <txmempool.h>
 #include <util/system.h>
+#include <util/strencodings.h>
 #include <validation.h>
 #include <validationinterface.h>
 #include <thread>
@@ -47,6 +49,20 @@ bool WaitListener(const ergon_regtest::OwnedService &owner) {
 }
 
 BOOST_FIXTURE_TEST_SUITE(chronik_upstream_regtest_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(export_upstream_alp_templates) {
+    // Test-only transport of the existing upstream builder output. The Python
+    // daemon driver substitutes this one synthetic token-id placeholder; it
+    // does not implement another ALP builder, parser or validator.
+    std::array<uint8_t, 32> placeholder;
+    placeholder.fill(0x42);
+    for (uint8_t op = 0; op < 4; ++op) {
+        const auto script = ergon_archival::fixture_alp_script(op, placeholder);
+        BOOST_REQUIRE(!script.empty());
+        std::cout << "Ergon ALP template " << unsigned(op) << " "
+                  << HexStr(script.begin(), script.end()) << std::endl;
+    }
+}
+
 BOOST_AUTO_TEST_CASE(service_owned_startup_reconciles_progress_and_reorg) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     const auto directory = GetDataDir() / "service-owned-progress";
