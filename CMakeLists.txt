@@ -100,9 +100,16 @@ if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS AND NOT BUILD_CHRONIK_UPSTREAM_ARCHIVAL_T
 endif()
 option(BUILD_CHRONIK_UPSTREAM_REGTEST
 	"Enable experimental bounded upstream service in bitcoind regtest only" OFF)
+option(BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+	"Allow only the public synthetic upstream plugin in the regtest service" OFF)
+if(BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS AND
+	(NOT BUILD_CHRONIK_UPSTREAM_REGTEST OR NOT BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS))
+	message(FATAL_ERROR "Regtest plugins require the regtest service and plugin fixture profiles")
+endif()
 if(BUILD_CHRONIK_UPSTREAM_REGTEST)
-	if(NOT BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS OR BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS OR BUILD_BITCOIN_QT)
-		message(FATAL_ERROR "Regtest service requires archival adapters, plugins OFF and Qt OFF")
+	if(NOT BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS OR BUILD_BITCOIN_QT OR
+		(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS AND NOT BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS))
+		message(FATAL_ERROR "Regtest service requires archival adapters, Qt OFF and an explicit service-plugin build opt-in")
 	endif()
 endif()
 

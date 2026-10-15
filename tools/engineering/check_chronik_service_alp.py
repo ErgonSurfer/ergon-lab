@@ -47,8 +47,17 @@ def before_identity(root, path):
     return identity(git(root, "show", PARENT + ":" + path), row[0]) if row else None
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_service_plugins import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT
+    from check_chronik_service_plugins import TECHNICAL as NEXT_TECHNICAL
+    from check_chronik_service_plugins import validate as validate_next
+    if not historical and (root / NEXT_MANIFEST).exists():
+        return validate_next(root) | validate(root, historical=True)
+    def observed(path):
+        if not historical: return current_identity(root, path)
+        row = git(root, "ls-tree", NEXT_PARENT, "--", path).decode().split()
+        return identity(git(root, "show", NEXT_PARENT + ":" + path), row[0])
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "ALP parent drift")
     manifest = load_json(root / MANIFEST)
@@ -61,12 +70,14 @@ def validate(root):
     for row in manifest["files"]:
         expected_before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
-                row["before"] == expected_before and row["after"] == current_identity(root, row["path"]) and
+                row["before"] == expected_before and row["after"] == observed(row["path"]) and
                 row["before"] != row["after"] and row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if expected_before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == "test-only-no-daemon-runtime-change", "ALP source drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, NEXT_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected ALP path")
     record = load_json(root / RECORD)
     from check_change import ValidationError, validate as validate_change
@@ -82,7 +93,7 @@ def validate(root):
         return None if v is None else {("git_blob_sha1" if k == "git_blob" else k): value for k, value in v.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]), "ALP policy drift")
+                governed(row["after"]) == observed(row["path"]), "ALP policy drift")
     driver = ast.parse((root / "tests/compatibility/upstream-chronik/alp_service.py").read_text())
     constants = {t.id: ast.literal_eval(n.value) for n in driver.body if isinstance(n, ast.Assign)
                  for t in n.targets if isinstance(t, ast.Name) and t.id in ("TEMPLATE_CASE", "TEMPLATE_ASSERTIONS")}
@@ -98,7 +109,9 @@ def validate(root):
                  "tests/compatibility/upstream-chronik/regtest_service.py",
                  "docs/engineering/changes/ergon-change-0051.json",
                  "docs/engineering/chronik/upstream-service-startup-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "ALP changed frozen production/history/input")
+        require(observed(path) == before_identity(root, path), "ALP changed frozen production/history/input")
+        if historical and path not in NEXT_TECHNICAL:
+            require(current_identity(root, path) == observed(path), "successor changed frozen ALP input")
     return TECHNICAL | POLICY
 
 

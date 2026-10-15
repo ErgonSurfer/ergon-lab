@@ -58,6 +58,8 @@ def before_identity(root, path):
 
 def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_service_plugins import MANIFEST as PLUGINS_MANIFEST, TECHNICAL as PLUGINS_TECHNICAL
+    plugin_successor = PLUGINS_TECHNICAL if (root / PLUGINS_MANIFEST).exists() else frozenset()
     from check_chronik_service_alp import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT
     from check_chronik_service_alp import validate as validate_next
     if not historical and (root / NEXT_MANIFEST).exists():
@@ -116,7 +118,8 @@ def validate(root, historical=False):
                  "docs/engineering/changes/ergon-change-0049.json", "docs/engineering/changes/ergon-change-0050.json",
                  "docs/engineering/chronik/upstream-regtest-service-v1.json",
                  "docs/engineering/chronik/upstream-service-recovery-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "startup changed frozen authority/history/input")
+        require((observed(path) if historical and path in plugin_successor else current_identity(root, path))
+                == before_identity(root, path), "startup changed frozen authority/history/input")
     return TECHNICAL | POLICY
 
 

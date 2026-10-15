@@ -441,8 +441,14 @@ void SetupServerArgs() {
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
     gArgs.AddArg("-chronikupstreamregtest",
                  "Enable experimental bounded Chronik upstream service on "
-                 "local regtest only (unpruned, height <= 2000, plugins OFF; "
+                 "local regtest only (unpruned, height <= 2000, plugins default OFF; "
                  "default: 0; ephemeral loopback HTTP port logged at startup)",
+                 false, OptionsCategory::OPTIONS);
+#endif
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+    gArgs.AddArg("-chronikupstreamregtestplugins",
+                 "Load only the built-in public synthetic Chronik plugin; "
+                 "requires -chronikupstreamregtest (default: 0; not arbitrary plugin admission)",
                  false, OptionsCategory::OPTIONS);
 #endif
 #ifdef ENABLE_CHRONIK_OBSERVER
@@ -1668,6 +1674,13 @@ bool AppInitBasicSetup() {
 bool AppInitParameterInteraction(Config &config) {
     const CChainParams &chainparams = config.GetChainParams();
     // Step 2: parameter interactions
+
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+    if (gArgs.GetBoolArg("-chronikupstreamregtestplugins", false) &&
+        !gArgs.GetBoolArg("-chronikupstreamregtest", false)) {
+        return InitError("-chronikupstreamregtestplugins requires -chronikupstreamregtest");
+    }
+#endif
 
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
     if (gArgs.GetBoolArg("-chronikupstreamregtest", false) &&

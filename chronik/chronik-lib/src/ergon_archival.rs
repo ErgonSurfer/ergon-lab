@@ -252,6 +252,8 @@ mod ffi {
         fn http_alp_parse_failure_matches(body: &[u8], id: [u8; 32]) -> Result<bool>;
         fn open_archival(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
         fn open_regtest_service(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
+        fn open_regtest_service_with_plugins(root: &str, node: &ErgonNodeAccess,
+                                             plugins: &PluginFixture) -> Result<Box<ArchivalProbe>>;
         fn open_regtest_service_with_hook(root: &str, node: &ErgonNodeAccess,
                                          hook: &StartupHook) -> Result<Box<ArchivalProbe>>;
         fn seed_service_startup(self: &mut ArchivalProbe, source: &CapturedSource,
@@ -631,6 +633,12 @@ pub fn open_archival(root: &str, access: &native::ErgonNodeAccess) -> Result<Box
 }
 pub fn open_regtest_service(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
     open_archival_impl(root, access, None, None, true)
+}
+pub fn open_regtest_service_with_plugins(
+    root: &str, access: &native::ErgonNodeAccess, plugins: &PluginFixture,
+) -> Result<Box<ArchivalProbe>> {
+    plugins.check()?;
+    open_archival_impl(root, access, None, Some(plugins), true)
 }
 pub fn open_regtest_service_with_hook(root: &str, access: &native::ErgonNodeAccess,
                                     hook: &ffi::StartupHook) -> Result<Box<ArchivalProbe>> {

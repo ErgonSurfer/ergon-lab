@@ -54,6 +54,7 @@ class Contract(unittest.TestCase):
         self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
         for profile, groups, count, assertions, processes in (
                 ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 48, 2385, 100),
+                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 48, 2385, 100),
                 ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70),
                 ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70)):
             streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]

@@ -18,7 +18,8 @@ class OwnedService {
     std::unique_ptr<Impl> impl;
   public:
     // Deterministic native fixture latch, never a daemon option.
-    explicit OwnedService(const Config &config, std::function<void()> before_open = {});
+    explicit OwnedService(const Config &config, std::function<void()> before_open = {},
+                          bool public_plugin = false);
     ~OwnedService();
     OwnedService(const OwnedService &) = delete;
     OwnedService &operator=(const OwnedService &) = delete;

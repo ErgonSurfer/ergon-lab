@@ -14,6 +14,8 @@ class Contract(unittest.TestCase):
         from check_chronik_service_startup import TECHNICAL, POLICY
         expected = gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY
         from check_chronik_service_alp import TECHNICAL, POLICY
+        expected |= TECHNICAL | POLICY
+        from check_chronik_service_plugins import TECHNICAL, POLICY
         self.assertEqual(gate.validate(self.root), expected | TECHNICAL | POLICY)
 
     def test_contract_and_inventory_rejections(self):
@@ -36,7 +38,7 @@ class Contract(unittest.TestCase):
 
     def test_frozen_input_rejections(self):
         original = gate.current_identity
-        for path in ("CMakeLists.txt", "src/validation.cpp", "chronik/Cargo.lock",
+        for path in ("src/validation.cpp", "chronik/Cargo.lock",
                      "docs/engineering/changes/ergon-change-0049.json"):
             with patch.object(gate, "current_identity", side_effect=lambda r, p:
                 dict(original(r, p), sha256="0" * 64) if p == path else original(r, p)):

@@ -199,6 +199,34 @@ BOOST_AUTO_TEST_CASE(service_unknown_or_partial_lease_is_not_adopted) {
     BOOST_CHECK(fs::is_regular_file(directory / "probe.lock"));
 }
 
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+BOOST_AUTO_TEST_CASE(asynchronous_owner_loads_public_plugin_and_joins) {
+    LoadedRestore loaded;
+    g_mempool.SetIsLoaded(true);
+    ReleaseLatch latch;
+    auto entered = latch.entered.get_future();
+    ergon_regtest::OwnedService owner(GetConfig(), [&] { latch.Block(); }, true);
+    BOOST_REQUIRE(entered.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+    const auto inputs = GetDataDir() / "chronik-upstream-regtest-plugin-inputs";
+    BOOST_CHECK(!fs::exists(inputs));
+    CreateAndProcessBlock({}, CScript() << OP_1);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    latch.Resume();
+    BOOST_REQUIRE(WaitListener(owner));
+    BOOST_CHECK(!owner.Status().failed);
+    BOOST_CHECK(fs::is_regular_file(inputs / "ergon_public_probe.py"));
+    BOOST_CHECK(fs::is_regular_file(inputs / "plugins.toml"));
+    BOOST_CHECK(!fs::exists(inputs / "__pycache__"));
+    owner.Stop();
+    BOOST_CHECK(owner.Status().joined);
+    BOOST_CHECK_EQUAL(owner.Status().port, 0);
+    BOOST_CHECK(!fs::exists(GetDataDir() / "chronik-upstream-regtest/probe.failed"));
+    std::ifstream identity((GetDataDir() / "chronik-upstream-regtest/ergon-identity.json").string());
+    const std::string raw((std::istreambuf_iterator<char>(identity)), std::istreambuf_iterator<char>());
+    BOOST_CHECK(raw.find("\"plugins\":true") != std::string::npos);
+}
+#endif
+
 BOOST_AUTO_TEST_CASE(shutdown_cancels_inflight_capture_without_failed_root) {
     const auto directory = GetDataDir() / "regtest-shutdown-capture";
     BOOST_REQUIRE(fs::create_directory(directory));

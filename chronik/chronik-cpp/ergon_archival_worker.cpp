@@ -46,12 +46,11 @@ struct ArchivalWorker::Impl final : CValidationInterface {
           before_disk(std::move(disk_hook)) {
         if (!capacity || capacity > 128)
             throw std::runtime_error("Invalid fixture callback budget");
-        if (regtest_service && plugins)
-            throw std::runtime_error("Regtest service plugins remain disabled");
         // Drain old fixture events before subscribing, never under cs_main.
         SyncWithValidationInterfaceQueue();
         probe = std::make_unique<rust::Box<ArchivalProbe>>(
-            regtest_service ? open_regtest_service(root, node)
+            regtest_service ? (plugins ? open_regtest_service_with_plugins(root, node, *plugins)
+                                      : open_regtest_service(root, node))
                 : plugins ? open_archival_with_plugins(root, node, *plugins)
                           : open_archival(root, node));
         gate =

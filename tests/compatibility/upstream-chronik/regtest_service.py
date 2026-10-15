@@ -123,8 +123,9 @@ def wait_for(check, timeout=30):
 
 
 class Daemon:
-    def __init__(self, binary, root, data, phase, enabled=True):
+    def __init__(self, binary, root, data, phase, enabled=True, *, public_plugin=False):
         self.data, self.root = data, root
+        self.public_plugin = public_plugin
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             self.rpc_port = reservation.getsockname()[1]
@@ -136,7 +137,8 @@ class Daemon:
             "-connect=0", "-dnsseed=0", "-discover=0", "-upnp=0", "-printtoconsole=1",
             "-acceptnonstdtxn=1", "-blockmintxfee=0",
             "-datadir=" + str(data), "-rpcbind=127.0.0.1", "-rpcallowip=127.0.0.1",
-            "-rpcport=" + str(self.rpc_port)] + (["-chronikupstreamregtest=1"] if enabled else []),
+            "-rpcport=" + str(self.rpc_port)] + (["-chronikupstreamregtest=1"] if enabled else []) +
+            (["-chronikupstreamregtestplugins=1"] if public_plugin else []),
             cwd=root, env=runner.environment(temporary), stdout=self.output,
             stderr=subprocess.STDOUT, start_new_session=True)
         self.port = None
@@ -162,7 +164,8 @@ class Daemon:
         if available:
             def port():
                 text = self.log.read_text()
-                matches = re.findall(r"Chronik upstream regtest listening=127\.0\.0\.1:([0-9]+) plugins=0", text)
+                matches = re.findall(r"Chronik upstream regtest listening=127\.0\.0\.1:([0-9]+) plugins=" +
+                                     str(int(self.public_plugin)) + r"\b", text)
                 runner.require(len(matches) <= 1, "ambiguous service listener")
                 return int(matches[0]) if matches else None
             self.port = wait_for(port)

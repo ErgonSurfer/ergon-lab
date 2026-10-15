@@ -22,13 +22,15 @@ namespace ergon_regtest {
 struct OwnedService::Impl {
     const Config &config;
     const std::function<void()> before_open;
+    const bool public_plugin;
     std::atomic<bool> cancel{false}, failed{false}, joined{false};
     std::atomic<uint16_t> port{0};
     std::mutex mutex, stop_mutex;
     std::condition_variable cv;
     std::thread thread;
-    Impl(const Config &value, std::function<void()> hook)
-        : config(value), before_open(std::move(hook)), thread([this] { Run(); }) {}
+    Impl(const Config &value, std::function<void()> hook, bool plugin)
+        : config(value), before_open(std::move(hook)), public_plugin(plugin),
+          thread([this] { Run(); }) {}
     bool Cancelled() const { return cancel.load() || ShutdownRequested(); }
     void Pause() {
         std::unique_lock<std::mutex> lock(mutex);
@@ -47,11 +49,28 @@ struct OwnedService::Impl {
             fs::create_directory(root);
             if (fs::canonical(root) != root || fs::is_symlink(root))
                 throw std::runtime_error("Redirected regtest service root");
-            // All worker/HTTP/DB users die before access, and before this
-            // owner can be joined. No arbitrary path or plugin configuration.
+            // Exactly one upstream context, on this startup thread. The fixed
+            // two-file fixture is checked BEFORE import on reopen. Never load
+            // arbitrary plugin paths, modes, or adopt incompatible index roots.
+            std::unique_ptr<rust::Box<ergon_archival::PluginFixture>> plugins;
+            if (public_plugin) {
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+                const auto inputs = GetDataDir() / "chronik-upstream-regtest-plugin-inputs";
+                const bool created = fs::create_directory(inputs);
+                if (fs::canonical(inputs) != inputs || fs::is_symlink(inputs))
+                    throw std::runtime_error("Redirected public plugin inputs");
+                plugins = std::make_unique<rust::Box<ergon_archival::PluginFixture>>(
+                    created ? ergon_archival::make_plugin_fixture(inputs.string(), 0)
+                            : ergon_archival::load_plugin_fixture(inputs.string(), 0));
+#else
+                throw std::runtime_error("Service plugin profile is not enabled");
+#endif
+            }
+            // Worker/HTTP/DB users die before access AND plugin owner, and
+            // before this thread is joined. No Python finalization/reinit.
             chronik_bridge::ErgonNodeAccess access(config, g_mempool);
             ergon_archival::ArchivalWorker worker(fs::canonical(root).string(), access,
-                128, {}, {}, {}, {}, nullptr, true);
+                128, {}, {}, {}, {}, plugins ? &**plugins : nullptr, true);
             uint16_t listening = 0;
             while (!Cancelled() && !listening) {
                 listening = worker.TryStartRegtestHttp();
@@ -59,7 +78,8 @@ struct OwnedService::Impl {
             }
             if (listening && !Cancelled()) {
                 port.store(listening);
-                LogPrintf("Chronik upstream regtest listening=127.0.0.1:%u plugins=0\n", listening);
+                LogPrintf("Chronik upstream regtest listening=127.0.0.1:%u plugins=%u\n",
+                          listening, public_plugin ? 1 : 0);
                 while (!Cancelled() && !worker.Status().failed)
                     Pause();
             }
@@ -87,8 +107,8 @@ struct OwnedService::Impl {
         joined.store(true);
     }
 };
-OwnedService::OwnedService(const Config &config, std::function<void()> hook)
-    : impl(std::make_unique<Impl>(config, std::move(hook))) {}
+OwnedService::OwnedService(const Config &config, std::function<void()> hook, bool plugin)
+    : impl(std::make_unique<Impl>(config, std::move(hook), plugin)) {}
 OwnedService::~OwnedService() { Stop(); }
 ServiceStatus OwnedService::Status() const {
     return {impl->failed.load(), impl->cancel.load(), impl->joined.load(), impl->port.load()};
@@ -98,7 +118,11 @@ namespace { std::unique_ptr<OwnedService> service; }
 void Start(const Config &config) noexcept {
     if (!gArgs.GetBoolArg("-chronikupstreamregtest", false)) return;
     try {
-        if (!service) service = std::make_unique<OwnedService>(config);
+        bool plugin = false;
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+        plugin = gArgs.GetBoolArg("-chronikupstreamregtestplugins", false);
+#endif
+        if (!service) service = std::make_unique<OwnedService>(config, std::function<void()>{}, plugin);
     } catch (...) {
         LogPrintf("Chronik upstream regtest unavailable node_continues=1\n");
     }

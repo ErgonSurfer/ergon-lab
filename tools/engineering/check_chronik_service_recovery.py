@@ -53,6 +53,8 @@ def before_identity(root, path):
 
 def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_service_plugins import MANIFEST as PLUGINS_MANIFEST, TECHNICAL as PLUGINS_TECHNICAL
+    plugin_successor = PLUGINS_TECHNICAL if (root / PLUGINS_MANIFEST).exists() else frozenset()
     from check_chronik_service_startup import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT, TECHNICAL as NEXT_TECHNICAL
     from check_chronik_service_startup import validate as validate_next
     if not historical and (root / NEXT_MANIFEST).exists():
@@ -107,7 +109,7 @@ def validate(root, historical=False):
                  "docs/engineering/changes/ergon-change-0049.json",
                  "docs/engineering/chronik/upstream-regtest-service-v1.json"):
         require(observed(path) == before_identity(root, path), "recovery changed frozen input")
-        if historical and path not in NEXT_TECHNICAL:
+        if historical and path not in NEXT_TECHNICAL | plugin_successor:
             require(current_identity(root, path) == observed(path), "successor changed frozen recovery input")
     cargo = "chronik/chronik-lib/Cargo.toml"
     original = git(root, "show", PARENT + ":" + cargo).decode()

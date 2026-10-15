@@ -26,6 +26,7 @@ on:
       - "docs/engineering/changes/ergon-change-0050.json"
       - "docs/engineering/changes/ergon-change-0051.json"
       - "docs/engineering/changes/ergon-change-0052.json"
+      - "docs/engineering/changes/ergon-change-0053.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -53,6 +54,7 @@ on:
       - "docs/engineering/changes/ergon-change-0050.json"
       - "docs/engineering/changes/ergon-change-0051.json"
       - "docs/engineering/changes/ergon-change-0052.json"
+      - "docs/engineering/changes/ergon-change-0053.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -76,7 +78,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [archival, plugins, compiled-out, regtest]
+        profile: [archival, plugins, compiled-out, regtest, regtest-plugins]
     steps:
       - name: Check out complete public history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -107,6 +109,9 @@ jobs:
           python3 -B tools/engineering/check_chronik_service_alp.py check
           python3 -B tools/engineering/check_chronik_service_alp_self_test.py
           python3 -B tests/compatibility/upstream-chronik/alp_service_self_test.py
+          python3 -B tools/engineering/check_chronik_service_plugins.py check
+          python3 -B tools/engineering/check_chronik_service_plugins_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/plugin_service_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -144,6 +149,7 @@ jobs:
           archival=OFF
           plugins=OFF
           regtest=OFF
+          regtest_plugins=OFF
           libclang_path=""
           if [ "$PROFILE" != compiled-out ]; then
             link=ON
@@ -154,11 +160,17 @@ jobs:
           fi
           if [ "$PROFILE" = plugins ]; then plugins=ON; fi
           if [ "$PROFILE" = regtest ]; then regtest=ON; fi
+          if [ "$PROFILE" = regtest-plugins ]; then
+            plugins=ON
+            regtest=ON
+            regtest_plugins=ON
+          fi
           cmake -S . -B "$RUNNER_TEMP/ergon-upstream-build" -GNinja \
             -DBUILD_CHRONIK_UPSTREAM_LINK="$link" \
             -DBUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS="$archival" \
             -DBUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS="$plugins" \
             -DBUILD_CHRONIK_UPSTREAM_REGTEST="$regtest" \
+            -DBUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS="$regtest_plugins" \
             -DBUILD_CHRONIK_OBSERVER=OFF \
             -DBUILD_CHRONIK_PORT_CORE=OFF -DBUILD_CHRONIK_BUILD_ONLY=OFF \
             -DBUILD_BITCOIN_WALLET=OFF -DBUILD_BITCOIN_QT=OFF \
@@ -212,6 +224,16 @@ jobs:
             --work-parent "$RUNNER_TEMP/ergon-regtest-alp-work" \
             --repetitions 3 --report "$RUNNER_TEMP/ergon-regtest-alp.json"
 
+      - name: Real daemon public plugin with process reopen and native failure isolation
+        if: matrix.profile == 'regtest-plugins'
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-regtest-plugin-work"
+          python3 -B tests/compatibility/upstream-chronik/plugin_service.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --build-root "$RUNNER_TEMP/ergon-upstream-build" \
+            --work-parent "$RUNNER_TEMP/ergon-regtest-plugin-work" \
+            --repetitions 3 --report "$RUNNER_TEMP/ergon-regtest-plugin.json"
+
       - name: Mine and stop with Chronik runtime default OFF
         shell: bash
         env:
@@ -222,6 +244,7 @@ jobs:
           if [ "$PROFILE" = archival ]; then smoke_profile=upstream-linked-dormant; fi
           if [ "$PROFILE" = plugins ]; then smoke_profile=upstream-plugins-dormant; fi
           if [ "$PROFILE" = regtest ]; then smoke_profile=regtest; fi
+          if [ "$PROFILE" = regtest-plugins ]; then smoke_profile=regtest-plugins; fi
           python3 -B tests/compatibility/upstream-chronik/run_repetitions.py smoke \
             --source-root "$GITHUB_WORKSPACE" \
             --build-root "$RUNNER_TEMP/ergon-upstream-build" \
