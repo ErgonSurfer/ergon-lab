@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 The Ergon developers
-//! Owned test adapter for the actual upstream archival indexer. Native capture
-//! is separate from DB application. No daemon admission; legacy lock-fenced
-//! reconciliation remains only as a synchronous comparison oracle.
+//! Owned bounded adapter for the actual upstream archival indexer. Native
+//! capture is separate from DB application. Only the separate default-OFF
+//! regtest owner admits a daemon service; legacy lock-fenced reconciliation
+//! remains a synchronous comparison oracle.
 
 use crate::ergon_plugin_fixture::{
     binding_for_mode, http_plugin_group_matches, http_plugin_tx_matches, load_plugin_fixture,
@@ -115,6 +116,10 @@ mod ffi {
         type ChronikBridge = chronik_bridge::ffi::ChronikBridge;
         fn make_startup_bridge(node: &ErgonNodeAccess) -> Result<UniquePtr<ChronikBridge>>;
         fn finish_startup_bridge(bridge: &ChronikBridge) -> Result<()>;
+        fn finish_service_startup_bridge(bridge: &ChronikBridge) -> Result<bool>;
+        fn service_startup_cancelled() -> bool;
+        fn capture_service_startup(probe: &mut ArchivalProbe, bridge: &ChronikBridge,
+                                  node: &ErgonNodeAccess) -> Result<bool>;
         fn reconcile_startup(probe: &mut ArchivalProbe, node: &ErgonNodeAccess) -> Result<bool>;
         type StartupHook;
         fn run(self: &StartupHook) -> Result<()>;
@@ -247,6 +252,11 @@ mod ffi {
         fn http_alp_parse_failure_matches(body: &[u8], id: [u8; 32]) -> Result<bool>;
         fn open_archival(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
         fn open_regtest_service(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
+        fn open_regtest_service_with_hook(root: &str, node: &ErgonNodeAccess,
+                                         hook: &StartupHook) -> Result<Box<ArchivalProbe>>;
+        fn seed_service_startup(self: &mut ArchivalProbe, source: &CapturedSource,
+                               node: &ErgonNodeAccess) -> Result<()>;
+        fn start_regtest_http(self: &mut ArchivalProbe) -> Result<u16>;
         fn open_archival_with_hook(
             root: &str,
             node: &ErgonNodeAccess,
@@ -622,6 +632,10 @@ pub fn open_archival(root: &str, access: &native::ErgonNodeAccess) -> Result<Box
 pub fn open_regtest_service(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
     open_archival_impl(root, access, None, None, true)
 }
+pub fn open_regtest_service_with_hook(root: &str, access: &native::ErgonNodeAccess,
+                                    hook: &ffi::StartupHook) -> Result<Box<ArchivalProbe>> {
+    open_archival_impl(root, access, Some(hook), None, true)
+}
 pub fn open_archival_with_plugins(
     root: &str,
     access: &native::ErgonNodeAccess,
@@ -695,7 +709,7 @@ fn open_archival_impl(
     let tip = native::get_block_info(node.bridge.get_chain_tip()?);
     let generation = node.bridge.chain_generation();
     let revision = node.bridge.mempool_revision();
-    let result = (|| -> Result<ChronikIndexer> {
+    let result = (|| -> Result<Option<ChronikIndexer>> {
         if let Some(hook) = hook {
             // Run after owned graph capture, before DB/disk work; requests
             // remain absent. Deterministic source-drift testing only.
@@ -706,23 +720,30 @@ fn open_archival_impl(
             node.clone(),
         )?;
         indexer.resync_indexer(&node)?;
+        if service && ffi::service_startup_cancelled() {
+            indexer.stop()?; // A real flush error still takes the failure path.
+            return Ok(None); // Upstream resync itself permits joined cancellation.
+        }
         // Resync borrows only the owned native metadata graph. Validate its
         // complete source/storage identity before switching to live access.
-        ffi::finish_startup_bridge(&node.bridge)?;
-        ffi::archival_fixture_guard(access)?;
+        if !service {
+            ffi::finish_startup_bridge(&node.bridge)?;
+            ffi::archival_fixture_guard(access)?;
+        }
         let indexed = indexer.blocks(&node).blockchain_info()?;
-        if !node
+        if (!service && !node
             .bridge
-            .matches_source(tip.hash, tip.height, generation, revision)
+            .matches_source(tip.hash, tip.height, generation, revision))
             || indexed.tip_height != tip.height
             || indexed.tip_hash != tip.hash
         {
             bail!("Incomplete resync or source tip drift");
         }
-        Ok(indexer)
+        Ok(Some(indexer))
     })();
     let indexer = match result {
-        Ok(i) => i,
+        Ok(Some(i)) => i,
+        Ok(None) => bail!("Service startup cancelled; bound database preserved"),
         Err(err) => {
             failure(&root, &node);
             return Err(err);
@@ -756,13 +777,53 @@ fn open_archival_impl(
     // No requests or callback worker exist yet. Capture actual native pool
     // coins/times parent-first and reconcile through unchanged upstream
     // writers before this owner can be returned or published.
-    if !ffi::reconcile_startup(&mut probe, access)? {
+    if service {
+        // Clone only the Arc owner, not a native borrow into the Rust box.
+        let node = probe.node.clone();
+        let prepared = (|| -> Result<bool> {
+            if !ffi::capture_service_startup(&mut probe, &node.bridge, access)? {
+                return Ok(false);
+            }
+            Ok(ffi::finish_service_startup_bridge(&node.bridge)?)
+        })();
+        match prepared {
+            Ok(true) => (),
+            Ok(false) => bail!("Service startup cancelled; bound database preserved"),
+            Err(error) => { probe.fail_reconcile(); return Err(error); }
+        }
+    }
+    if !ffi::reconcile_startup(&mut probe, access)? && !service {
         probe.fail_reconcile();
         bail!("Native source busy during startup capture; index unavailable");
     }
     Ok(probe)
 }
 impl ArchivalProbe {
+    pub fn seed_service_startup(&mut self, source: &CapturedSource,
+                               access: &native::ErgonNodeAccess) -> Result<()> {
+        ffi::archival_database_guard(access)?;
+        if self._lease.service_lock.is_none() || source.owner != self.access_address
+            || source.owner != access as *const _ as usize || !self.captured_chain.is_empty()
+            || source.height != self.bound_height || source.hash != self.bound_hash
+            || source.generation != self.bound_generation || source.revision != self.bound_revision
+            || source.start_height != (self.bound_height + 1 - RETAINED_BLOCKS as i32).max(0)
+            || source.blocks.first().map(|b| b.block.height) != Some(source.start_height)
+            || source.blocks.len() != (source.height - source.start_height + 1) as usize
+            || source.blocks.is_empty() || source.blocks.len() > RETAINED_BLOCKS
+            || source.blocks.last().map(|b| b.block.hash) != Some(source.hash)
+            || source.blocks.last().map(|b| b.block.height) != Some(source.height)
+            || !source.mempool.is_empty()
+            || source.blocks.iter().map(|b| b.wire_bytes).sum::<u64>() > 64 * 1024 * 1024 {
+            bail!("Invalid service startup retained source");
+        }
+        let indexed = self.indexer.as_ref().ok_or_else(|| Report::msg("Closed startup index"))?
+            .blocking_read().blocks(&self.node).blockchain_info()?;
+        if indexed.tip_height != source.height || indexed.tip_hash != source.hash {
+            bail!("Startup index/captured old branch disagreement");
+        }
+        self.captured_chain = source.blocks.clone();
+        Ok(())
+    }
     pub fn capture_inventory(
         &self,
         node: &native::ErgonNodeAccess,
@@ -860,6 +921,18 @@ impl ArchivalProbe {
     }
     pub fn start_http_fixture(&mut self) -> Result<u16> {
         self.check_source()?;
+        self.bind_http()
+    }
+    pub fn start_regtest_http(&mut self) -> Result<u16> {
+        // Binding a listener is not publication of data: the unchanged request
+        // gate returns 503 until a complete source-current capture is published.
+        if self._lease.service_lock.is_none() || self.captured_chain.is_empty()
+            || ffi::service_startup_cancelled() {
+            bail!("Invalid or cancelled regtest HTTP owner");
+        }
+        self.bind_http()
+    }
+    fn bind_http(&mut self) -> Result<u16> {
         if self.service.is_some() {
             bail!("HTTP fixture already active");
         }

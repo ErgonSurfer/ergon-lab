@@ -10,6 +10,17 @@ import run_repetitions as runner
 
 
 class Contract(unittest.TestCase):
+    def test_exact_owned_startup_cases_and_assertions(self):
+        self.assertEqual(len(service.STARTUP_CASES), 5)
+        self.assertEqual(tuple(count for _, count in service.STARTUP_CASES), (7, 5, 6, 9, 9))
+        self.assertEqual(len({case for case, _ in service.STARTUP_CASES}), 5)
+        for case, count in service.STARTUP_CASES:
+            for wrong in (count - 1, count + 1):
+                with self.assertRaises(runner.Rejected):
+                    runner.parse_streams(("Running 1 test case...\n",
+                        "Fixture start: " + case + "\nFixture done: " + case +
+                        f"\n  {wrong} assertions out of {wrong} passed\n"), (case,), count)
+
     def test_refusal_diagnostics_do_not_serialize_exception_paths_or_output(self):
         import subprocess
         private = "/synthetic-private/path/never-publish"

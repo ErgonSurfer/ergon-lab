@@ -2734,13 +2734,8 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
 
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
     if (gArgs.GetBoolArg("-chronikupstreamregtest", false)) {
-        // ThreadImport owns reindex/import and native mempool restoration.
-        // Do not open an index against a pre-import tip or an empty stand-in
-        // mempool. No native lock is held during this optional wait or startup.
-        while (!g_mempool.IsLoaded() && !ShutdownRequested())
-            MilliSleep(50);
-        if (ShutdownRequested())
-            return false;
+        // Owned startup waits for import/mempool restoration off this thread.
+        // Native peer/RPC startup must not wait for optional index DB work.
         ergon_regtest::Start(config);
     }
 #endif

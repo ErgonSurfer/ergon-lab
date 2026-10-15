@@ -21,8 +21,9 @@ struct WorkerStatus {
     size_t pending;
     bool ready, failed, admission_closed, joined;
 };
-// Test-only owned callback reactor over the real upstream indexer. No daemon
-// entry point. Optional ephemeral HTTP fixture reuses upstream handlers;
+// Owned bounded callback reactor over the real upstream indexer. Ordinary
+// profiles have no daemon entry point; the separate regtest owner is opt-in.
+// Optional ephemeral HTTP reuses upstream handlers;
 // websocket notification semantics are not enabled. Notifications are
 // ordered invalidation tickets, NOT historical transaction payloads. The
 // worker captures owned native bytes and applies upstream DB writers outside
@@ -52,6 +53,9 @@ class ArchivalWorker {
     Snapshot ReadSnapshot();
     TxView ReadTx(const std::array<uint8_t, 32> &id, size_t output);
     uint16_t StartHttpFixture();
+    // Service-only: 0 means a concurrent capture owns the data mutex. Read
+    // publication remains governed by the original source/epoch request gate.
+    uint16_t TryStartRegtestHttp();
     // Shared metadata-only controls: no data/native/DB lock acquisition. Safe
     // to retrieve while holding native locks or while busy/closed; a handle
     // does not itself grant readiness, retain native access, or reopen Stop.

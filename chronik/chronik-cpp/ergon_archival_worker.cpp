@@ -17,6 +17,7 @@
 namespace ergon_archival {
 struct ArchivalWorker::Impl final : CValidationInterface {
     const chronik_bridge::ErgonNodeAccess &node;
+    const bool service_mode;
     // No query borrows escape; data_mu serializes every access to the Rust box.
     std::mutex data_mu, stop_mu;
     mutable std::mutex mu;
@@ -39,7 +40,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
          std::function<void()> notification_hook,
          std::function<void()> capture_hook, std::function<void()> disk_hook,
          const PluginFixture *plugins, bool regtest_service)
-        : node(access), capacity(limit), before(std::move(hook)),
+        : node(access), service_mode(regtest_service), capacity(limit), before(std::move(hook)),
           before_notification(std::move(notification_hook)),
           after_capture(std::move(capture_hook)),
           before_disk(std::move(disk_hook)) {
@@ -57,7 +58,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             std::make_unique<rust::Box<RequestGate>>((*probe)->request_gate());
         response_latch = std::make_unique<rust::Box<ResponseLatch>>(
             (*probe)->response_latch());
-        if (!reconcile_captured(**probe, node))
+        const bool published = reconcile_captured(**probe, node);
+        if (!published && !service_mode)
             throw std::runtime_error("Native source busy at worker startup");
         // Register without a native source mutation gap. The fixture owner
         // must not concurrently destroy node access.
@@ -65,8 +67,13 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             LOCK2(cs_main, node.mempool.cs);
             // No snapshot/DB query under native locks during registration.
             archival_reconcile_guard(node);
-            (*probe)->assert_current_capture(node);
-            ready = true;
+            if (ShutdownRequested())
+                throw std::runtime_error("Callback startup cancelled");
+            if (!service_mode)
+                (*probe)->assert_current_capture(node);
+            ready = published && (*probe)->source_current();
+            if (!ready)
+                (*gate)->invalidate();
             // Queue tickets until thread creation succeeds. On failure, drain
             // the subscriber outside native locks before unwinding.
             registered = true;
@@ -133,7 +140,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
     }
     void Run() noexcept {
         try {
-            bool retry = false;
+            bool retry = service_mode;
             for (;;) {
                 if (ShutdownRequested()) {
                     (*gate)->close();
@@ -325,6 +332,21 @@ uint16_t ArchivalWorker::StartHttpFixture() {
 }
 rust::Box<RequestGate> ArchivalWorker::RequestAdmission() {
     return (*m_impl->gate)->clone_handle();
+}
+uint16_t ArchivalWorker::TryStartRegtestHttp() {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_impl->node.mempool.cs);
+    if (!m_impl->service_mode)
+        throw std::runtime_error("Not a regtest service worker");
+    std::unique_lock<std::mutex> data(m_impl->data_mu, std::try_to_lock);
+    if (!data.owns_lock())
+        return 0;
+    {
+        std::lock_guard<std::mutex> lock(m_impl->mu);
+        if (m_impl->closed || m_impl->failed || !m_impl->probe)
+            throw std::runtime_error("Regtest HTTP owner closed");
+    }
+    return (*m_impl->probe)->start_regtest_http();
 }
 rust::Box<ResponseLatch> ArchivalWorker::ResponseBarrier() {
     return (*m_impl->response_latch)->clone_handle();

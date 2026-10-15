@@ -71,11 +71,12 @@ class ChronikBridge {
   public:
     ChronikBridge(const ErgonNodeAccess &node);
     ~ChronikBridge();
-    // Synchronous fixture startup only, before any worker/request can borrow
-    // this bridge. Own every hash/ancestor used by upstream resync; never
-    // hold native locks across DB or disk work. No daemon admission surface.
+    // Private synchronous frame on the initialization owner thread, before
+    // any worker/request can borrow this bridge. Own upstream's ancestors;
+    // never hold native locks across DB/disk work. Default finish is strict;
+    // only the bounded regtest service retains the old branch across progress.
     void capture_startup_snapshot();
-    void finish_startup_snapshot() const;
+    bool finish_startup_snapshot(bool allow_progress = false) const;
     // Native-only diagnostics/hooks; not an HTTP or CXX wire capability.
     NativePositionStats position_stats() const;
     void position_read_hook_for_testing(std::function<void()> hook);

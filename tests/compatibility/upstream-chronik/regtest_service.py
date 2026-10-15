@@ -22,6 +22,13 @@ LEASE_CASES = (
     ("chronik_upstream_regtest_tests/service_os_lease_excludes_other_owners_and_preserves_inode", 9),
     ("chronik_upstream_regtest_tests/service_unknown_or_partial_lease_is_not_adopted", 6),
 )
+STARTUP_CASES = (
+    ("chronik_upstream_regtest_tests/service_owned_startup_reconciles_progress_and_reorg", 7),
+    ("chronik_upstream_regtest_tests/service_startup_cancellation_preserves_reopenable_root", 5),
+    ("chronik_upstream_regtest_tests/asynchronous_owner_does_not_wait_for_native_import", 6),
+    ("chronik_upstream_regtest_tests/asynchronous_owner_allows_native_progress_before_open", 9),
+    ("chronik_upstream_regtest_tests/asynchronous_owner_stop_joins_pending_startup", 9),
+)
 SERVICE_LEASE = b"ergon-regtest-service-os-lock/v1\n"
 
 
@@ -375,7 +382,7 @@ def main():
     reject_scope(binary, work, "-prune=550")
     result = None
     for _ in range(args.repetitions):
-        for case, assertions in (SHUTDOWN, *LEASE_CASES):
+        for case, assertions in (SHUTDOWN, *LEASE_CASES, *STARTUP_CASES):
             streams = runner.execute([str(native_test), "--run_test=" + case,
                 "--report_level=short", "--log_level=message", "--color_output=no"],
                 work, (source, build, binary, native_test))
@@ -394,6 +401,8 @@ def main():
         "native_shutdown_assertions_per_process": SHUTDOWN[1], "native_test_binary_sha256": native_hash,
         "native_lease_processes": len(LEASE_CASES) * args.repetitions,
         "native_lease_cases": LEASE_CASES,
+        "native_startup_cases": STARTUP_CASES,
+        "native_startup_processes": len(STARTUP_CASES) * args.repetitions,
         "child_environment": dict(runner.ENV, TMPDIR="<runner-created-unique-directory>"),
         "disposable_roots_removed": True, "runtime_default_off_witness": True,
         "wrong_network_and_pruned_refused": True,

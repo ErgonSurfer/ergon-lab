@@ -11,7 +11,8 @@ class Contract(unittest.TestCase):
     root = Path(__file__).resolve().parents[2]
 
     def test_finite_layer(self):
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY)
+        from check_chronik_service_startup import TECHNICAL, POLICY
+        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY)
 
     def test_contract_and_inventory_rejections(self):
         original = gate.load_json
@@ -33,7 +34,7 @@ class Contract(unittest.TestCase):
 
     def test_frozen_input_rejections(self):
         original = gate.current_identity
-        for path in ("src/init.cpp", "src/validation.cpp", "chronik/Cargo.lock",
+        for path in ("CMakeLists.txt", "src/validation.cpp", "chronik/Cargo.lock",
                      "docs/engineering/changes/ergon-change-0049.json"):
             with patch.object(gate, "current_identity", side_effect=lambda r, p:
                 dict(original(r, p), sha256="0" * 64) if p == path else original(r, p)):

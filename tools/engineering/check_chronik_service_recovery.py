@@ -51,8 +51,16 @@ def before_identity(root, path):
     return identity(git(root, "show", PARENT + ":" + path), entry[0]) if entry else None
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_service_startup import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT, TECHNICAL as NEXT_TECHNICAL
+    from check_chronik_service_startup import validate as validate_next
+    if not historical and (root / NEXT_MANIFEST).exists():
+        return validate_next(root) | validate(root, historical=True)
+    def observed(path):
+        if not historical: return current_identity(root, path)
+        row = git(root, "ls-tree", NEXT_PARENT, "--", path).decode().split()
+        return identity(git(root, "show", NEXT_PARENT + ":" + path), row[0])
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "recovery parent drift")
     manifest = load_json(root / MANIFEST)
@@ -67,10 +75,12 @@ def validate(root):
                 row["provenance"] == "PUBLIC+A1/MIT" and
                 row["reachability"] == "bounded-regtest-opt-in-or-test-only" and
                 row["before"] == before_identity(root, row["path"]) and
-                row["after"] == current_identity(root, row["path"]) and
+                row["after"] == observed(row["path"]) and
                 row["before"] != row["after"] and row["after"]["mode"] == "100644", "recovery source drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, NEXT_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected recovery path")
     record = load_json(root / RECORD)
     require(record["change_id"] == "ERGON-CHANGE-0050" and
@@ -82,8 +92,9 @@ def validate(root):
         return None if v is None else {("git_blob_sha1" if k == "git_blob" else k): x for k, x in v.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]), "recovery policy drift")
-    driver = ast.parse((root / "tests/compatibility/upstream-chronik/regtest_service.py").read_text())
+                governed(row["after"]) == observed(row["path"]), "recovery policy drift")
+    path = "tests/compatibility/upstream-chronik/regtest_service.py"
+    driver = ast.parse(git(root, "show", NEXT_PARENT + ":" + path).decode() if historical else (root / path).read_text())
     selections = [ast.literal_eval(n.value) for n in driver.body if isinstance(n, ast.Assign) and
                   any(isinstance(t, ast.Name) and t.id == "LEASE_CASES" for t in n.targets)]
     require(selections == [tuple(tuple(c) for c in CONTRACT["native_lease_cases"])], "recovery exact native selections drift")
@@ -95,10 +106,13 @@ def validate(root):
                  "chronik/chronik-cpp/chronik_bridge.cpp", "chronik/chronik-cpp/chronik_bridge.h",
                  "docs/engineering/changes/ergon-change-0049.json",
                  "docs/engineering/chronik/upstream-regtest-service-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "recovery changed frozen input")
+        require(observed(path) == before_identity(root, path), "recovery changed frozen input")
+        if historical and path not in NEXT_TECHNICAL:
+            require(current_identity(root, path) == observed(path), "successor changed frozen recovery input")
     cargo = "chronik/chronik-lib/Cargo.toml"
     original = git(root, "show", PARENT + ":" + cargo).decode()
-    require((root / cargo).read_text() == original.replace(
+    current = git(root, "show", NEXT_PARENT + ":" + cargo).decode() if historical else (root / cargo).read_text()
+    require(current == original.replace(
         "rust-version.workspace = true", "# Standard-library OS file locks used by the Ergon host adapter.\nrust-version = \"1.89.0\""),
         "recovery Cargo change exceeds explicit host-crate MSRV declaration")
     return TECHNICAL | POLICY

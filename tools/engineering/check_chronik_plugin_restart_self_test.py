@@ -35,6 +35,9 @@ class Contract(unittest.TestCase):
         from check_chronik_service_recovery import MANIFEST, TECHNICAL, POLICY
         if (root / MANIFEST).exists():
             expected |= TECHNICAL | POLICY
+        from check_chronik_service_startup import MANIFEST, TECHNICAL, POLICY
+        if (root / MANIFEST).exists():
+            expected |= TECHNICAL | POLICY
         self.assertEqual(gate.validate(root), expected)
 
     def test_manifest_rejections(self):

@@ -61,6 +61,7 @@ def validate(root, historical=False):
     from check_chronik_regtest_service import MANIFEST as SERVICE_MANIFEST, PARENT as SERVICE_PARENT, TECHNICAL as SERVICE_TECHNICAL
     from check_chronik_regtest_service import validate as validate_service
     from check_chronik_service_recovery import TECHNICAL as RECOVERY_TECHNICAL
+    from check_chronik_service_startup import TECHNICAL as STARTUP_TECHNICAL
     if not historical and (root / SERVICE_MANIFEST).exists():
         return validate_service(root) | validate(root, historical=True)
     def observed(path):
@@ -119,7 +120,7 @@ def validate(root, historical=False):
                  "docs/engineering/chronik/upstream-plugin-fixtures-v1.json",
                  "docs/engineering/chronik/upstream-plugin-helpers-v1.json"):
         require(observed(path) == before_identity(root, path), "restart changed frozen history/default/native/donor input")
-        if historical and path not in SERVICE_TECHNICAL | RECOVERY_TECHNICAL:
+        if historical and path not in SERVICE_TECHNICAL | RECOVERY_TECHNICAL | STARTUP_TECHNICAL:
             require(current_identity(root, path) == observed(path), "successor changed unreviewed frozen restart input")
     return TECHNICAL | POLICY
 

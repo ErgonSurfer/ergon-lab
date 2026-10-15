@@ -102,8 +102,10 @@ def validate(root, historical=False):
         require(observed(path) == before_identity(root, path), "service changed frozen boundary")
         if historical and path not in NEXT_TECHNICAL:
             require(current_identity(root, path) == observed(path), "successor changed frozen service input")
-    init = (root / "src/init.cpp").read_text()
-    driver = ast.parse((root / "tests/compatibility/upstream-chronik/regtest_service.py").read_text())
+    def text_at_boundary(path):
+        return git(root, "show", NEXT_PARENT + ":" + path).decode() if historical else (root / path).read_text()
+    init = text_at_boundary("src/init.cpp")
+    driver = ast.parse(text_at_boundary("tests/compatibility/upstream-chronik/regtest_service.py"))
     selections = [ast.literal_eval(n.value) for n in driver.body if isinstance(n, ast.Assign) and
                   any(isinstance(t, ast.Name) and t.id == "SHUTDOWN" for t in n.targets)]
     require(selections == [tuple(CONTRACT["native_shutdown"])], "exact native shutdown selection drift")

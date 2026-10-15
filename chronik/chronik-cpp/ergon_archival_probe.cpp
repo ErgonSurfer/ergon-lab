@@ -66,6 +66,43 @@ void finish_startup_bridge(const chronik_bridge::ChronikBridge &bridge) {
     // bridge cannot yet be shared with workers or requests.
     bridge.finish_startup_snapshot();
 }
+bool finish_service_startup_bridge(const chronik_bridge::ChronikBridge &bridge) {
+    return bridge.finish_startup_snapshot(true);
+}
+bool service_startup_cancelled() { return ShutdownRequested(); }
+bool capture_service_startup(ArchivalProbe &probe,
+                            const chronik_bridge::ChronikBridge &bridge,
+                            const chronik_bridge::ErgonNodeAccess &node) {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(node.mempool.cs);
+    // The bridge is still private and owns its immutable ancestor graph.
+    // Seed the OLD indexed branch before switching to live access, so honest
+    // progress/reorg can use the existing captured upstream disconnect/connect.
+    const auto tip = chronik_bridge::get_block_info(bridge.get_chain_tip());
+    const auto generation = bridge.chain_generation();
+    const auto revision = bridge.mempool_revision();
+    const int base = std::max(0, tip.height - 287);
+    auto source = [&] {
+        LOCK2(cs_main, node.mempool.cs);
+        return new_capture(node, base, tip.height, tip.hash, generation, revision);
+    }();
+    size_t bytes = 0;
+    for (int height = base; height <= tip.height; ++height) {
+        if (ShutdownRequested())
+            return false;
+        const auto &index = bridge.lookup_block_index_by_height(height);
+        auto block = bridge.load_block(index);
+        auto undo = bridge.load_block_undo(index);
+        const auto charge = ::GetSerializeSize(*block, CLIENT_VERSION) +
+                            ::GetSerializeSize(*undo, CLIENT_VERSION);
+        if (charge > 64 * 1024 * 1024 - bytes)
+            throw std::runtime_error("Startup retained payload budget exceeded");
+        bytes += charge;
+        source->capture_block(*block, *undo, index, charge, node);
+    }
+    probe.seed_service_startup(*source, node);
+    return true;
+}
 bool reconcile_startup(ArchivalProbe &probe,
                        const chronik_bridge::ErgonNodeAccess &node) {
     return reconcile_captured(probe, node);

@@ -28,8 +28,8 @@ struct CaptureStats {
         metadata_checked{0}, pool_reused{0}, pool_captured{0}, prevout_reads{0},
         cold_prevout_reads{0};
 };
-// Test fixture owns native resources and must outlive the synchronous Rust box.
-// No daemon calls this function. It is not live-source epoch validation.
+// Native fixture or separately opted-in bounded regtest owner must outlive the
+// synchronous Rust box. Not general runtime admission or live-source validation.
 void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node);
 // Fixture-only: hold both native locks throughout synchronous reconciliation.
 // This intentionally blocks mutation and is NOT a production service design.
@@ -40,6 +40,11 @@ void archival_database_guard(const chronik_bridge::ErgonNodeAccess &node);
 std::unique_ptr<chronik_bridge::ChronikBridge>
 make_startup_bridge(const chronik_bridge::ErgonNodeAccess &node);
 void finish_startup_bridge(const chronik_bridge::ChronikBridge &bridge);
+bool finish_service_startup_bridge(const chronik_bridge::ChronikBridge &bridge);
+bool service_startup_cancelled();
+bool capture_service_startup(ArchivalProbe &probe,
+                            const chronik_bridge::ChronikBridge &bridge,
+                            const chronik_bridge::ErgonNodeAccess &node);
 bool reconcile_startup(ArchivalProbe &probe,
                        const chronik_bridge::ErgonNodeAccess &node);
 // Copy native metadata, mempool parent outputs and the cache overlay under the

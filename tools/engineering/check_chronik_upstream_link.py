@@ -211,6 +211,9 @@ def validate(root: Path) -> HistoricalView:
     from check_chronik_regtest_service import MANIFEST as SERVICE_MANIFEST, TECHNICAL as SERVICE_TECHNICAL
     from check_chronik_regtest_service import before_identity as service_parent_identity
     service_layer = (root / SERVICE_MANIFEST).exists()
+    from check_chronik_service_startup import MANIFEST as STARTUP_MANIFEST, TECHNICAL as STARTUP_TECHNICAL
+    from check_chronik_service_startup import before_identity as startup_parent_identity
+    startup_layer = (root / STARTUP_MANIFEST).exists()
     read_layer = validate_reads(root) if (root / READ_MANIFEST).exists() else frozenset()
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == PARENT_TREE,
             "public parent tree mismatch or missing history")
@@ -229,6 +232,7 @@ def validate(root: Path) -> HistoricalView:
         observed = (read_parent_identity(root, path) if read_layer and path in READ_TECHNICAL else
                     plugin_parent_identity(root, path) if plugin_layer and path in PLUGIN_TECHNICAL else
                     service_parent_identity(root, path) if service_layer and path in SERVICE_TECHNICAL else
+                    startup_parent_identity(root, path) if startup_layer and path in STARTUP_TECHNICAL else
                     current_identity(root, path))
         require(observed == row["after"], "technical postimage drift: " + path)
         tree_entry = git(root, "ls-tree", PARENT, "--", path).decode().strip()

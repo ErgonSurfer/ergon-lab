@@ -213,16 +213,21 @@ void ChronikBridge::capture_startup_snapshot() {
     m_startup = std::move(owned);
     m_startup_active = true;
 }
-void ChronikBridge::finish_startup_snapshot() const {
+bool ChronikBridge::finish_startup_snapshot(bool allow_progress) const {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_node.mempool.cs);
     LOCK2(cs_main, m_node.mempool.cs);
-    if (!m_startup_active || !m_startup || fPruneMode || ShutdownRequested() ||
+    // Only the service's unpublished owned graph may tolerate native progress.
+    // Cancellation is not corruption. The strict historical fixture stays exact.
+    if (allow_progress && ShutdownRequested())
+        return false;
+    if (!m_startup_active || !m_startup || fPruneMode ||
+        (!allow_progress && ShutdownRequested()) ||
         m_node.index_failed.load() || !ChainActive().Tip() ||
-        ChainActive().Tip()->GetBlockHash() !=
+        (!allow_progress && (ChainActive().Tip()->GetBlockHash() !=
             m_startup->chain.Tip()->GetBlockHash() ||
         ChainActive().GetSourceGeneration() != m_startup->generation ||
-        m_node.mempool.GetSourceGeneration() != m_startup->revision)
+        m_node.mempool.GetSourceGeneration() != m_startup->revision)))
         throw std::runtime_error("Native source changed during startup resync");
     for (const auto &[hash, copy] : m_startup->indexes) {
         const auto found = mapBlockIndex.find(hash);
@@ -236,6 +241,7 @@ void ChronikBridge::finish_startup_snapshot() const {
     m_startup_active = false;
     // Keep the graph alive until bridge destruction, including exception
     // unwind. No asynchronous work is allowed to retain startup borrows.
+    return true;
 }
 
 NativePositionStats ChronikBridge::position_stats() const {
