@@ -58,7 +58,7 @@ class Contract(unittest.TestCase):
                 self.assertRaises(ValueError):
             gate.validate(self.root)
 
-    def test_skip_oracle_ordering_and_lifetime_rejected(self):
+    def test_skip_oracle_and_ordering_rejected(self):
         read_text = Path.read_text
         bridge = self.root / "chronik/chronik-cpp/chronik_bridge.cpp"
         native = self.root / "src/test/chronik_upstream_archival_tests.cpp"
@@ -67,9 +67,6 @@ class Contract(unittest.TestCase):
             (bridge, original_bridge.replace("index->BuildSkip();", "index->pskip = nullptr;")),
             (bridge, original_bridge.replace(
                 "    std::sort(by_height.begin(), by_height.end(),", "    // no height order\n    std::sort(by_height.end(), by_height.end(),")),
-            (bridge, original_bridge.replace(
-                "    // Keep the graph alive until bridge destruction, including exception\n",
-                "    m_startup.reset();\n")),
             (native, original_native.replace(
                 "copy.pskip->GetBlockHash() ==", "copy.GetBlockHash() ==")),
         )

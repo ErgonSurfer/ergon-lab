@@ -1,0 +1,189 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0059",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0059.json",
+  "purpose": {
+    "summary": "Release the complete owned Chronik startup graph immediately after a successful synchronous finish fence and before bridge publication.",
+    "scope": [
+      "Direct child of signed public main d68d625 integrated by PR61; five technical postimages plus finite policy, documentation and CI only.",
+      "Revalidate native source and storage under cs_main and the mempool lock, then destroy the owned graph outside both native locks.",
+      "Expose native-test-only retained index count and a conservative byte floor, and bind strict and service success paths to zero retention and the live native tip.",
+      "Expand only the owned-startup group to four cases and 607 assertions under the unchanged 60-second deadline."
+    ],
+    "exclusions": [
+      "No upstream Rust indexer, ALP parser, plugin engine, dependency, consensus, activation, network identity, default, service limit, RPC or wallet change.",
+      "No RSS or full-chain memory claim, server deployment, cutover, release or desktop integration.",
+      "No incoming report, raw output, binary, private history, host metadata, operator material or proof promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {"commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4", "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca", "parentless": true},
+    "integration_parent": {"commit": "d68d62572760f73f0c9959f81961821d3936f94e", "tree": "62e4905e05cb4f7a6e15b8eef1e6de3634150735"},
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "fcd5f4f94b184caff05c5dd910009540efefc400bc872783a29db00fb20061b9",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": ["No private material."],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml", "action": "modify", "role": "build",
+      "before": {"mode": "100644", "bytes": 16130, "git_blob": "6114a2d0340addb01ffcb12dff4430094c0ea7bb", "sha256": "aefe0d3bb0b8f256d8768510199743330b99fd04ebac818e1c465b9fe2f11576"},
+      "after": {"mode": "100644", "bytes": 16406, "git_blob": "9af6ba30d19c0029caef226a5d9a508aa775a791", "sha256": "894c7edda91726b1d383230d9f212f2fc096b2892e364c47e80b0f3b15b7ea5c"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: source policy and CI only.", "test_reachability": "Runs the new finite source gate and all inherited Chronik profiles."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_bridge.cpp", "action": "modify", "role": "production",
+      "before": {"mode": "100644", "bytes": 24884, "git_blob": "ccf99022d3e3780c1e56d068a090720e905c3adf", "sha256": "f229fded7ec95c308ef35a51fef804f803f8cc758263746583dd8ec66b554100"},
+      "after": {"mode": "100644", "bytes": 25903, "git_blob": "881529467697a9b7a935ed067768d6b39a4c2f0c", "sha256": "6d563996a0c27abc56a208164f91074a6c56cafc4c4a43c6d43cc08370e49055"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "Existing compile-time and runtime opt-in local-regtest Chronik startup bridge only; no node authority.", "test_reachability": "Strict and service finish paths prove post-fence release outside native locks."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_bridge.h", "action": "modify", "role": "production",
+      "before": {"mode": "100644", "bytes": 5824, "git_blob": "44a743c6bcb1ba95c6011cb7a4e1c9c7445cddf0", "sha256": "200f9a93d1625a9b9ac85cca871b7cdafd8217399ddeb091ab91133227370107"},
+      "after": {"mode": "100644", "bytes": 5982, "git_blob": "1cf15ce70989c78d758376b8aa5b7174afb83fac", "sha256": "c47deb689c6d433134e1ac3995aae6489d15daf66994fbc94b87402ff8c62cc3"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "Existing compile-time and runtime opt-in local-regtest Chronik startup bridge only; diagnostics are native-test-only.", "test_reachability": "Binds retained index count and conservative retained-byte floor."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-startup-release-v1.json", "action": "add", "role": "provenance", "before": null,
+      "after": {"mode": "100644", "bytes": 7211, "git_blob": "a96247a98d824b2fd83243d4899785839bc392a5", "sha256": "d2539916b1b476b8f3a50c0f52ef7001a38a99d3aa52bfab65d177e0270127fc"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: exact source inventory only.", "test_reachability": "Binds every governed postimage and its public preimage."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-startup-release.md", "action": "add", "role": "documentation", "before": null,
+      "after": {"mode": "100644", "bytes": 2003, "git_blob": "8c5b7546814bfe492c4d587b9234118b910d55ea", "sha256": "dcb78d8fb7197f7f00a0e0c346e26e07e5583ead9297d0e8b6b2b8603bf953b5"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: public engineering explanation only.", "test_reachability": "Documents the exact lifetime, measurement and proof boundary."
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp", "action": "modify", "role": "test",
+      "before": {"mode": "100644", "bytes": 167907, "git_blob": "643faed6ae1e9e83a158005cddc6d265ea5ccd73", "sha256": "4a433291f3cfbca9a557ee67eb8e950de3480bc94aebf01aa80a4381e317a318"},
+      "after": {"mode": "100644", "bytes": 169550, "git_blob": "95d622751faa346482e3fd66cf69a95e3e12af4b", "sha256": "5a6b150705f9940312e7aec333aba3f544dd19172a6d8f1af5e84a8b46491976"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: native unit-test target only.", "test_reachability": "Adds the single 14-assertion strict/service release oracle."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py", "action": "modify", "role": "harness",
+      "before": {"mode": "100644", "bytes": 35541, "git_blob": "262fbdf8ea72bbab7308098a548a8de60b311acc", "sha256": "1625631541544d9a437ea96f3000217a75d39f89e3004b18d755ee6803829e97"},
+      "after": {"mode": "100644", "bytes": 36495, "git_blob": "055b938f2c88d690ef1a386b2bc60f20abc85626", "sha256": "ff33512b0c6316af5902d7b078b6127cf29e7519501411498ac1eb6596c58b20"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: public compatibility harness only.", "test_reachability": "Binds four startup cases, 607 assertions and the successor projection."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py", "action": "modify", "role": "test",
+      "before": {"mode": "100644", "bytes": 17705, "git_blob": "042c17b4767e406eda26054221999db2a4e040a6", "sha256": "5cb4cc37ed90a669186f3dcb3e56b18ea709a17e436267c244f17ffd4c09c366"},
+      "after": {"mode": "100644", "bytes": 17705, "git_blob": "e74a64d1f5e13d1f50cbc0de26bd4625295ef853", "sha256": "cda4a80b035fb5c4a7be2dfbe5572886c79fdd9e8aa32c25ecab00595c0c9d30"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: standard-library harness self-test only.", "test_reachability": "Rejects case-count, assertion-summary, projection and output contradictions."
+    },
+    {
+      "path": "tools/engineering/check_chronik_owned_skip_links.py", "action": "modify", "role": "test",
+      "before": {"mode": "100644", "bytes": 8701, "git_blob": "10f96c61be3cbab7b1605742eccf3f948c2d4734", "sha256": "2caee7d8a1c2ffdd088070bc3b09e4b167b5d3ad2c2689099d61a934b131beb1"},
+      "after": {"mode": "100644", "bytes": 10022, "git_blob": "cc9b98c9dcc83a2bf3c97f149be148c2612a1216", "sha256": "85f02130a240410cbbc8fd5e9701e27e6a3280405f53254e6c459aa9e9f8fdf1"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: predecessor source gate only.", "test_reachability": "Admits only the exact finite startup-release successor and preimages."
+    },
+    {
+      "path": "tools/engineering/check_chronik_owned_skip_links_self_test.py", "action": "modify", "role": "test",
+      "before": {"mode": "100644", "bytes": 4892, "git_blob": "c017d86ab4e8b9e3f229e29b4060ba2fdcb7909b", "sha256": "3c2c75ca3440407ca733ffe99c169966e3fb9f33abe88d85112eeb46cda9b700"},
+      "after": {"mode": "100644", "bytes": 4696, "git_blob": "3e95afe2aa5363a3ac2be518ec6a80196e3b15e5", "sha256": "7b159ec287c48c5226cbde3873c2649d71bd772d9415fb0631dbedc52920f805"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: predecessor gate self-test only.", "test_reachability": "Retains skip-link ordering, scope and preimage rejection tests."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_metadata.py", "action": "modify", "role": "test",
+      "before": {"mode": "100644", "bytes": 12389, "git_blob": "352c03d3476bc268f60fd37bda371ffecba6bac7", "sha256": "e4e82ccab1fec99765b89b251a7eba3813417262e8c956c092e0187aee04b93f"},
+      "after": {"mode": "100644", "bytes": 13278, "git_blob": "d4531197dcd2de8c145126bd7ffc7650d00469a2", "sha256": "909911ad9582880fdb67367f661cb8000e60a5817348fcf1aab52da23626a415"},
+      "provenance": {"kind": "independent-authorship", "code": "PUBLIC+A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: predecessor finite-scope gate only.", "test_reachability": "Admits the exact successor paths into the inherited source-identity chain."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_release.py", "action": "add", "role": "test", "before": null,
+      "after": {"mode": "100644", "bytes": 10245, "git_blob": "a456ae42a92c115e5c416344c058c9b9672bbb41", "sha256": "d98bd9f992cb888c8e2b2faf5254048978fec648b77edd821ddfae5086d48e9a"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: finite source gate only.", "test_reachability": "Checks exact scope, preimages, lifetime ordering, byte-floor semantics and frozen engines."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_release_self_test.py", "action": "add", "role": "test", "before": null,
+      "after": {"mode": "100644", "bytes": 4925, "git_blob": "66875d1465416353d91928bfaf7e6c01620f3afc", "sha256": "810e0a233bc0d89cc3aced93000607bf8c4b9855e372e41d181206acbbfbd9ef"},
+      "provenance": {"kind": "independent-authorship", "code": "A1", "license": "MIT"}, "spdx": "MIT",
+      "production_reachability": "No production runtime: standard-library gate self-test only.", "test_reachability": "Mutates scope, privilege, ordering, measurement, runner and record fields and requires refusal."
+    }
+  ],
+  "surfaces": {"build_release": true, "consensus": false, "data_research": false, "documentation_cockpit": true, "indexing_chronik": true, "p2p": false, "rpc_api": false, "storage_datadir": true, "tests": true, "ui": false, "validation_mempool": false, "wallet": false},
+  "boundaries": {"consensus_authority": "standalone-node", "chronik_role": "observe-and-index-only", "chronik_consensus_authority": false, "chronik_mempool_authority": false, "chronik_activation_authority": false, "chronik_chain_selection_authority": false, "chronik_required_for_correctness": false, "chronik_compile_time_default": "off", "chronik_runtime_default": "off", "chronik_enabled_scope": "local-regtest-opt-in-only", "mainnet_parameters_modified": false},
+  "verification": {
+    "builds": [
+      {"role": "compiled-out", "commands": ["Build the exact public compiled-out profile with unchanged native prerequisites."], "expected_results": ["The standalone node builds without Chronik linkage and retains all inherited controls."]},
+      {"role": "compiled-in-disabled", "commands": ["Build the exact public compiled-in-disabled profile with existing locked Rust inputs and unchanged native prerequisites."], "expected_results": ["The standalone node builds with runtime Chronik disabled by default and retains all inherited controls."]},
+      {"role": "local-regtest-indexing", "commands": ["Build the exact public regtest-plugins profile with existing locked Rust inputs and unchanged native prerequisites."], "expected_results": ["The daemon and native fixture build; inherited profiles retain their existing boundaries."]}
+    ],
+    "scenarios": [
+      {"id": "index-local-regtest-opt-in", "command": "Run the exact profile-bound owned-startup group in fresh processes.", "expected_results": ["Four cases and 607 assertions pass; strict and service success paths retain zero owned indexes after the fence."], "failure_conditions": ["Any source/build drift, release under native locks, nonzero retained count, wrong live tip, changed count, timeout, skip or nonzero exit."], "fresh_process": true, "isolated_datadir": true},
+      {"id": "index-restart-288", "command": "Run the inherited restart matrix and exact owned-startup group.", "expected_results": ["Startup reconstruction and graph release preserve the inherited restart contract."], "failure_conditions": ["Any reconstruction, release, count, timeout, skip or process failure."], "fresh_process": true, "isolated_datadir": true},
+      {"id": "index-full-reindex-288", "command": "Run the inherited full-reindex matrix and exact owned-startup group.", "expected_results": ["Full reindex and graph release preserve the inherited component contract."], "failure_conditions": ["Any reconstruction, release, count, timeout, skip or process failure."], "fresh_process": true, "isolated_datadir": true},
+      {"id": "index-chainstate-reindex-288", "command": "Run the inherited chainstate-reindex matrix and exact owned-startup group.", "expected_results": ["Chainstate reindex and graph release preserve the inherited component contract."], "failure_conditions": ["Any reconstruction, release, count, timeout, skip or process failure."], "fresh_process": true, "isolated_datadir": true},
+      {"id": "index-pruned-datadir-288", "command": "Run the inherited pruned-datadir matrix and exact owned-startup group.", "expected_results": ["Pruned reconstruction behavior and graph release preserve the inherited fail-closed contract."], "failure_conditions": ["Any unexpected acceptance, release, count, timeout, skip or process failure."], "fresh_process": true, "isolated_datadir": true},
+      {"id": "index-deep-reorg-fail-closed", "command": "Run the inherited deep-reorg matrix and exact owned-startup group.", "expected_results": ["Deep reorg handling stays fail-closed and successful startup releases only after its fence."], "failure_conditions": ["Any unexpected authority, stale publication, changed count, timeout, skip or process failure."], "fresh_process": true, "isolated_datadir": true}
+    ],
+    "child_environment": {"LANG": "C", "LC_ALL": "C", "NO_COLOR": "1", "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb", "TZ": "UTC", "TMPDIR": "<runner-created-unique-directory>"},
+    "dependencies": {"locked": false, "platforms": ["ubuntu-24.04", "macos-arm64"]},
+    "integration_parent_binding": {"input_method": "explicit-reviewed-cli", "commit_argument": "--expected-integration-parent-commit", "tree_argument": "--expected-integration-parent-tree", "defaults_allowed": false, "environment_fallback_allowed": false, "record_match_required": true},
+    "git_policy": {"system_config": false, "global_config": false, "replace_objects": false, "complete_history_required": true, "verified_commits": ["public-root", "integration-parent", "candidate"], "required_signature_status": "G", "candidate_direct_child": true, "fresh_origin_main_fetch": true, "candidate_reachable_from_remote_ref": true},
+    "report_policy": {"source": "public-tree-only", "paths": "repository-relative-only", "raw_process_output": false, "parent_environment": false}
+  },
+  "evidence": {"delivery_state": "active", "knowledge_status": "Open Question", "ceiling": "record-review-only", "artifacts": []},
+  "limitations": [
+    "The startup graph remains bounded to the existing 2000-height/4096-index local-regtest profile.",
+    "The portable retained-byte floor excludes map-node and allocator overhead and is not an RSS measurement.",
+    "Cancellation and failed fences retain the graph for retry or destruction; only successful synchronous finish releases it early.",
+    "System build dependencies remain unlocked and no reproducible-build claim is made."
+  ],
+  "counterevidence": [
+    "Historical runtime timeouts and dependency warnings remain open and are not erased by this change.",
+    "No server, operator datadir, mainnet history or production replacement is exercised."
+  ],
+  "decision": {"status": "pending"}
+}

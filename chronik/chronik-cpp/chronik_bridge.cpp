@@ -259,32 +259,57 @@ void ChronikBridge::capture_startup_snapshot(std::function<void()> after_metadat
 bool ChronikBridge::finish_startup_snapshot(bool allow_progress) const {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_node.mempool.cs);
-    LOCK2(cs_main, m_node.mempool.cs);
-    // Only the service's unpublished owned graph may tolerate native progress.
-    // Cancellation is not corruption. The strict historical fixture stays exact.
-    if (allow_progress && ShutdownRequested())
-        return false;
-    if (!m_startup_active || !m_startup || fPruneMode ||
-        (!allow_progress && ShutdownRequested()) ||
-        m_node.index_failed.load() || !ChainActive().Tip() ||
-        (!allow_progress && (ChainActive().Tip()->GetBlockHash() !=
-            m_startup->chain.Tip()->GetBlockHash() ||
-        ChainActive().GetSourceGeneration() != m_startup->generation ||
-        m_node.mempool.GetSourceGeneration() != m_startup->revision)))
-        throw std::runtime_error("Native source changed during startup resync");
-    for (const auto &[hash, copy] : m_startup->indexes) {
-        const auto found = mapBlockIndex.find(hash);
-        if (found == mapBlockIndex.end() ||
-            found->second->nHeight != copy->nHeight ||
-            found->second->GetBlockPos() != copy->GetBlockPos() ||
-            found->second->GetUndoPos() != copy->GetUndoPos())
+    {
+        LOCK2(cs_main, m_node.mempool.cs);
+        // Only the service's unpublished owned graph may tolerate native
+        // progress. Cancellation is not corruption. The strict historical
+        // fixture stays exact.
+        if (allow_progress && ShutdownRequested())
+            return false;
+        if (!m_startup_active || !m_startup || fPruneMode ||
+            (!allow_progress && ShutdownRequested()) ||
+            m_node.index_failed.load() || !ChainActive().Tip() ||
+            (!allow_progress && (ChainActive().Tip()->GetBlockHash() !=
+                m_startup->chain.Tip()->GetBlockHash() ||
+            ChainActive().GetSourceGeneration() != m_startup->generation ||
+            m_node.mempool.GetSourceGeneration() != m_startup->revision)))
             throw std::runtime_error(
-                "Native storage changed during startup resync");
+                "Native source changed during startup resync");
+        for (const auto &[hash, copy] : m_startup->indexes) {
+            const auto found = mapBlockIndex.find(hash);
+            if (found == mapBlockIndex.end() ||
+                found->second->nHeight != copy->nHeight ||
+                found->second->GetBlockPos() != copy->GetBlockPos() ||
+                found->second->GetUndoPos() != copy->GetUndoPos())
+                throw std::runtime_error(
+                    "Native storage changed during startup resync");
+        }
+        m_startup_active = false;
     }
-    m_startup_active = false;
-    // Keep the graph alive until bridge destruction, including exception
-    // unwind. No asynchronous work is allowed to retain startup borrows.
+    // Startup is synchronous and the bridge is not published until this
+    // returns. All upstream CBlockIndex borrows ended before the fence above.
+    // Release the complete owned graph outside both native locks rather than
+    // retaining it for the lifetime of the live service bridge.
+    m_startup.reset();
     return true;
+}
+
+size_t ChronikBridge::startup_snapshot_index_count_for_testing() const {
+    return m_startup ? m_startup->indexes.size() : 0;
+}
+
+size_t
+ChronikBridge::startup_snapshot_retained_bytes_floor_for_testing() const {
+    if (!m_startup)
+        return 0;
+    const auto height = m_startup->chain.Height();
+    const auto chain_bytes = height < 0
+                                 ? 0
+                                 : size_t(height + 1) * sizeof(CBlockIndex *);
+    // A portable lower bound only. std::map node and allocator overhead are
+    // intentionally not guessed, so this is not an RSS measurement.
+    return sizeof(StartupSnapshot) +
+           m_startup->indexes.size() * sizeof(CBlockIndex) + chain_bytes;
 }
 
 NativePositionStats ChronikBridge::position_stats() const {

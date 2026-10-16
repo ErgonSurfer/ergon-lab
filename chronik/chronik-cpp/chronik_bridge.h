@@ -11,6 +11,7 @@
 #include <txmempool.h>
 
 #include <array>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <rust/cxx.h>
@@ -66,7 +67,7 @@ class ChronikBridge {
     const ErgonNodeAccess &m_node;
     NativePositionReader m_positions;
     struct StartupSnapshot;
-    std::unique_ptr<StartupSnapshot> m_startup;
+    mutable std::unique_ptr<StartupSnapshot> m_startup;
     mutable bool m_startup_active{false};
 
   public:
@@ -82,6 +83,8 @@ class ChronikBridge {
     void capture_startup_snapshot(std::function<void()> after_metadata = {});
     bool finish_startup_snapshot(bool allow_progress = false) const;
     // Native-only diagnostics/hooks; not an HTTP or CXX wire capability.
+    size_t startup_snapshot_index_count_for_testing() const;
+    size_t startup_snapshot_retained_bytes_floor_for_testing() const;
     NativePositionStats position_stats() const;
     void position_read_hook_for_testing(std::function<void()> hook);
 

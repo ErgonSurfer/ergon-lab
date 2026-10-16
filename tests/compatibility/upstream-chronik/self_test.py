@@ -30,7 +30,7 @@ class Contract(unittest.TestCase):
                 with self.assertRaises(runner.Rejected):
                     runner.source_projection(source, *paths[:-1], path)
 
-    def streams(self, cases=runner.STARTUP, assertions=593):
+    def streams(self, cases=runner.STARTUP, assertions=607):
         out = "Running " + str(len(cases)) + " test cases...\n"
         err = "".join("Fixture start: " + case + "\nFixture done: " + case + "\n" for case in cases)
         err += "  " + str(assertions) + " assertions out of " + str(assertions) + " passed\n"
@@ -38,25 +38,25 @@ class Contract(unittest.TestCase):
 
     def rejected(self, streams):
         with self.assertRaises(runner.Rejected):
-            runner.parse_streams(streams, runner.STARTUP, 593)
+            runner.parse_streams(streams, runner.STARTUP, 607)
 
     def test_exact_names_counts_and_disjoint_groups(self):
         for _, cases, assertions in runner.GROUPS:
             result = runner.parse_streams(self.streams(cases, assertions), cases, assertions)
             self.assertEqual(result["cases"], list(cases))
-        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 44)
-        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 44)
-        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2285)
+        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 45)
+        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 45)
+        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2299)
         self.assertEqual(len(runner.GROUPS), 6)
         self.assertEqual(runner.filter_for(runner.STARTUP).count(runner.PREFIX), 1)
 
     def test_plugin_profiles_exact_counts_and_single_context_processes(self):
         self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
         for profile, groups, count, assertions, processes in (
-                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 48, 2385, 100),
-                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 48, 2385, 100),
-                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70),
-                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 45, 2291, 70)):
+                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 49, 2399, 100),
+                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 49, 2399, 100),
+                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 46, 2305, 70),
+                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 46, 2305, 70)):
             streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]
             with patch.object(runner, "execute", side_effect=streams):
                 result = runner.repeat(Path("synthetic"), Path("unused"), (), 10, profile)
@@ -166,17 +166,17 @@ class Contract(unittest.TestCase):
 
     def test_summary_fail_closed(self):
         out, err = self.streams()
-        line = "  593 assertions out of 593 passed\n"
+        line = "  607 assertions out of 607 passed\n"
         for substitute in ("", line * 2, "  592 assertions out of 592 passed\n",
-                           "  593 assertions out of 594 passed\n", "  0593 assertions out of 0593 passed\n",
-                           "  NaN assertions out of NaN passed\n", "  593 assertions out of 593 passed extra\n"):
+                           "  607 assertions out of 608 passed\n", "  0607 assertions out of 0607 passed\n",
+                           "  NaN assertions out of NaN passed\n", "  607 assertions out of 607 passed extra\n"):
             with self.subTest(summary=substitute):
                 self.rejected((out, err.replace(line, substitute)))
         self.rejected((out + line, err))
-        self.rejected((out + "  593 assertions out of ", err.replace(line, "593 passed\n")))
-        self.rejected((out.replace("3", "2"), err))
+        self.rejected((out + "  607 assertions out of ", err.replace(line, "607 passed\n")))
+        self.rejected((out.replace("4", "3"), err))
         self.rejected((out * 2, err))
-        self.rejected((out, err + "  593 assertions out of NaN passed\n"))
+        self.rejected((out, err + "  607 assertions out of NaN passed\n"))
 
     def test_progress_identity_and_failure_rejection(self):
         out, err = self.streams()
@@ -188,7 +188,7 @@ class Contract(unittest.TestCase):
     def test_exclusive_report_and_privacy(self):
         with tempfile.TemporaryDirectory(prefix="ergon-runner-self-") as name:
             report = Path(name) / "record.json"
-            result = runner.parse_streams(self.streams(), runner.STARTUP, 593)
+            result = runner.parse_streams(self.streams(), runner.STARTUP, 607)
             self.assertNotIn(name, runner.canonical(result).decode())
             self.assertNotIn("Fixture start", runner.canonical(result).decode())
             runner.write_report(report, result)

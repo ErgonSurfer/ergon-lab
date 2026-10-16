@@ -301,6 +301,39 @@ BOOST_AUTO_TEST_CASE(startup_materialization_exception_keeps_graph_unpublished) 
     BOOST_CHECK(!access.index_failed.load());
     BOOST_CHECK(!ShutdownRequested());
 }
+BOOST_AUTO_TEST_CASE(startup_finish_releases_owned_graph_before_publication) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    size_t native_indexes;
+    const CBlockIndex *native_tip;
+    {
+        LOCK(cs_main);
+        native_indexes = mapBlockIndex.size();
+        native_tip = ChainActive().Tip();
+    }
+    auto bridge = ergon_archival::make_startup_bridge(access);
+    BOOST_REQUIRE_GT(native_indexes, 0);
+    BOOST_REQUIRE_EQUAL(bridge->startup_snapshot_index_count_for_testing(),
+                        native_indexes);
+    BOOST_CHECK_GE(bridge->startup_snapshot_retained_bytes_floor_for_testing(),
+                   native_indexes * sizeof(CBlockIndex));
+    BOOST_CHECK(&bridge->get_chain_tip() != native_tip);
+    BOOST_CHECK_NO_THROW(ergon_archival::finish_startup_bridge(*bridge));
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+    BOOST_CHECK_EQUAL(
+        bridge->startup_snapshot_retained_bytes_floor_for_testing(), 0);
+    BOOST_CHECK(&bridge->get_chain_tip() == native_tip);
+
+    auto service = ergon_archival::make_startup_bridge(access);
+    BOOST_REQUIRE_EQUAL(service->startup_snapshot_index_count_for_testing(),
+                        native_indexes);
+    BOOST_CHECK_GT(
+        service->startup_snapshot_retained_bytes_floor_for_testing(), 0);
+    BOOST_REQUIRE(ergon_archival::finish_service_startup_bridge(*service));
+    BOOST_CHECK_EQUAL(service->startup_snapshot_index_count_for_testing(), 0);
+    BOOST_CHECK_EQUAL(
+        service->startup_snapshot_retained_bytes_floor_for_testing(), 0);
+    BOOST_CHECK(&service->get_chain_tip() == native_tip);
+}
 BOOST_AUTO_TEST_CASE(startup_owned_graph_and_source_storage_fences) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     auto bridge = ergon_archival::make_startup_bridge(access);

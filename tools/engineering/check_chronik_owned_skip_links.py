@@ -55,16 +55,21 @@ def before_identity(root, path):
 
 
 def successor_identity(root, path, previous):
-    if not (root / MANIFEST).exists():
-        return previous
-    rows = [row for row in load_json(root / MANIFEST)["files"]
-            if row["path"] == path]
-    if not rows:
-        return previous
-    require(path in MANIFEST_FILES and len(rows) == 1 and
-            rows[0]["before"] == previous,
-            "owned skip-link successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if (root / MANIFEST).exists():
+        rows = [row for row in load_json(root / MANIFEST)["files"]
+                if row["path"] == path]
+        if rows:
+            require(path in MANIFEST_FILES and len(rows) == 1,
+                    "owned skip-link successor path drift")
+            if result != rows[0]["after"]:
+                require(rows[0]["before"] == result,
+                        "owned skip-link successor preimage drift")
+                result = rows[0]["after"]
+    if (root / "docs/engineering/chronik/upstream-startup-release-v1.json").exists():
+        from check_chronik_startup_release import successor_identity as release_successor
+        result = release_successor(root, path, result)
+    return result
 
 
 def native_cases(text):
@@ -96,7 +101,8 @@ def validate(root):
         require(set(row) == {"path", "before", "after", "provenance",
                              "reachability"} and
                 row["before"] == before and
-                row["after"] == current_identity(root, row["path"]) and
+                successor_identity(root, row["path"], row["after"]) ==
+                    current_identity(root, row["path"]) and
                 row["after"] != before and row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] ==
@@ -108,7 +114,11 @@ def validate(root):
     changed |= {path.decode() for path in
                 git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
                 if path}
-    require(changed == CHANGED, "unexpected owned skip-link path")
+    expected_changed = CHANGED
+    if (root / "docs/engineering/chronik/upstream-startup-release-v1.json").exists():
+        from check_chronik_startup_release import CHANGED as release_changed
+        expected_changed |= release_changed
+    require(changed == expected_changed, "unexpected owned skip-link path")
 
     from check_change import ValidationError, validate as validate_change
     record = load_json(root / RECORD)
@@ -131,13 +141,20 @@ def validate(root):
             for key, item in value.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]),
+                successor_identity(root, row["path"], governed(row["after"])) ==
+                    current_identity(root, row["path"]),
                 "owned skip-link policy drift")
 
     old_cases = native_cases(git(root, "show", PARENT +
         ":src/test/chronik_upstream_archival_tests.cpp").decode())
     new_cases = native_cases((root / "src/test/chronik_upstream_archival_tests.cpp").read_text())
-    require(len(old_cases) == 56 and set(old_cases) == set(new_cases) and
+    release_case = "startup_finish_releases_owned_graph_before_publication"
+    expected_additions = ({release_case}
+        if (root / "docs/engineering/chronik/upstream-startup-release-v1.json").exists()
+        else set())
+    require(len(old_cases) == 56 and
+            set(new_cases) - set(old_cases) == expected_additions and
+            set(old_cases) - set(new_cases) == set() and
             old_cases[TARGET_CASE] != new_cases[TARGET_CASE] and
             all(new_cases[name] == body for name, body in old_cases.items()
                 if name != TARGET_CASE),
@@ -160,9 +177,14 @@ def validate(root):
             "by_height.reserve(owned->indexes.size())" in capture,
             "owned skip-link construction/publication ordering drift")
     finish = bridge[end:bridge.index("NativePositionStats", end)]
-    require("Keep the graph alive until bridge destruction" in finish and
-            "m_startup_active = false" in finish,
-            "owned startup lifetime changed in skip-link lot")
+    if (root / "docs/engineering/chronik/upstream-startup-release-v1.json").exists():
+        require("m_startup.reset()" in finish and
+                "m_startup_active = false" in finish,
+                "owned startup successor release drift")
+    else:
+        require("Keep the graph alive until bridge destruction" in finish and
+                "m_startup_active = false" in finish,
+                "owned startup lifetime changed in skip-link lot")
     for path in ("chronik/chronik-indexer/src/indexer.rs",
                  "chronik/chronik-lib/src/ergon_archival.rs",
                  "chronik/Cargo.lock", "src/chain.cpp", "src/chain.h",

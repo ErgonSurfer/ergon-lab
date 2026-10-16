@@ -39,6 +39,7 @@ BRIDGE = (
     "chronik_native_upstream_disk_tests/position_native_aba_and_suffix_reorg_recovery",
 )
 STARTUP = tuple(PREFIX + name for name in (
+    "startup_finish_releases_owned_graph_before_publication",
     "startup_owned_graph_and_source_storage_fences",
     "startup_drift_quarantines_database_without_stopping_node",
     "startup_nonempty_mempool_parent_child_and_reopen",
@@ -86,7 +87,7 @@ CHAINSTATE = tuple(PREFIX + name for name in (
 ))
 GROUPS = (
     ("native-bridge-and-disk", BRIDGE, 166),
-    ("owned-startup", STARTUP, 593),
+    ("owned-startup", STARTUP, 607),
     ("capture-and-query-controls", CAPTURE, 1063),
     ("runtime-stop-and-reopen-controls", STOP, 307),
     ("silent-generation-and-control-locks", LIVENESS, 50),
@@ -317,6 +318,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                         "owned skip-link projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    release_manifest = source / "docs/engineering/chronik/upstream-startup-release-v1.json"
+    if release_manifest.exists():
+        from check_chronik_startup_release import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(release_manifest))
+        require(layer["schema"] == "ergon-upstream-startup-release/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES),
+                "startup release projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"],
+                        "startup release projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -486,7 +502,7 @@ def refusal_class(error):
 def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
     require(profile in (None, "archival", "plugins", "regtest", "regtest-plugins"), "unknown repetition profile")
-    require(len({case for _, cases, _ in GROUPS for case in cases}) == 44, "non-disjoint test groups")
+    require(len({case for _, cases, _ in GROUPS for case in cases}) == 45, "non-disjoint test groups")
     groups = GROUPS + (PLUGIN_GROUPS if profile in ("plugins", "regtest-plugins") else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
     require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
             "plugin cases overlap inherited groups")

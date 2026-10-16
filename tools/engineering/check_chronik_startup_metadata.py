@@ -44,6 +44,14 @@ FUTURE = frozenset({
     "tools/engineering/check_chronik_owned_skip_links_self_test.py",
     "tools/engineering/check_chronik_startup_metadata.py",
     "tests/compatibility/upstream-chronik/run_repetitions.py",
+    "chronik/chronik-cpp/chronik_bridge.h",
+    "docs/engineering/changes/ergon-change-0059.json",
+    "docs/engineering/chronik/upstream-startup-release-v1.json",
+    "docs/engineering/chronik/upstream-startup-release.md",
+    "tests/compatibility/upstream-chronik/self_test.py",
+    "tools/engineering/check_chronik_owned_skip_links_self_test.py",
+    "tools/engineering/check_chronik_startup_release.py",
+    "tools/engineering/check_chronik_startup_release_self_test.py",
 })
 POLICY = BASE_POLICY | FUTURE
 REUSED = ("tests/compatibility/upstream-chronik/cold_rebuild_service.py",
@@ -165,7 +173,11 @@ def validate(root):
     new_native = (root / "src/test/chronik_upstream_archival_tests.cpp").read_text()
     before, after = native_cases(old_native), native_cases(new_native)
     permitted = {"startup_owned_graph_and_source_storage_fences"}
-    require(len(before) == 53 and set(after) - set(before) == set(CASES) and
+    release_manifest = root / "docs/engineering/chronik/upstream-startup-release-v1.json"
+    release_cases = {"startup_finish_releases_owned_graph_before_publication"} \
+        if release_manifest.exists() else set()
+    require(len(before) == 53 and
+            set(after) - set(before) == set(CASES) | release_cases and
             all(after.get(name) == body for name, body in before.items()
                 if name not in permitted),
             "startup metadata changed inherited native case body")
@@ -177,9 +189,13 @@ def validate(root):
         require(after[next(iter(permitted))] == before[next(iter(permitted))],
                 "startup metadata changed inherited ownership case")
     runner_path = "tests/compatibility/upstream-chronik/run_repetitions.py"
-    require(without_projection(git(root, "show", PARENT + ":" + runner_path).decode()) ==
-            without_projection((root / runner_path).read_text()),
-            "startup metadata changed inherited runner behavior")
+    if release_manifest.exists():
+        from check_chronik_startup_release import validate as validate_release
+        validate_release(root)
+    else:
+        require(without_projection(git(root, "show", PARENT + ":" + runner_path).decode()) ==
+                without_projection((root / runner_path).read_text()),
+                "startup metadata changed inherited runner behavior")
     client = ast.parse((root / "tests/compatibility/upstream-chronik/startup_metadata.py").read_text())
     assignments = {target.id: ast.literal_eval(node.value) for node in client.body
                    if isinstance(node, ast.Assign) for target in node.targets
