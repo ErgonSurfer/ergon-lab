@@ -57,6 +57,14 @@ FUTURE = frozenset({
     "docs/engineering/chronik/upstream-startup-batches.md",
     "tools/engineering/check_chronik_startup_batches.py",
     "tools/engineering/check_chronik_startup_batches_self_test.py",
+    "chronik/chronik-cpp/ergon_archival_probe.cpp",
+    "chronik/chronik-cpp/ergon_archival_probe.h",
+    "chronik/chronik-lib/src/ergon_archival.rs",
+    "docs/engineering/changes/ergon-change-0061.json",
+    "docs/engineering/chronik/upstream-native-startup-v1.json",
+    "docs/engineering/chronik/upstream-native-startup.md",
+    "tools/engineering/check_chronik_native_startup.py",
+    "tools/engineering/check_chronik_native_startup_self_test.py",
 })
 POLICY = BASE_POLICY | FUTURE
 REUSED = ("tests/compatibility/upstream-chronik/cold_rebuild_service.py",
@@ -184,6 +192,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-startup-batches-v1.json").exists():
         from check_chronik_startup_batches import CASES as batch_cases
         release_cases |= set(batch_cases)
+    if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
+        from check_chronik_native_startup import CASES as native_cases_added
+        release_cases |= set(native_cases_added)
     require(len(before) == 53 and
             set(after) - set(before) == set(CASES) | release_cases and
             all(after.get(name) == body for name, body in before.items()
@@ -222,7 +233,7 @@ def validate(root):
     for path in ("chronik/chronik-indexer/src/indexer.rs", "chronik/bitcoinsuite-slp/src/alp/build.rs",
                  "chronik/chronik-plugin-impl/src/context.rs", "chronik/Cargo.lock", "src/init.cpp",
                  "src/validation.cpp", "src/txmempool.cpp"):
-        require(current_identity(root, path) == before_identity(root, path),
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)),
                 "startup metadata changed frozen engine/consensus/dependency input")
     return TECHNICAL | POLICY
 

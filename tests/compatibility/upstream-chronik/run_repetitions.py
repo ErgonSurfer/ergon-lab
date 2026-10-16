@@ -51,6 +51,14 @@ BATCHES = tuple(PREFIX + name for name in (
     "startup_batches_cancel_and_hook_exception_leave_no_owner",
     "startup_batches_final_fence_rejects_last_batch_drift",
 ))
+NATIVE_STARTUP = tuple(PREFIX + name for name in (
+    "native_startup_header_loan_has_no_owned_graph",
+    "native_startup_captured_branch_survives_progress_and_reorg",
+    "native_startup_reads_reject_mid_read_storage_drift",
+    "native_startup_cancellation_pruning_and_owner_fail_closed",
+    "native_startup_foreign_index_and_borrow_lifetime",
+    "native_startup_upstream_rewinds_offline_branch_and_reopens",
+))
 CAPTURE = tuple(PREFIX + name for name in (
     "actual_http_complete_read_profile_and_alp_lifecycle",
     "actual_alp_invalid_mint_and_malformed_metadata_do_not_change_consensus",
@@ -96,6 +104,7 @@ GROUPS = (
     ("native-bridge-and-disk", BRIDGE, 166),
     ("owned-startup", STARTUP, 607),
     ("startup-metadata-batches", BATCHES, 54),
+    ("native-startup", NATIVE_STARTUP, 74),
     ("capture-and-query-controls", CAPTURE, 1063),
     ("runtime-stop-and-reopen-controls", STOP, 307),
     ("silent-generation-and-control-locks", LIVENESS, 50),
@@ -356,6 +365,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                         "startup batches projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    native_manifest = source / "docs/engineering/chronik/upstream-native-startup-v1.json"
+    if native_manifest.exists():
+        from check_chronik_native_startup import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(native_manifest))
+        require(layer["schema"] == "ergon-upstream-native-startup/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES),
+                "native startup projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"],
+                        "native startup projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -525,7 +549,7 @@ def refusal_class(error):
 def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
     require(profile in (None, "archival", "plugins", "regtest", "regtest-plugins"), "unknown repetition profile")
-    require(len({case for _, cases, _ in GROUPS for case in cases}) == 50, "non-disjoint test groups")
+    require(len({case for _, cases, _ in GROUPS for case in cases}) == 56, "non-disjoint test groups")
     groups = GROUPS + (PLUGIN_GROUPS if profile in ("plugins", "regtest-plugins") else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
     require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
             "plugin cases overlap inherited groups")

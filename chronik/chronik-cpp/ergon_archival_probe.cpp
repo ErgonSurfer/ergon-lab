@@ -61,13 +61,19 @@ make_startup_bridge(const chronik_bridge::ErgonNodeAccess &node) {
     bridge->capture_startup_snapshot();
     return bridge;
 }
+std::unique_ptr<chronik_bridge::ChronikBridge>
+make_service_startup_bridge(const chronik_bridge::ErgonNodeAccess &node) {
+    auto bridge = chronik_bridge::make_bridge(node);
+    bridge->capture_native_startup();
+    return bridge;
+}
 void finish_startup_bridge(const chronik_bridge::ChronikBridge &bridge) {
     // The Rust UniquePtr is exclusively owned by synchronous startup. This
     // bridge cannot yet be shared with workers or requests.
     bridge.finish_startup_snapshot();
 }
 bool finish_service_startup_bridge(const chronik_bridge::ChronikBridge &bridge) {
-    return bridge.finish_startup_snapshot(true);
+    return bridge.finish_service_startup();
 }
 bool service_startup_cancelled() { return ShutdownRequested(); }
 bool capture_service_startup(ArchivalProbe &probe,
@@ -75,7 +81,7 @@ bool capture_service_startup(ArchivalProbe &probe,
                             const chronik_bridge::ErgonNodeAccess &node) {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(node.mempool.cs);
-    // The bridge is still private and owns its immutable ancestor graph.
+    // The bridge is still private and retains its captured immutable branch.
     // Seed the OLD indexed branch before switching to live access, so honest
     // progress/reorg can use the existing captured upstream disconnect/connect.
     const auto tip = chronik_bridge::get_block_info(bridge.get_chain_tip());

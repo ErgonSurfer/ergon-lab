@@ -121,6 +121,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-startup-batches-v1.json").exists():
         from check_chronik_startup_batches import CHANGED as batches_changed
         expected_changed |= batches_changed
+    if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
+        from check_chronik_native_startup import CHANGED as native_changed
+        expected_changed |= native_changed
     require(changed == expected_changed, "unexpected owned skip-link path")
 
     from check_change import ValidationError, validate as validate_change
@@ -158,6 +161,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-startup-batches-v1.json").exists():
         from check_chronik_startup_batches import CASES
         expected_additions |= set(CASES)
+    if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
+        from check_chronik_native_startup import CASES as native_cases_added
+        expected_additions |= set(native_cases_added)
     require(len(old_cases) == 56 and
             set(new_cases) - set(old_cases) == expected_additions and
             set(old_cases) - set(new_cases) == set() and
@@ -195,7 +201,7 @@ def validate(root):
                  "chronik/chronik-lib/src/ergon_archival.rs",
                  "chronik/Cargo.lock", "src/chain.cpp", "src/chain.h",
                  "src/validation.cpp", "src/txmempool.cpp"):
-        require(current_identity(root, path) == before_identity(root, path),
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)),
                 "owned skip-link changed frozen engine/consensus/runner input")
     return CHANGED
 

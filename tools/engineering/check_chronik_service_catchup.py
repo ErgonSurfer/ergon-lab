@@ -154,7 +154,10 @@ def validate(root, historical=False):
             "chronik/chronik-lib/src/ergon_service.rs", "chronik/chronik-plugin-impl/src/context.rs",
             "chronik/chronik-indexer/src/indexer.rs", "chronik/bitcoinsuite-slp/src/alp/build.rs",
             "docs/engineering/changes/ergon-change-0054.json", "docs/engineering/chronik/upstream-plugin-alp-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "catchup changed frozen engine/oracle/history")
+        previous = before_identity(root, path)
+        require(observed(path) == previous and current_identity(root, path) ==
+                (successor_identity(root, path, previous) if historical else previous),
+                "catchup changed frozen engine/oracle/history")
     runner_path = "tests/compatibility/upstream-chronik/run_repetitions.py"
     native_path = "src/test/chronik_upstream_archival_tests.cpp"
     latest_runner = git(root, "show", NEXT_PARENT + ":" + runner_path).decode() if historical else (root / runner_path).read_text()

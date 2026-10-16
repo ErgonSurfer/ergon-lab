@@ -231,6 +231,200 @@ CScript AlpScript(uint8_t op, const std::array<uint8_t, 32> &id = {}) {
 } // namespace
 
 BOOST_FIXTURE_TEST_SUITE(chronik_upstream_archival_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(native_startup_header_loan_has_no_owned_graph) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = ergon_archival::make_service_startup_bridge(access);
+    const auto *tip = ChainActive().Tip();
+    BOOST_REQUIRE(bridge->native_startup_active_for_testing());
+    BOOST_CHECK(&bridge->get_chain_tip() == tip);
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_retained_bytes_floor_for_testing(), 0);
+    BOOST_CHECK_THROW(bridge->capture_native_startup(), std::exception);
+    BOOST_CHECK_THROW(bridge->capture_startup_snapshot(), std::exception);
+    {
+        LOCK(cs_main);
+        mapBlockIndex.rehash(mapBlockIndex.bucket_count() * 2 + 1);
+    }
+    bool same = true;
+    for (int height = 0; height <= 100; ++height) {
+        const auto &index = bridge->lookup_block_index_by_height(height);
+        same &= &index == tip->GetAncestor(height) &&
+                &index == ChainActive()[height] &&
+                &bridge->lookup_block_index(Bytes(index.GetBlockHash())) == &index;
+    }
+    BOOST_CHECK(same);
+    BOOST_CHECK_THROW(bridge->lookup_block_index_by_height(-1), std::exception);
+    BOOST_CHECK_THROW(bridge->lookup_block_index_by_height(101), std::exception);
+    BOOST_REQUIRE(ergon_archival::finish_service_startup_bridge(*bridge));
+    BOOST_CHECK(!bridge->native_startup_active_for_testing());
+    BOOST_CHECK(&bridge->get_chain_tip() == tip);
+    BOOST_CHECK_THROW(bridge->finish_native_startup(), std::exception);
+    BOOST_CHECK(!access.index_failed.load());
+}
+BOOST_AUTO_TEST_CASE(native_startup_captured_branch_survives_progress_and_reorg) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = ergon_archival::make_service_startup_bridge(access);
+    const auto *old = &bridge->get_chain_tip();
+    const auto generation = bridge->chain_generation();
+    const auto revision = bridge->mempool_revision();
+    auto progress = std::async(std::launch::async, [&] {
+        CreateAndProcessBlock({}, CScript() << OP_2);
+        CValidationState state;
+        CBlockIndex *invalid;
+        {
+            LOCK(cs_main);
+            invalid = LookupBlockIndex(old->GetBlockHash());
+        }
+        if (!InvalidateBlock(GetConfig(), state, invalid) ||
+            !ActivateBestChain(GetConfig(), state))
+            throw std::runtime_error("Synthetic loan reorg refused");
+        CreateAndProcessBlock({}, CScript() << OP_3);
+        CreateAndProcessBlock({}, CScript() << OP_4);
+    });
+    BOOST_REQUIRE(progress.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+    progress.get();
+    const auto *live = ChainActive().Tip();
+    BOOST_CHECK_EQUAL(live->nHeight, 101);
+    BOOST_CHECK(&bridge->get_chain_tip() == old);
+    BOOST_CHECK(&bridge->lookup_block_index_by_height(100) == old);
+    BOOST_CHECK(&bridge->lookup_block_index_by_height(100) != ChainActive()[100]);
+    BOOST_CHECK(&bridge->lookup_block_index(Bytes(old->GetBlockHash())) == old);
+    BOOST_CHECK(&bridge->find_fork(*old) == old);
+    BOOST_CHECK(&bridge->find_fork(*live) == old->pprev);
+    BOOST_CHECK(ChainActive().FindFork(old) == old->pprev);
+    BOOST_CHECK_EQUAL(bridge->chain_generation(), generation);
+    BOOST_CHECK_EQUAL(bridge->mempool_revision(), revision);
+    BOOST_CHECK(ChainActive().GetSourceGeneration() != generation);
+    BOOST_CHECK(bridge->load_block(*old)->GetHash() == old->GetBlockHash());
+    BOOST_CHECK_EQUAL(bridge->load_block_undo(*old)->vtxundo.size(), 0);
+    BOOST_REQUIRE(ergon_archival::finish_service_startup_bridge(*bridge));
+    BOOST_CHECK(&bridge->get_chain_tip() == live);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
+BOOST_AUTO_TEST_CASE(native_startup_reads_reject_mid_read_storage_drift) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = ergon_archival::make_service_startup_bridge(access);
+    const auto &tip = bridge->get_chain_tip();
+    const auto hash = tip.GetBlockHash();
+    DataPositionRestore restore(100);
+    size_t calls = 0;
+    std::future<void> mutation;
+    bridge->block_read_hook_for_testing([&] {
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(g_mempool.cs);
+        mutation = std::async(std::launch::async, [&] {
+            LOCK2(cs_main, g_mempool.cs);
+            ++ChainActive()[100]->nDataPos;
+            ++calls;
+        });
+        if (mutation.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+            throw std::runtime_error("Storage read retained native locks");
+        mutation.get();
+    });
+    BOOST_CHECK_EXCEPTION(bridge->load_block(tip), std::exception,
+        [](const std::exception &error) {
+            return std::string(error.what()) == "Native storage identity changed during read";
+        });
+    BOOST_CHECK_EQUAL(calls, 1);
+    {
+        LOCK(cs_main);
+        ChainActive()[100]->nDataPos = restore.original;
+    }
+    BOOST_CHECK_EXCEPTION(bridge->load_block_undo(tip), std::exception,
+        [](const std::exception &error) {
+            return std::string(error.what()) == "Native storage identity changed during read";
+        });
+    BOOST_CHECK_EQUAL(calls, 2);
+    bridge->block_read_hook_for_testing({});
+    {
+        LOCK(cs_main);
+        ChainActive()[100]->nDataPos = restore.original;
+    }
+    BOOST_CHECK(bridge->load_block(tip)->GetHash() == hash);
+    BOOST_CHECK_EQUAL(bridge->load_block_undo(tip)->vtxundo.size(), 0);
+    BOOST_REQUIRE(bridge->finish_native_startup());
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(ChainActive().Tip()->GetBlockHash() == hash);
+    BOOST_CHECK(!ShutdownRequested());
+}
+BOOST_AUTO_TEST_CASE(native_startup_cancellation_pruning_and_owner_fail_closed) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = ergon_archival::make_service_startup_bridge(access);
+    struct Reset { ~Reset() { AbortShutdown(); } } reset;
+    StartShutdown();
+    BOOST_CHECK(!bridge->finish_native_startup());
+    BOOST_CHECK(bridge->native_startup_active_for_testing());
+    BOOST_CHECK_THROW(ergon_archival::make_service_startup_bridge(access), std::exception);
+    AbortShutdown();
+    access.index_failed.store(true);
+    BOOST_CHECK_THROW(bridge->finish_native_startup(), std::exception);
+    BOOST_CHECK_THROW(ergon_archival::make_service_startup_bridge(access), std::exception);
+    access.index_failed.store(false);
+    {
+        struct RestorePrune {
+            bool old;
+            RestorePrune() : old(fPruneMode) { fPruneMode = true; }
+            ~RestorePrune() { fPruneMode = old; }
+        } pruning;
+        BOOST_CHECK_THROW(bridge->finish_native_startup(), std::exception);
+        BOOST_CHECK_THROW(ergon_archival::make_service_startup_bridge(access), std::exception);
+    }
+    BOOST_REQUIRE(bridge->finish_native_startup());
+    BOOST_CHECK(!bridge->native_startup_active_for_testing());
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
+BOOST_AUTO_TEST_CASE(native_startup_foreign_index_and_borrow_lifetime) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto *native = ChainActive().Tip();
+    const auto hash = native->GetBlockHash();
+    auto bridge = ergon_archival::make_service_startup_bridge(access);
+    CBlockIndex foreign(native->GetBlockHeader());
+    foreign.phashBlock = &hash;
+    foreign.nHeight = native->nHeight;
+    foreign.pprev = native->pprev;
+    BOOST_CHECK_THROW(bridge->find_fork(foreign), std::exception);
+    BOOST_CHECK_THROW(bridge->lookup_block_index(Bytes(BlockHash())), std::exception);
+    const auto *borrowed = &bridge->get_chain_tip();
+    bridge.reset(); // Only a tiny private owner dies; native owner still exists.
+    BOOST_CHECK(borrowed == native);
+    BOOST_CHECK(borrowed->GetBlockHash() == hash);
+    BOOST_CHECK(borrowed->GetAncestor(0) == ChainActive().Genesis());
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
+BOOST_AUTO_TEST_CASE(native_startup_upstream_rewinds_offline_branch_and_reopens) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("native-startup-upstream-rewind");
+    const auto old = ChainActive().Tip()->GetBlockHash();
+    {
+        auto probe = ergon_archival::open_regtest_service(root, access);
+        BOOST_CHECK_EQUAL(probe->snapshot().height, 100);
+        BOOST_CHECK(probe->snapshot().hash == Bytes(old));
+    }
+    CValidationState state;
+    BOOST_REQUIRE(InvalidateBlock(GetConfig(), state, ChainActive().Tip()));
+    BOOST_REQUIRE(ActivateBestChain(GetConfig(), state));
+    CreateAndProcessBlock({}, CScript() << OP_2);
+    const auto replacement = CreateAndProcessBlock({}, CScript() << OP_3);
+    std::array<uint8_t, 32> logical;
+    {
+        auto probe = ergon_archival::open_regtest_service(root, access);
+        const auto snapshot = probe->snapshot();
+        BOOST_CHECK_EQUAL(snapshot.height, 101);
+        BOOST_CHECK(snapshot.hash == Bytes(replacement.GetHash()));
+        BOOST_CHECK(snapshot.hash != Bytes(old));
+        logical = snapshot.logical_digest;
+    }
+    auto reopened = ergon_archival::open_regtest_service(root, access);
+    BOOST_CHECK(reopened->snapshot().logical_digest == logical);
+    auto control = ergon_archival::open_archival(Root("native-startup-owned-control"), access);
+    BOOST_CHECK(control->snapshot().logical_digest == logical);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.failed"));
+    BOOST_CHECK(!ShutdownRequested());
+}
 BOOST_AUTO_TEST_CASE(startup_batches_release_both_locks_and_cover_every_index) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     auto bridge = chronik_bridge::make_bridge(access);

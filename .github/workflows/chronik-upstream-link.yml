@@ -34,6 +34,7 @@ on:
       - "docs/engineering/changes/ergon-change-0058.json"
       - "docs/engineering/changes/ergon-change-0059.json"
       - "docs/engineering/changes/ergon-change-0060.json"
+      - "docs/engineering/changes/ergon-change-0061.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -69,6 +70,7 @@ on:
       - "docs/engineering/changes/ergon-change-0058.json"
       - "docs/engineering/changes/ergon-change-0059.json"
       - "docs/engineering/changes/ergon-change-0060.json"
+      - "docs/engineering/changes/ergon-change-0061.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -144,6 +146,8 @@ jobs:
           python3 -B tools/engineering/check_chronik_startup_release_self_test.py
           python3 -B tools/engineering/check_chronik_startup_batches.py check
           python3 -B tools/engineering/check_chronik_startup_batches_self_test.py
+          python3 -B tools/engineering/check_chronik_native_startup.py check
+          python3 -B tools/engineering/check_chronik_native_startup_self_test.py
 
       - name: Install native prerequisites
         run: |

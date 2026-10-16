@@ -127,6 +127,10 @@ def validate(root):
     if batches_present:
         from check_chronik_startup_batches import CHANGED as batches_changed
         expected_changed |= batches_changed
+    native_present = (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists()
+    if native_present:
+        from check_chronik_native_startup import CHANGED as native_changed
+        expected_changed |= native_changed
     require(changed == expected_changed, "unexpected startup release path")
 
     from check_change import ValidationError, validate as validate_change
@@ -158,9 +162,13 @@ def validate(root):
         ":src/test/chronik_upstream_archival_tests.cpp").decode())
     new_cases = native_cases((root / "src/test/chronik_upstream_archival_tests.cpp").read_text())
     from check_chronik_startup_batches import CASES as batches_cases
+    native_additions = set()
+    if native_present:
+        from check_chronik_native_startup import CASES as native_cases_added
+        native_additions = set(native_cases_added)
     require(len(old_cases) == 56 and
             set(new_cases) - set(old_cases) == {TARGET_CASE} |
-                (set(batches_cases) if batches_present else set()) and
+                (set(batches_cases) if batches_present else set()) | native_additions and
             set(old_cases) - set(new_cases) == set() and
             all(new_cases[name] == body for name, body in old_cases.items()),
             "startup release changed inherited native case")
@@ -200,7 +208,7 @@ def validate(root):
     runner_self = (root / "tests/compatibility/upstream-chronik/self_test.py").read_text()
     require(('"' + TARGET_CASE + '"') in runner and
             '("owned-startup", STARTUP, 607)' in runner and
-            ('== ' + ('50' if batches_present else '45') +
+            ('== ' + ('56' if native_present else '50' if batches_present else '45') +
              ', "non-disjoint test groups"') in runner and
             "assertions=607" in runner_self and
             "runner.STARTUP, 607" in runner_self,
@@ -210,7 +218,7 @@ def validate(root):
                  "chronik/chronik-plugin-impl/src/context.rs",
                  "chronik/Cargo.lock", "src/chain.cpp", "src/chain.h",
                  "src/validation.cpp", "src/txmempool.cpp"):
-        require(current_identity(root, path) == before_identity(root, path),
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)),
                 "startup release changed frozen engine/consensus/dependency input")
     return CHANGED
 

@@ -69,6 +69,9 @@ class ChronikBridge {
     struct StartupSnapshot;
     mutable std::unique_ptr<StartupSnapshot> m_startup;
     mutable bool m_startup_active{false};
+    struct NativeStartup;
+    mutable std::unique_ptr<NativeStartup> m_native_startup;
+    std::function<void()> m_block_read_hook;
 
   public:
     ChronikBridge(const ErgonNodeAccess &node);
@@ -86,6 +89,14 @@ class ChronikBridge {
         std::function<void()> after_metadata = {},
         std::function<void(size_t)> after_batch = {});
     bool finish_startup_snapshot(bool allow_progress = false) const;
+    // Service-only captured tip, not a clone of the native index. The joined
+    // native owner must outlive every borrow; header/parent/skip fields are
+    // immutable after publication. No unload/reload or pruning is supported.
+    void capture_native_startup();
+    bool finish_native_startup() const;
+    bool finish_service_startup() const;
+    bool native_startup_active_for_testing() const;
+    void block_read_hook_for_testing(std::function<void()> hook);
     // Native-only diagnostics/hooks; not an HTTP or CXX wire capability.
     size_t startup_snapshot_index_count_for_testing() const;
     size_t startup_snapshot_retained_bytes_floor_for_testing() const;

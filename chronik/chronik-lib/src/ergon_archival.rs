@@ -115,6 +115,7 @@ mod ffi {
         #[namespace = "chronik_bridge"]
         type ChronikBridge = chronik_bridge::ffi::ChronikBridge;
         fn make_startup_bridge(node: &ErgonNodeAccess) -> Result<UniquePtr<ChronikBridge>>;
+        fn make_service_startup_bridge(node: &ErgonNodeAccess) -> Result<UniquePtr<ChronikBridge>>;
         fn finish_startup_bridge(bridge: &ChronikBridge) -> Result<()>;
         fn finish_service_startup_bridge(bridge: &ChronikBridge) -> Result<bool>;
         fn service_startup_cancelled() -> bool;
@@ -452,9 +453,10 @@ impl CapturedSource {
         if self.owner != node as *const _ as usize {
             bail!("Capture native owner mismatch");
         }
-        // Only detached native block/index metadata may reach this method.
-        // Conversion and block/undo reads occur outside both native locks;
-        // C++ rechecks the live source/storage before any DB application.
+        // Index metadata is detached or a service-owned immutable native
+        // header loan. Mutable positions are captured/rechecked by C++ under
+        // cs_main around each unlocked read/conversion. No mutable native
+        // storage field is accessed directly from Rust.
         ffi::archival_database_guard(node)?;
         let block = native::bridge_block(block, undo, index)?;
         if block.height != self.start_height + self.blocks.len() as i32
@@ -691,7 +693,8 @@ fn open_archival_impl(
         lease
     };
     let node = Arc::new(Node {
-        bridge: ffi::make_startup_bridge(access)?,
+        bridge: if service { ffi::make_service_startup_bridge(access)? }
+                else { ffi::make_startup_bridge(access)? },
     });
     let mut expected = identity(node.bridge.get_genesis_hash().data);
     if let Some(plugins) = plugins {
@@ -719,7 +722,7 @@ fn open_archival_impl(
     let revision = node.bridge.mempool_revision();
     let result = (|| -> Result<Option<ChronikIndexer>> {
         if let Some(hook) = hook {
-            // Run after owned graph capture, before DB/disk work; requests
+            // Run after branch capture, before DB/disk work; requests
             // remain absent. Deterministic source-drift testing only.
             hook.run()?;
         }
@@ -732,8 +735,9 @@ fn open_archival_impl(
             indexer.stop()?; // A real flush error still takes the failure path.
             return Ok(None); // Upstream resync itself permits joined cancellation.
         }
-        // Resync borrows only the owned native metadata graph. Validate its
-        // complete source/storage identity before switching to live access.
+        // Strict fixtures own copied metadata and require its complete fence.
+        // Service startup borrows immutable native ancestors until the joined
+        // owner ends; reads capture/check mutable storage independently.
         if !service {
             ffi::finish_startup_bridge(&node.bridge)?;
             ffi::archival_fixture_guard(access)?;

@@ -44,19 +44,19 @@ class Contract(unittest.TestCase):
         for _, cases, assertions in runner.GROUPS:
             result = runner.parse_streams(self.streams(cases, assertions), cases, assertions)
             self.assertEqual(result["cases"], list(cases))
-        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 50)
-        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 50)
-        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2353)
-        self.assertEqual(len(runner.GROUPS), 7)
+        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 56)
+        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 56)
+        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2427)
+        self.assertEqual(len(runner.GROUPS), 8)
         self.assertEqual(runner.filter_for(runner.STARTUP).count(runner.PREFIX), 1)
 
     def test_plugin_profiles_exact_counts_and_single_context_processes(self):
         self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
         for profile, groups, count, assertions, processes in (
-                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 54, 2453, 110),
-                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 54, 2453, 110),
-                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 51, 2359, 80),
-                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 51, 2359, 80)):
+                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 60, 2527, 120),
+                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 60, 2527, 120),
+                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 57, 2433, 90),
+                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 57, 2433, 90)):
             streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]
             with patch.object(runner, "execute", side_effect=streams):
                 result = runner.repeat(Path("synthetic"), Path("unused"), (), 10, profile)

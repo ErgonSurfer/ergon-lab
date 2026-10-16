@@ -161,6 +161,12 @@ struct ChronikBridge::StartupSnapshot {
     CChain chain;
     uint64_t generation{0}, revision{0};
 };
+struct ChronikBridge::NativeStartup {
+    // Existing entries and their hash/header/parent/skip fields outlive the
+    // joined service. Never retain map iterators or mutable disk positions.
+    const CBlockIndex *tip{nullptr};
+    uint64_t generation{0}, revision{0};
+};
 ChronikBridge::ChronikBridge(const ErgonNodeAccess &node)
     : m_node(node), m_positions(node) {}
 ChronikBridge::~ChronikBridge() = default;
@@ -170,7 +176,7 @@ void ChronikBridge::capture_startup_snapshot(
     std::function<void(size_t)> after_batch) {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_node.mempool.cs);
-    if (m_startup)
+    if (m_startup || m_native_startup)
         throw std::runtime_error("Startup snapshot already captured");
     auto owned = std::make_unique<StartupSnapshot>();
     struct Metadata {
@@ -368,17 +374,77 @@ ChronikBridge::startup_snapshot_retained_bytes_floor_for_testing() const {
 NativePositionStats ChronikBridge::position_stats() const {
     return m_positions.Stats();
 }
+void ChronikBridge::capture_native_startup() {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_node.mempool.cs);
+    if (m_startup || m_native_startup)
+        throw std::runtime_error("Startup snapshot already captured");
+    auto captured = std::make_unique<NativeStartup>();
+    {
+        LOCK2(cs_main, m_node.mempool.cs);
+        const auto *tip = ChainActive().Tip();
+        if (m_node.config.GetChainParams().NetworkIDString() != "regtest" ||
+            fPruneMode || ShutdownRequested() || m_node.index_failed.load() ||
+            !tip || tip->nHeight < 0 || tip->nHeight > 2000 ||
+            mapBlockIndex.size() > 4096 || m_node.mempool.size() > 4096 ||
+            !pcoinsTip || !ChainActive().GetSourceGeneration() ||
+            !m_node.mempool.GetSourceGeneration() ||
+            LookupBlockIndex(tip->GetBlockHash()) != tip)
+            throw std::runtime_error("Native startup requires healthy fixture profile");
+        captured->tip = tip;
+        captured->generation = ChainActive().GetSourceGeneration();
+        captured->revision = m_node.mempool.GetSourceGeneration();
+    }
+    // Only this private synchronous bridge can access the captured branch.
+    // No workers or HTTP requests exist until resync, seed and finish return.
+    m_native_startup = std::move(captured);
+}
+bool ChronikBridge::finish_native_startup() const {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_node.mempool.cs);
+    {
+        LOCK2(cs_main, m_node.mempool.cs);
+        if (ShutdownRequested())
+            return false;
+        if (!m_native_startup || m_startup || fPruneMode ||
+            m_node.index_failed.load() || !ChainActive().Tip() ||
+            LookupBlockIndex(m_native_startup->tip->GetBlockHash()) !=
+                m_native_startup->tip)
+            throw std::runtime_error("Native startup owner unavailable");
+        // No copied storage metadata to validate or release. Reads bind their
+        // own positions under cs_main, read outside it, then recheck. Native
+        // append/reorg may progress; captured header ancestors do not change.
+    }
+    m_native_startup.reset();
+    return true;
+}
+bool ChronikBridge::native_startup_active_for_testing() const {
+    return bool(m_native_startup);
+}
+bool ChronikBridge::finish_service_startup() const {
+    // Retain the historical owned-graph service fixture; actual service opens
+    // use capture_native_startup exclusively.
+    return m_native_startup ? finish_native_startup()
+                            : finish_startup_snapshot(true);
+}
+void ChronikBridge::block_read_hook_for_testing(std::function<void()> hook) {
+    m_block_read_hook = std::move(hook);
+}
 void ChronikBridge::position_read_hook_for_testing(std::function<void()> hook) {
     m_positions.BeforeReadForTesting(std::move(hook));
 }
 
 uint64_t ChronikBridge::mempool_revision() const {
+    if (m_native_startup)
+        return m_native_startup->revision;
     if (m_startup_active)
         return m_startup->revision;
     return m_node.mempool.GetSourceGeneration();
 }
 
 uint64_t ChronikBridge::chain_generation() const {
+    if (m_native_startup)
+        return m_native_startup->generation;
     if (m_startup_active)
         return m_startup->generation;
     LOCK(cs_main);
@@ -404,6 +470,8 @@ bool ChronikBridge::matches_source(std::array<uint8_t, 32> hash, int32_t height,
 }
 
 const CBlockIndex &ChronikBridge::get_chain_tip() const {
+    if (m_native_startup)
+        return *m_native_startup->tip;
     if (m_startup_active)
         return *m_startup->chain.Tip();
     LOCK(cs_main);
@@ -430,6 +498,8 @@ ChronikBridge::lookup_block_index(std::array<uint8_t, 32> hash) const {
 
 const CBlockIndex &
 ChronikBridge::lookup_block_index_by_height(int height) const {
+    if (m_native_startup)
+        return get_block_ancestor(*m_native_startup->tip, height);
     if (m_startup_active) {
         const auto *index = m_startup->chain[height];
         if (!index)
@@ -482,6 +552,8 @@ ChronikBridge::load_block(const CBlockIndex &index) const {
         throw std::runtime_error(
             "Native block read or hash verification failed");
     }
+    if (m_block_read_hook)
+        m_block_read_hook(); // Native test hook; no runtime configuration.
     CheckStorage(index, snapshot);
     return block;
 }
@@ -497,6 +569,8 @@ ChronikBridge::load_block_undo(const CBlockIndex &index) const {
         throw std::runtime_error(
             "Native undo read or checksum verification failed");
     }
+    if (m_block_read_hook)
+        m_block_read_hook();
     CheckStorage(index, snapshot);
     return undo;
 }
@@ -521,6 +595,19 @@ bool ChronikBridge::is_avalanche_finalized_preconsensus(
 }
 
 const CBlockIndex &ChronikBridge::find_fork(const CBlockIndex &index) const {
+    if (m_native_startup) {
+        {
+            LOCK(cs_main);
+            if (LookupBlockIndex(index.GetBlockHash()) != &index)
+                throw block_index_not_found();
+        }
+        // Compare with the captured branch, never the concurrently moving
+        // active chain. Only immutable ancestors are traversed outside locks.
+        const auto *fork = LastCommonAncestor(&index, m_native_startup->tip);
+        if (!fork)
+            throw block_index_not_found();
+        return *fork;
+    }
     if (m_startup_active) {
         auto found = m_startup->indexes.find(index.GetBlockHash());
         if (found == m_startup->indexes.end() || found->second.get() != &index)

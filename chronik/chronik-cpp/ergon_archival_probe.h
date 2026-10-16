@@ -39,6 +39,8 @@ void archival_reconcile_guard(const chronik_bridge::ErgonNodeAccess &node);
 void archival_database_guard(const chronik_bridge::ErgonNodeAccess &node);
 std::unique_ptr<chronik_bridge::ChronikBridge>
 make_startup_bridge(const chronik_bridge::ErgonNodeAccess &node);
+std::unique_ptr<chronik_bridge::ChronikBridge>
+make_service_startup_bridge(const chronik_bridge::ErgonNodeAccess &node);
 void finish_startup_bridge(const chronik_bridge::ChronikBridge &bridge);
 bool finish_service_startup_bridge(const chronik_bridge::ChronikBridge &bridge);
 bool service_startup_cancelled();

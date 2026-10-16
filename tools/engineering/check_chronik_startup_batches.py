@@ -53,11 +53,16 @@ def before_identity(root, path):
 
 def successor_identity(root, path, previous):
     rows = [row for row in load_json(root / MANIFEST)["files"] if row["path"] == path]
-    if not rows:
-        return previous
-    require(path in MANIFEST_FILES and len(rows) == 1 and rows[0]["before"] == previous,
-            "startup batches successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if rows:
+        require(path in MANIFEST_FILES and len(rows) == 1 and
+                previous in (rows[0]["before"], rows[0]["after"]),
+                "startup batches successor preimage drift")
+        result = rows[0]["after"]
+    if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
+        from check_chronik_native_startup import successor_identity as native_successor
+        result = native_successor(root, path, result)
+    return result
 
 
 def without_capture(text):
@@ -72,6 +77,7 @@ def validate(root):
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"",
             "startup batches parent drift")
     manifest = load_json(root / MANIFEST)
+    native_present = (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists()
     require(set(manifest) == {"$comment", "schema", "license", "public_parent",
                              "contract", "files"} and
             manifest["$comment"] == "SPDX-License-Identifier: MIT" and
@@ -85,7 +91,7 @@ def validate(root):
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
                 row["before"] == before and row["after"] != before and
-                row["after"] == current_identity(root, row["path"]) and
+                successor_identity(root, row["path"], row["after"]) == current_identity(root, row["path"]) and
                 row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == ("bounded-regtest-native-or-test-only"
@@ -93,10 +99,17 @@ def validate(root):
                 "startup batches file identity drift")
     changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
     changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
-    require(changed == CHANGED, "unexpected startup batches path")
+    expected = CHANGED
+    if native_present:
+        from check_chronik_native_startup import CHANGED as native_changed
+        from check_chronik_native_startup import PARENT as native_parent, validate as validate_native
+        expected |= native_changed
+        validate_native(root)
+    require(changed == expected, "unexpected startup batches path")
 
     old = git(root, "show", PARENT + ":" + BRIDGE).decode()
-    bridge = (root / BRIDGE).read_text()
+    bridge = (git(root, "show", native_parent + ":" + BRIDGE).decode()
+              if native_present else (root / BRIDGE).read_text())
     require(without_capture(old) == without_capture(bridge),
             "startup batches changed final storage fence or unrelated bridge behavior")
     capture = bridge[bridge.index("void ChronikBridge::capture_startup_snapshot"):
@@ -116,7 +129,11 @@ def validate(root):
             "startup batches publication/handoff ordering drift")
     before = native_cases(git(root, "show", PARENT + ":" + NATIVE).decode())
     after = native_cases((root / NATIVE).read_text())
-    require(len(before) == 57 and set(after) - set(before) == set(CASES) and
+    additions = set(CASES)
+    if native_present:
+        from check_chronik_native_startup import CASES as native_cases_added
+        additions |= set(native_cases_added)
+    require(len(before) == 57 and set(after) - set(before) == additions and
             all(after.get(name) == body for name, body in before.items()),
             "startup batches changed inherited native cases")
     runner = (root / RUNNER).read_text()
@@ -129,7 +146,7 @@ def validate(root):
                  "chronik/chronik-lib/src/ergon_archival.rs",
                  "chronik/chronik-indexer/src/indexer.rs",
                  "chronik/chronik-plugin-impl/src/context.rs"):
-        require(current_identity(root, path) == before_identity(root, path),
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)),
                 "startup batches changed frozen native/engine/dependency input")
 
     from check_change import validate as validate_change
@@ -145,7 +162,7 @@ def validate(root):
         normalize = lambda value: None if value is None else {
             ("git_blob_sha1" if k == "git_blob" else k): v for k, v in value.items()}
         require(normalize(row["before"]) == before_identity(root, row["path"]) and
-                normalize(row["after"]) == current_identity(root, row["path"]),
+                successor_identity(root, row["path"], normalize(row["after"])) == current_identity(root, row["path"]),
                 "startup batches governance identity drift")
     return CHANGED
 
