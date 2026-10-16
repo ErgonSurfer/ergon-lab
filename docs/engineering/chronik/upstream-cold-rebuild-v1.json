@@ -1,0 +1,72 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-upstream-cold-rebuild/v1",
+  "license": "MIT",
+  "public_parent": {
+    "commit": "e70c7c2063e786663a0164a0a6c8320cb015eae8",
+    "tree": "d67c2dcfbd74a1fae0080f74079ee99141d8a584"
+  },
+  "contract": {
+    "scope": "test-only-no-production-or-dependency-change",
+    "profile": "regtest-plugins",
+    "compile_default": false,
+    "runtime_default": false,
+    "network": "bounded-unpruned-regtest",
+    "maximum_height": 2000,
+    "corpus_height": 102,
+    "first_index_height": 402,
+    "final_height": 403,
+    "retained_capture_window": 288,
+    "default_repetitions": 3,
+    "daemon_processes_per_repetition": 3,
+    "template_case": "chronik_upstream_regtest_tests/export_upstream_alp_templates",
+    "template_assertions": 4,
+    "input_corpus": "unchanged-upstream-ALP-templates-and-existing-public-ERGN-plugin-fixture",
+    "role_binding": "native-outpoint-ancestry-not-canonical-block-order",
+    "lifecycle": [
+      "native-only-history-no-index",
+      "first-upstream-index-reconstruction",
+      "same-index-process-reopen",
+      "native-progress"
+    ],
+    "historical_first_seen": "upstream-explicit-unknown-zero-not-original-mempool-times",
+    "oracles": "unchanged-existing-full-ALP-AND-public-plugin-HTTP-oracles",
+    "cleanup": "all-owned-daemons-attempted-retain-root-on-unverified-cleanup-no-passing-report",
+    "unchanged_deadlines": true,
+    "automatic_retry": false,
+    "arbitrary_plugins": false,
+    "native_value": "zero-input-output-fee-not-funded-economics",
+    "consensus_change": false,
+    "upstream_engine_change": false,
+    "dependency_change": false,
+    "incoming_evidence": [],
+    "knowledge_status": "Open Question",
+    "evidence_ceiling": "record-review-only"
+  },
+  "files": [
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12483,
+        "git_blob_sha1": "ee29c6d99e29c491b6ebe0bd2b87874609352e02",
+        "sha256": "0126c76cc1db63db27a0c01702539b207e9060fb7ea1476b16ca06ac7ceca996"
+      },
+      "provenance": "A1/MIT",
+      "reachability": "test-only"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 14929,
+        "git_blob_sha1": "cb689744c3d85a39f44eb2abdf261d2b1a045384",
+        "sha256": "98725c7a1d46fe135722bca53b12cf352e8cb8785cd8beec97c7ba8570363e67"
+      },
+      "provenance": "A1/MIT",
+      "reachability": "test-only"
+    }
+  ]
+}

@@ -1,0 +1,664 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0056",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0056.json",
+  "purpose": {
+    "summary": "Test first upstream Chronik reconstruction of native ALP/public-plugin history older than the retained capture window, same-index fresh-process reopen and subsequent native progress.",
+    "scope": [
+      "Direct child of signed public main e70c7c2, integrated by PR58; exact two new test inputs plus finite policy, documentation and CI changes.",
+      "Native-only daemon confirms the existing upstream-built four-operation ALP/public-plugin corpus at102 and reaches402 without creating an index or plugin-input directory.",
+      "Bind native operations through input ancestry, never canonical block order; verify IDs and raw wires before reconstruction.",
+      "First upstream index reconstructs both unchanged HTTP oracles with historical first-seen explicitly unknown0; a third process reopens the same index and progresses403 without changing corpus commitments.",
+      "Three repetitions require nine fresh daemons, three positive native-only stops and six positive joined service stops; retain all inherited clients, matrices, budgets, deadlines and negative controls."
+    ],
+    "exclusions": [
+      "No compiled production/native-test, indexer, ALP parser/builder, plugin engine, dependency, consensus, activation or default change.",
+      "No full-chain/mainnet admission, widened capture/storage/reorg budget, arbitrary plugin, failed-root adoption, automatic wipe, native reindex/reindex-chainstate or power-loss durability claim.",
+      "No incoming private report, operational output, binary, history, operator data, server access, deployment, desktop integration or proof promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "e70c7c2063e786663a0164a0a6c8320cb015eae8",
+      "tree": "d67c2dcfbd74a1fae0080f74079ee99141d8a584"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "9ab3413f1a7a104c966b1c7cc8778e0a729e0c7e00b6bfdefeb081715e883c54",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 14045,
+        "git_blob": "d958d14a86ce57cbae35129df2d4758b256b9c86",
+        "sha256": "f6ee54a4cafc08c822f2bfc6a7eb8fe1e765480aea2651937d9ad2c6567b385b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14950,
+        "git_blob": "b4bb2327836daedd1c78b6d691ccc8dc0c30101d",
+        "sha256": "c4fd676ff947420c6c88cb9775a721dfc3f891c3b7c99582cad721bf5f2c2d49"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-cold-rebuild-v1.json",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2626,
+        "git_blob": "88be6b7ec121ebf84197e519a239585c1df3c95c",
+        "sha256": "55cd6599b0ac77c9ccfeea4ce46ff1fd5ecf7f6926230fc51a2899defd8f5efd"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-cold-rebuild.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4937,
+        "git_blob": "8e4a0293bb6b13fa1bd859115755c2e01900894f",
+        "sha256": "543c49397fdb710608a4b45e87a794f983da9b4bfefc6d9a2e054d2e49369d40"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12483,
+        "git_blob": "ee29c6d99e29c491b6ebe0bd2b87874609352e02",
+        "sha256": "0126c76cc1db63db27a0c01702539b207e9060fb7ea1476b16ca06ac7ceca996"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 14929,
+        "git_blob": "cb689744c3d85a39f44eb2abdf261d2b1a045384",
+        "sha256": "98725c7a1d46fe135722bca53b12cf352e8cb8785cd8beec97c7ba8570363e67"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_cold_rebuild.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8246,
+        "git_blob": "dcfad50c43b699a134fab79d4ab778367b3a813e",
+        "sha256": "7ea05f12729ea5d1b7992a70951d16a7a4a1af86785f061ef6cde829f695dec8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_cold_rebuild_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4639,
+        "git_blob": "352a9f5cce62ae42e77e05c7d1ba00761a026c93",
+        "sha256": "dea33804356c2293d2902553342562c0521224cba872a258cd5d0b24b3649858"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_alp_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3424,
+        "git_blob": "ea9add8e0fba15703ced15e19b01b6c9c76f03c8",
+        "sha256": "aa7ded0af6272bc5428482c7a1165c13010cb512605115eea35fb1e35c98a1ca"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3553,
+        "git_blob": "5bc4bd85c80e35dfaea8f3ace55d4ae92c9dfb57",
+        "sha256": "20489a371225e82d3f85f667de0342b4bc7f474b9e8ed4d3f661568ab66f5b1c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 4507,
+        "git_blob": "464521695c4a1e79408cf1ceb1b03e8b043e3c9f",
+        "sha256": "8bccd280dd99efc140beb70e1b167adbda67fac27e77a6d3d52833d1fd14f4cb"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4636,
+        "git_blob": "83363fc866f566c5a3d11d1c792dcbae4d3cc95a",
+        "sha256": "d59258630c2113d422f4a0d01da152700d4fea61b2cac2ae32551bc136a76930"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_regtest_service_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3562,
+        "git_blob": "f60aeb4360adf6a97c8c18df8be5340367f0eac2",
+        "sha256": "a2eb352670001ad7827b80eef2b5fb088721dc4d10947791ca24f8add6242fb8"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3691,
+        "git_blob": "fd18c27ad52b0d2b4fcc94f4d40f3f1f2990b482",
+        "sha256": "73d741e038ebf162575de4a680e271d890ccff0068e91a2bacdf7b75db883308"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_alp_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3296,
+        "git_blob": "59ad96039c29b2b294d0c8d59d22706dc9bcfe01",
+        "sha256": "60a995a3678644201cc81266a4fa479743873a3d3839b9999408ebcce5a73ac5"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3425,
+        "git_blob": "25935d9318d491a0d7b0d3009390d0669f3122de",
+        "sha256": "dc163466cfaa2610da50bce27f0c67741547ee4d31ca4fa252c8c7c304b84ebc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_catchup.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10902,
+        "git_blob": "83bec23212c2c9245c0eb465c63055a5d4d3ae0d",
+        "sha256": "3698bea8e1ec5c9d38842557f728ac2387c2f1622bb4b3b561c7af70c0420076"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11439,
+        "git_blob": "f4660c782104dab17923d1be01a5bb21033310ec",
+        "sha256": "741ff724a17575773d7bb3cc3515fce7218e5ae5c0f00d8ee10dc5e920579196"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_catchup_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 6506,
+        "git_blob": "cafe99b3c048a55ac1660a545ff1f22dd49d1938",
+        "sha256": "624994e31049931e98592a4d06be94659cc04a620bc0b48d339d0768d0ba47a5"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6592,
+        "git_blob": "e628b0c55ec2465eb793cebc482111432f8dac3d",
+        "sha256": "5346955bc2e5078c55fc096e82ca4d3e73293fd178454b5c7ce1504132096776"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_plugins_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3273,
+        "git_blob": "a9f0a7c3b87bac84b6ac7721b62e68f26b07e353",
+        "sha256": "85f0c872d7f94ba1cc6b4a1014c844d77acb059b29c4b106067bf9f87b0e6d75"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3402,
+        "git_blob": "e280ef20a40dc1f820eab066f777bfcd7c7d5f59",
+        "sha256": "42c605e9b9fe6ffbdf9df40f8ce52daa2f3b6bb430b437c23584f39a9f0b8b9a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_recovery_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3263,
+        "git_blob": "b881ac8fea0d398850a3a13517abd0335f58f089",
+        "sha256": "f35d4e3edab257e2f174ba1a3c7c157c34d976ecc962846b7e767e1670575df6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3392,
+        "git_blob": "8084d388b1d7708cdff07e248c99976123b6ab07",
+        "sha256": "123300f131411e52d2eed983e5970ea040d252532ffcf6a0fbe12deaf1d7a35d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_startup_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3213,
+        "git_blob": "81743301a8c23a3e35cc0d391ad84a5f992bf196",
+        "sha256": "771e8d1278b16b487146b8b86849cf022d12ed26f939127b9334655405b53c9d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3342,
+        "git_blob": "00d1b16220ab081ed8a8662c47d2b256a8bc5bc8",
+        "sha256": "4d46ca611d451b8e8af813eb8bccef51c6e8ebe08edae6928e99471f9b0cf8d2"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime: test scheduling, public runner, finite source policy, documentation or CI only.",
+      "test_reachability": "Retained exact inherited controls plus upstream cold ALP/public-plugin reconstruction, same-index reopen and progress; no proof promotion."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the independent compiled-out profile with all upstream/plugin/observer flags OFF; execute the existing native zero-subsidy mining and positive-stop smoke."
+        ],
+        "expected_results": [
+          "Native mining and shutdown work without linking Rust/Chronik; no Chronik state or external peer connection is created."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build the archival and plugin component profiles with regtest service OFF; retain their exact matrices and dormant smokes. Build the separate regtest profile with plugins OFF and retain its actual-daemon lifecycle and full ALP client."
+        ],
+        "expected_results": [
+          "Linking upstream or enabling plugin component fixtures alone starts no daemon index, plugin inputs or listener. Existing profiles remain independently bound."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the exact public unchanged compiled projection for regtest-plugins; retain all existing matrices and clients, then run cold_rebuild_service.py --repetitions3 with separate canonical work/report roots."
+        ],
+        "expected_results": [
+          "Exact upstream template export4 assertions and three complete cold-reconstruction/reopen/progress observations with nine fresh daemons. First failure stops the series without retry or a passing report."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run cold_rebuild_service.py --repetitions3 on the exact public source and bound regtest-plugins build; retain inherited matrices and separate hot lifecycle clients.",
+        "expected_results": [
+          "Native-only history at402 contains the native-ancestry-bound four-operation corpus at102 with no existing index/plugin inputs.",
+          "Unchanged upstream ALP and plugin HTTP oracles pass after first reconstruction, same-index process reopen and native progression403; historical first-seen stays explicitly unknown0.",
+          "Identity, lease inode and public plugin inputs remain exact; zero peers, WebSocket/broadcast disabled, three positive stops per repetition and complete disposable cleanup before exclusive report creation."
+        ],
+        "failure_conditions": [
+          "Any source/build/binary/identity drift, existing index, wrong native ancestry/wire, changed snapshot/lease/input, fabricated historical first-seen, skip, timeout, nonzero exit, overwrite, missing joined stop or incomplete cleanup. No automatic retry."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run cold_rebuild_service.py --repetitions3 on the exact public source and bound regtest-plugins build; retain inherited matrices and separate hot lifecycle clients.",
+        "expected_results": [
+          "Native-only history at402 contains the native-ancestry-bound four-operation corpus at102 with no existing index/plugin inputs.",
+          "Unchanged upstream ALP and plugin HTTP oracles pass after first reconstruction, same-index process reopen and native progression403; historical first-seen stays explicitly unknown0.",
+          "Identity, lease inode and public plugin inputs remain exact; zero peers, WebSocket/broadcast disabled, three positive stops per repetition and complete disposable cleanup before exclusive report creation."
+        ],
+        "failure_conditions": [
+          "Any source/build/binary/identity drift, existing index, wrong native ancestry/wire, changed snapshot/lease/input, fabricated historical first-seen, skip, timeout, nonzero exit, overwrite, missing joined stop or incomplete cleanup. No automatic retry."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run feature_chronik_token_http.py: extend to height 290 in bounded batches, disconnect below the retained projection anchor, reconsider, verify mismatched restart leaves HTTP disabled, then explicitly full-reindex. Separately exercise upstream retained-anchor and source-generation contradictions; the fixture observer closes while native progress continues.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both known and unknown token/transaction IDs return protobuf 503 after observer closure, never stale 200 or misleading 404.",
+          "Node RPC and chain selection continue; reconsider does not reopen observation. A persistent-tip mismatch disables HTTP on restart and logs recovery=reindex. Explicit full reindex restores canonical token metadata and byte-identical confirmed transaction output."
+        ],
+        "failure_conditions": [
+          "Any accepted response after irreversible closure, missing-ID 404 from a degraded view, HTTP serving from a mismatched restarted runtime, missing mismatch diagnostic, failed canonical reindex recovery, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04-ci-required",
+        "macos-26-arm64-local-preflight-observed-not-independent"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Bounded unpruned local regtest, maximum height2000 and exact trusted public synthetic plugin; no full-chain or server-replacement readiness claim.",
+    "Native input/output values and actual fees are zero, not funded token economics.",
+    "A fresh index cannot reconstruct prior mempool first-seen times. Explicit upstream unknown0 is not continuity of historical observations.",
+    "Current native startup metadata still copies and retains a bounded full graph. This test does not remove the scalable-native-access prerequisite or exercise native reindex/reindex-chainstate.",
+    "All inherited startup/aggregate60-second stop-reopen failures and upstream dependency alerts remain open; no deadline relaxation, repeated-until-green run or proof promotion.",
+    "Local bound binaries and source/configuration checks are not fresh public-commit builds or independent reproducible-build provenance. Rust registry inputs are locked; OS/SDK/runner inputs are not."
+  ],
+  "counterevidence": [
+    "Local diagnosis reproduced callback-capacity refusal at128 pending tickets while native mining continued. This motivates compact invalidation bookkeeping, not new consensus or token rules.",
+    "Eighteen individual native leaves passed379 assertions locally, including13 inherited leaves307 assertions and5 new leaves72 assertions. Individual-process passes do not establish a passing historical aggregate matrix.",
+    "The first runtime series ended before RPC or log output on its first startup deadline; observations2/3 were not run. A later diagnostic pass does not erase or explain that failure.",
+    "Public CI for the new exact candidate is still required. No private report is attached; this record remains Open Question/record-review-only with no artifacts.",
+    "One invocation of the new clean public client passed its five native leaves72 assertions, upstream template export4 assertions and all3 catchup/reopen repetitions with6 fresh daemons locally. Existing ALP/plugin/known-first-seen commitments remained exact at402; zero peers, six joined stops and disposable-root cleanup passed. This separate local preflight does not replace the earlier failed run or establish independent public reproduction.",
+    "The first local policy regression batch exceeded its180-second per-file driver budget in the startup-policy self-test and was interrupted during the following file. Narrow reuse let startup-policy pass136s, but a second batch reached180s in recovery-policy and was interrupted. This is distinct from daemon startup. Shared reuse of full immutable Git-object byte reads and earlier historical rejection avoid redundant subprocess work; no current file, mutable ref, signature, diff, ancestry or validation success is cached and no runtime deadline or rejection class is relaxed.",
+    "Review found that the new runner's serial cleanup could stop at the first owner failure and skip later owners. A synthetic regression failed before correction. Cleanup now attempts every owner, retains the root on any unverified cleanup and refuses a passing report; failure at either owner is covered without extending any native/daemon deadline.",
+    "The initial local test-module preflight passed three observations with nine fresh daemons, first index402, corpus102 and reopened progression403. Both existing HTTP oracles, unknown first-seen0, identity/lease/plugin inputs, positive stops and cleanup passed. This is a separate local observation, not incoming evidence or a replacement for any earlier failed run.",
+    "The public CLI adds independent exclusive-report, path-privacy and before/after source/build/binary bindings. Its final local invocation passed three repetitions/nine fresh daemons, all exact HTTP oracles and cleanup. Sixteen standard-library contract/rejection suites passed112 tests, including17 new cold runner/policy tests. Synthetic native summaries in runner self-tests are not native aggregate executions. Exact public-commit CI and independent reproduction remain separate; no local report is attached."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

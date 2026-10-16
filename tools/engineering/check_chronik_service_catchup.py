@@ -104,8 +104,13 @@ def validate_retained_controls(old_runner, new_runner, old_native, new_native):
             all(after.get(name) == body for name, body in before.items()), "catchup changed inherited native case body")
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_cold_rebuild import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT, validate as validate_next
+    if not historical and (root / NEXT_MANIFEST).exists():
+        return validate(root, historical=True) | validate_next(root)
+    def observed(path):
+        return revision_identity(root, NEXT_PARENT, path) if historical else current_identity(root, path)
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "catchup parent drift")
     manifest = load_json(root / MANIFEST)
@@ -118,12 +123,15 @@ def validate(root):
     for row in manifest["files"]:
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
-                row["before"] == before and row["after"] == current_identity(root, row["path"]) and
+                row["before"] == before and row["after"] == observed(row["path"]) and
+                row["after"] == current_identity(root, row["path"]) and
                 row["after"] != before and row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == "bounded-regtest-service-or-test-only", "catchup source drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, NEXT_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected catchup path")
     from check_change import ValidationError, validate as validate_change
     record = load_json(root / RECORD)
@@ -139,7 +147,7 @@ def validate(root):
         return None if v is None else {("git_blob_sha1" if k == "git_blob" else k): value for k, value in v.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]), "catchup policy drift")
+                governed(row["after"]) == observed(row["path"]), "catchup policy drift")
     for path in REUSED + ("CMakeLists.txt", "chronik/UpstreamLink.cmake", "src/init.cpp", "src/validation.cpp",
             "src/txmempool.cpp", "chronik/Cargo.lock", "chronik/chronik-lib/src/ergon_archival.rs",
             "chronik/chronik-lib/src/ergon_service.rs", "chronik/chronik-plugin-impl/src/context.rs",

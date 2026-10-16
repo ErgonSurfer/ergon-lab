@@ -13,7 +13,8 @@ class Contract(unittest.TestCase):
     def test_exact_finite_layer(self):
         from check_chronik_plugin_alp import TECHNICAL, POLICY
         from check_chronik_service_catchup import TECHNICAL as CATCHUP_TECHNICAL, POLICY as CATCHUP_POLICY
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY | CATCHUP_TECHNICAL | CATCHUP_POLICY)
+        from check_chronik_cold_rebuild import TECHNICAL as COLD_TECHNICAL, POLICY as COLD_POLICY
+        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY | CATCHUP_TECHNICAL | CATCHUP_POLICY | COLD_TECHNICAL | COLD_POLICY)
 
     def test_contract_and_inventory_rejections(self):
         original = gate.load_json
