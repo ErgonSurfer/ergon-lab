@@ -1942,6 +1942,153 @@ BOOST_AUTO_TEST_CASE(callback_overflow_quarantines_only_index) {
     CreateAndProcessBlock({}, CScript() << OP_4);
     BOOST_CHECK_EQUAL(ChainActive().Height(), 104);
 }
+BOOST_AUTO_TEST_CASE(callback_capacity_reason_survives_drain) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("archival-capacity-reason");
+    CallbackLatch latch;
+    ergon_archival::ArchivalWorker worker(root, access, 2,
+                                          [&] { latch.Block(); });
+    CreateAndProcessBlock({}, CScript() << OP_1);
+    SyncWithValidationInterfaceQueue();
+    BOOST_REQUIRE(latch.Wait());
+    CreateAndProcessBlock({}, CScript() << OP_2);
+    CreateAndProcessBlock({}, CScript() << OP_3);
+    SyncWithValidationInterfaceQueue();
+    const auto overflow = worker.Status();
+    BOOST_CHECK(overflow.failure == ergon_archival::WorkerFailure::CallbackCapacity);
+    BOOST_CHECK_EQUAL(overflow.failure_pending, 2);
+    BOOST_CHECK_EQUAL(std::string(ergon_archival::WorkerFailureName(overflow.failure)), "callback-capacity");
+    latch.Release();
+    worker.Stop();
+    const auto stopped = worker.Status();
+    BOOST_CHECK(stopped.joined);
+    BOOST_CHECK(stopped.failed);
+    BOOST_CHECK_EQUAL(stopped.pending, 0);
+    BOOST_CHECK(stopped.failure == overflow.failure);
+    BOOST_CHECK_EQUAL(stopped.failure_pending, 2);
+}
+BOOST_AUTO_TEST_CASE(callback_notification_reason_is_not_relabelled) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("archival-notification-reason");
+    ergon_archival::ArchivalWorker worker(root, access, 2, {}, [] {
+        throw std::runtime_error("Synthetic private exception must not be serialized");
+    });
+    BOOST_CHECK(worker.Status().failure == ergon_archival::WorkerFailure::None);
+    CreateAndProcessBlock({}, CScript() << OP_1);
+    SyncWithValidationInterfaceQueue();
+    worker.Stop();
+    const auto stopped = worker.Status();
+    BOOST_CHECK(stopped.failure == ergon_archival::WorkerFailure::NotificationHook);
+    BOOST_CHECK_EQUAL(stopped.failure_pending, 0);
+    BOOST_CHECK_EQUAL(std::string(ergon_archival::WorkerFailureName(stopped.failure)), "notification-hook");
+    BOOST_CHECK(stopped.failed);
+    BOOST_CHECK(stopped.joined);
+    BOOST_CHECK(access.index_failed.load());
+}
+BOOST_AUTO_TEST_CASE(service_frontier_coalesces_ordered_invalidations) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("service-frontier-catchup");
+    CallbackLatch latch;
+    ergon_archival::ArchivalWorker worker(root, access, 2,
+        [&] { latch.Block(); }, {}, {}, {}, nullptr, true);
+    CreateAndProcessBlock({}, CScript() << OP_1);
+    SyncWithValidationInterfaceQueue();
+    BOOST_REQUIRE(latch.Wait());
+    for (int i = 0; i < 6; ++i)
+        CreateAndProcessBlock({}, CScript() << OP_2);
+    const auto old = ChainActive().Tip()->GetBlockHash();
+    CValidationState state;
+    BOOST_REQUIRE(InvalidateBlock(GetConfig(), state, ChainActive().Tip()));
+    BOOST_REQUIRE(ActivateBestChain(GetConfig(), state));
+    const auto replacement = CreateAndProcessBlock({}, CScript() << OP_3);
+    SyncWithValidationInterfaceQueue();
+    const auto pending = worker.Status();
+    BOOST_CHECK_EQUAL(pending.accepted, 9);
+    BOOST_CHECK_EQUAL(pending.completed, 0);
+    BOOST_CHECK_EQUAL(pending.pending, 9);
+    BOOST_CHECK_EQUAL(pending.queued_tickets, 0);
+    BOOST_CHECK(!pending.failed);
+    BOOST_CHECK(!pending.ready);
+    BOOST_CHECK_THROW(worker.ReadSnapshot(), std::exception);
+    latch.Release();
+    BOOST_REQUIRE(worker.WaitThrough(pending.accepted, 5000));
+    const auto current = worker.Status();
+    BOOST_CHECK_EQUAL(current.completed, 9);
+    BOOST_CHECK_EQUAL(current.pending, 0);
+    BOOST_CHECK_EQUAL(current.queued_tickets, 0);
+    BOOST_CHECK(current.ready);
+    BOOST_CHECK(current.failure == ergon_archival::WorkerFailure::None);
+    const auto snapshot = worker.ReadSnapshot();
+    BOOST_CHECK_EQUAL(snapshot.height, 107);
+    BOOST_CHECK(snapshot.hash == Bytes(replacement.GetHash()));
+    BOOST_CHECK(snapshot.hash != Bytes(old));
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK_EQUAL(worker.Status().discarded, 0);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.failed"));
+    auto reopened = ergon_archival::open_regtest_service(root, access);
+    BOOST_CHECK(reopened->snapshot().logical_digest == snapshot.logical_digest);
+}
+BOOST_AUTO_TEST_CASE(service_frontier_stop_discards_unpublished_range) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("service-frontier-stop");
+    CallbackLatch latch;
+    ergon_archival::ArchivalWorker worker(root, access, 2,
+        [&] { latch.Block(); }, {}, {}, {}, nullptr, true);
+    CreateAndProcessBlock({}, CScript() << OP_1);
+    SyncWithValidationInterfaceQueue();
+    BOOST_REQUIRE(latch.Wait());
+    for (int i = 0; i < 3; ++i)
+        CreateAndProcessBlock({}, CScript() << OP_2);
+    SyncWithValidationInterfaceQueue();
+    BOOST_CHECK_EQUAL(worker.Status().accepted, 4);
+    BOOST_CHECK_EQUAL(worker.Status().queued_tickets, 0);
+    auto stopping = std::async(std::launch::async, [&] { worker.Stop(); });
+    BOOST_CHECK(!worker.WaitThrough(4, 5000));
+    BOOST_CHECK(worker.Status().admission_closed);
+    BOOST_CHECK(!worker.Status().joined);
+    BOOST_CHECK_THROW(worker.ReadSnapshot(), std::exception);
+    // Closing/draining callbacks must neither accept new ordinals nor prevent
+    // native chain progress. The closed gate can never be republished.
+    CreateAndProcessBlock({}, CScript() << OP_3);
+    SyncWithValidationInterfaceQueue();
+    BOOST_CHECK_EQUAL(worker.Status().accepted, 4);
+    latch.Release();
+    BOOST_REQUIRE(stopping.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+    stopping.get();
+    const auto stopped = worker.Status();
+    BOOST_CHECK(stopped.joined);
+    BOOST_CHECK(!stopped.ready);
+    BOOST_CHECK(!stopped.failed);
+    BOOST_CHECK(stopped.completed <= 1);
+    BOOST_CHECK(stopped.discarded >= 3);
+    BOOST_CHECK_EQUAL(stopped.completed + stopped.discarded, stopped.accepted);
+    BOOST_CHECK_EQUAL(stopped.pending, 0);
+    BOOST_CHECK_EQUAL(stopped.queued_tickets, 0);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!fs::exists(fs::path(root) / "probe.failed"));
+    auto reopened = ergon_archival::open_regtest_service(root, access);
+    BOOST_CHECK_EQUAL(reopened->snapshot().height, 105);
+}
+BOOST_AUTO_TEST_CASE(service_frontier_notification_failure_is_terminal) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    const auto root = Root("service-frontier-notification-failure");
+    ergon_archival::ArchivalWorker worker(root, access, 2, {}, [] {
+        throw std::runtime_error("Synthetic notification failure");
+    }, {}, {}, nullptr, true);
+    CreateAndProcessBlock({}, CScript() << OP_1);
+    SyncWithValidationInterfaceQueue();
+    BOOST_CHECK(worker.Status().failed);
+    BOOST_CHECK(worker.Status().failure == ergon_archival::WorkerFailure::NotificationHook);
+    BOOST_CHECK_EQUAL(worker.Status().queued_tickets, 0);
+    BOOST_CHECK_THROW(worker.ReadSnapshot(), std::exception);
+    worker.Stop();
+    BOOST_CHECK(worker.Status().joined);
+    BOOST_CHECK(fs::exists(fs::path(root) / "probe.failed"));
+    CreateAndProcessBlock({}, CScript() << OP_2);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 102);
+}
 BOOST_AUTO_TEST_CASE(callback_stop_drains_subscriber_inflight) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     const auto root = Root("archival-callback-drain");

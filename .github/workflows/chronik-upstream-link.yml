@@ -28,6 +28,7 @@ on:
       - "docs/engineering/changes/ergon-change-0052.json"
       - "docs/engineering/changes/ergon-change-0053.json"
       - "docs/engineering/changes/ergon-change-0054.json"
+      - "docs/engineering/changes/ergon-change-0055.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -57,6 +58,7 @@ on:
       - "docs/engineering/changes/ergon-change-0052.json"
       - "docs/engineering/changes/ergon-change-0053.json"
       - "docs/engineering/changes/ergon-change-0054.json"
+      - "docs/engineering/changes/ergon-change-0055.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -117,6 +119,9 @@ jobs:
           python3 -B tools/engineering/check_chronik_plugin_alp.py check
           python3 -B tools/engineering/check_chronik_plugin_alp_self_test.py
           python3 -B tests/compatibility/upstream-chronik/plugin_alp_service_self_test.py
+          python3 -B tools/engineering/check_chronik_service_catchup.py check
+          python3 -B tools/engineering/check_chronik_service_catchup_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/catchup_service_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -248,6 +253,16 @@ jobs:
             --build-root "$RUNNER_TEMP/ergon-upstream-build" \
             --work-parent "$RUNNER_TEMP/ergon-plugin-alp-work" \
             --repetitions 3 --report "$RUNNER_TEMP/ergon-plugin-alp.json"
+
+      - name: Compact service frontier and rapid native catchup with ALP and plugin data
+        if: matrix.profile == 'regtest-plugins'
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-service-catchup-work"
+          python3 -B tests/compatibility/upstream-chronik/catchup_service.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --build-root "$RUNNER_TEMP/ergon-upstream-build" \
+            --work-parent "$RUNNER_TEMP/ergon-service-catchup-work" \
+            --repetitions 3 --report "$RUNNER_TEMP/ergon-service-catchup.json"
 
       - name: Mine and stop with Chronik runtime default OFF
         shell: bash

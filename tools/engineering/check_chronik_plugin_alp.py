@@ -45,8 +45,8 @@ CONTRACT = {"scope": "test-only-no-production-or-dependency-change", "profile": 
 
 
 def before_identity(root, path):
-    row = git(root, "ls-tree", PARENT, "--", path).decode().split()
-    return identity(git(root, "show", PARENT + ":" + path), row[0]) if row else None
+    from check_chronik_service_catchup import revision_identity
+    return revision_identity(root, PARENT, path)
 
 
 def input_binding(root):
@@ -54,8 +54,15 @@ def input_binding(root):
     return hashlib.sha256((json.dumps(rows, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode()).hexdigest()
 
 
-def validate(root):
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_service_catchup import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT
+    from check_chronik_service_catchup import revision_identity, successor_identity, validate as validate_next
+    if not historical and (root / NEXT_MANIFEST).exists():
+        return validate(root, historical=True) | validate_next(root)
+    def observed(path):
+        if not historical: return current_identity(root, path)
+        return revision_identity(root, NEXT_PARENT, path)
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "combined parent drift")
     manifest = load_json(root / MANIFEST)
@@ -68,11 +75,13 @@ def validate(root):
     for row in manifest["files"]:
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
-                row["before"] == before and row["after"] == current_identity(root, row["path"]) and
+                row["before"] == before and row["after"] == observed(row["path"]) and
                 before is None and row["after"]["mode"] == "100644" and
                 row["provenance"] == "A1/MIT" and row["reachability"] == "test-only", "combined test source drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, NEXT_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected combined path")
     from check_change import ValidationError, validate as validate_change
     record = load_json(root / RECORD)
@@ -88,14 +97,17 @@ def validate(root):
         return None if v is None else {("git_blob_sha1" if k == "git_blob" else k): value for k, value in v.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]), "combined policy drift")
+                governed(row["after"]) == observed(row["path"]), "combined policy drift")
     for path in REUSED + ("CMakeLists.txt", "chronik/UpstreamLink.cmake", "src/init.cpp", "src/validation.cpp",
                          "src/txmempool.cpp", "chronik/Cargo.lock", "chronik/chronik-lib/src/ergon_archival.rs",
                          "chronik/chronik-cpp/ergon_regtest_service.cpp", "chronik/chronik-plugin-impl/src/context.rs",
                          "chronik/chronik-indexer/src/indexer.rs", "chronik/bitcoinsuite-slp/src/alp/build.rs",
                          "docs/engineering/changes/ergon-change-0053.json",
                          "docs/engineering/chronik/upstream-service-plugins-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "combined changed frozen engine/oracle/history")
+        previous = before_identity(root, path)
+        require(observed(path) == previous, "combined changed frozen engine/oracle/history")
+        expected = successor_identity(root, path, previous) if historical else previous
+        require(current_identity(root, path) == expected, "successor changed frozen combined input")
     return TECHNICAL | POLICY
 
 

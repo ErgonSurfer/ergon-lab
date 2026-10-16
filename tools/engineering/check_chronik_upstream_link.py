@@ -9,6 +9,7 @@ checks every current technical postimage and rejects additional changed paths.
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import hashlib
 import json
 import os
@@ -83,11 +84,26 @@ def load_json(path: Path):
     require(path.is_file() and not path.is_symlink(), "manifest must be regular")
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_keys)
 
-def git(root: Path, *args: str) -> bytes:
+def _run_git(root: Path, *args: str) -> bytes:
     env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
                GIT_NO_REPLACE_OBJECTS="1", GIT_TERMINAL_PROMPT="0")
     return subprocess.check_output(["git", "-C", str(root), *args], env=env,
                                    stderr=subprocess.PIPE, timeout=30)
+
+
+@lru_cache(maxsize=2048)
+def _immutable_git(root: Path, args: tuple[str, ...]) -> bytes:
+    return _run_git(root, *args)
+
+
+def git(root: Path, *args: str) -> bytes:
+    # Cache only byte reads of full immutable object IDs, never references,
+    # signatures, worktree/index state, diffs, ancestry or validation results.
+    tree_path = (len(args) == 4 and args[0] == "ls-tree" and
+                 re.fullmatch(r"[0-9a-f]{40}", args[1]) is not None and args[2] == "--")
+    blob_path = (len(args) == 2 and args[0] == "show" and
+                 re.fullmatch(r"[0-9a-f]{40}:[^:\x00]+", args[1]) is not None)
+    return _immutable_git(root, args) if tree_path or blob_path else _run_git(root, *args)
 
 def identity(raw: bytes, mode: str) -> dict:
     return {"mode": mode, "bytes": len(raw),

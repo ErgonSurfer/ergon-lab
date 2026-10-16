@@ -83,7 +83,12 @@ struct OwnedService::Impl {
                 while (!Cancelled() && !worker.Status().failed)
                     Pause();
             }
-            failed.store(worker.Status().failed);
+            const auto status = worker.Status();
+            failed.store(status.failed);
+            if (status.failed)
+                LogPrintf("Chronik upstream regtest failure reason=%s accepted=%u completed=%u pending_at_failure=%u node_continues=1\n",
+                          ergon_archival::WorkerFailureName(status.failure),
+                          status.accepted, status.completed, status.failure_pending);
             port.store(0);
             worker.Stop();
             LogPrintf("Chronik upstream regtest stopped joined=1\n");

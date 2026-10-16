@@ -18,7 +18,8 @@ class Contract(unittest.TestCase):
         from check_chronik_service_plugins import TECHNICAL, POLICY
         expected |= TECHNICAL | POLICY
         from check_chronik_plugin_alp import TECHNICAL, POLICY
-        self.assertEqual(gate.validate(self.root), expected | TECHNICAL | POLICY)
+        from check_chronik_service_catchup import TECHNICAL as CATCHUP_TECHNICAL, POLICY as CATCHUP_POLICY
+        self.assertEqual(gate.validate(self.root), expected | TECHNICAL | POLICY | CATCHUP_TECHNICAL | CATCHUP_POLICY)
 
     def test_contract_and_inventory_rejections(self):
         original = gate.load_json

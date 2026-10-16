@@ -47,7 +47,8 @@ class Contract(unittest.TestCase):
         from check_chronik_plugin_alp import MANIFEST, TECHNICAL, POLICY
         if (root / MANIFEST).exists():
             expected |= TECHNICAL | POLICY
-        self.assertEqual(gate.validate(root), expected)
+        from check_chronik_service_catchup import TECHNICAL as CATCHUP_TECHNICAL, POLICY as CATCHUP_POLICY
+        self.assertEqual(gate.validate(root), expected | CATCHUP_TECHNICAL | CATCHUP_POLICY)
 
     def test_manifest_rejections(self):
         root = Path(__file__).resolve().parents[2]

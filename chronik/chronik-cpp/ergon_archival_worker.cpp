@@ -15,6 +15,17 @@
 #include <validationinterface.h>
 
 namespace ergon_archival {
+const char *WorkerFailureName(WorkerFailure failure) noexcept {
+    switch (failure) {
+    case WorkerFailure::None: return "none";
+    case WorkerFailure::NotificationHook: return "notification-hook";
+    case WorkerFailure::CallbackCapacity: return "callback-capacity";
+    case WorkerFailure::SequenceExhausted: return "sequence-exhausted";
+    case WorkerFailure::TicketAllocation: return "ticket-allocation";
+    case WorkerFailure::Reconcile: return "reconcile";
+    }
+    return "unknown";
+}
 struct ArchivalWorker::Impl final : CValidationInterface {
     const chronik_bridge::ErgonNodeAccess &node;
     const bool service_mode;
@@ -25,6 +36,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
     std::deque<uint64_t> tickets;
     size_t capacity, pending{0}; // Includes the in-flight ticket.
     uint64_t accepted{0}, completed{0}, discarded{0}, rejected{0};
+    WorkerFailure failure{WorkerFailure::None};
+    size_t failure_pending{0};
     bool ready{false}, failed{false}, closed{false}, stopping{false},
         joined{false}, registered{false};
     std::function<void()> before, before_notification, after_capture,
@@ -86,6 +99,31 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             throw;
         }
     }
+    // Caller owns mu. Preserve the first cause, including the occupancy before
+    // the worker drains/discards pending tickets during destruction.
+    void Fail(WorkerFailure reason) {
+        if (!failed) {
+            failure = reason;
+            failure_pending = pending;
+        }
+        failed = true;
+        ready = false;
+        (*gate)->fail();
+        node.index_failed.store(true);
+    }
+    // All frontier/queue access owns mu. Service notifications are invalidation
+    // ordinals, not transaction/block payloads. One constant-storage interval
+    // (completed, accepted] represents every unacknowledged notification.
+    bool HasTicket() const {
+        return service_mode ? accepted != completed : !tickets.empty();
+    }
+    uint64_t TakeTicket() {
+        if (service_mode)
+            return accepted;
+        const auto ticket = tickets.front();
+        tickets.pop_front();
+        return ticket;
+    }
     void Push() {
         // Metadata-only invalidation; no DB/data mutex, no native borrow.
         (*gate)->invalidate();
@@ -94,10 +132,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                 before_notification();
         } catch (...) {
             std::lock_guard<std::mutex> lock(mu);
-            failed = true;
-            (*gate)->fail();
-            ready = false;
-            node.index_failed.store(true);
+            Fail(WorkerFailure::NotificationHook);
             cv.notify_all();
             return;
         }
@@ -107,10 +142,18 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             return;
         }
         ready = false;
-        if (pending == capacity || accepted == UINT64_MAX) {
-            failed = true;
-            (*gate)->fail();
-            node.index_failed.store(true);
+        if (service_mode && (accepted == UINT64_MAX || pending == SIZE_MAX)) {
+            Fail(WorkerFailure::SequenceExhausted);
+        } else if (service_mode) {
+            // No queue growth, DB access or native-source wait. A later capture
+            // can acknowledge only a monotonic prefix, and publication still
+            // refuses native progress, shutdown, storage drift or a stale epoch.
+            ++accepted;
+            ++pending;
+        } else if (pending == capacity) {
+            Fail(WorkerFailure::CallbackCapacity);
+        } else if (accepted == UINT64_MAX) {
+            Fail(WorkerFailure::SequenceExhausted);
         } else {
             try {
                 tickets.push_back(accepted + 1);
@@ -118,9 +161,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                 ++pending;
             } catch (...) {
                 // Allocation failure must not escape into native validation.
-                failed = true;
-                (*gate)->fail();
-                node.index_failed.store(true);
+                Fail(WorkerFailure::TicketAllocation);
             }
         }
         cv.notify_all();
@@ -153,14 +194,12 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                 {
                     std::unique_lock<std::mutex> lock(mu);
                     cv.wait_for(lock, std::chrono::milliseconds(100), [&] {
-                        return stopping || closed || failed || !tickets.empty();
+                        return stopping || closed || failed || HasTicket();
                     });
                     if (stopping || closed || failed)
                         break;
-                    if (!tickets.empty()) {
-                        ticket = tickets.front();
-                        tickets.pop_front();
-                    }
+                    if (HasTicket())
+                        ticket = TakeTicket();
                 }
                 if (!ticket) {
                     {
@@ -183,14 +222,13 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                     std::lock_guard<std::mutex> lock(mu);
                     if (stopping || closed || failed)
                         break;
-                    if (!tickets.empty()) {
-                        ticket = tickets.front();
-                        tickets.pop_front();
-                    }
+                    if (HasTicket())
+                        ticket = TakeTicket();
                     ready = false;
                     (*gate)->invalidate();
                 }
-                if (ticket && ticket != completed + 1)
+                if (ticket && (service_mode ? ticket <= completed
+                                            : ticket != completed + 1))
                     throw std::runtime_error("Callback ticket order gap");
                 if (before)
                     before();
@@ -204,8 +242,11 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                 {
                     std::lock_guard<std::mutex> lock(mu);
                     if (ticket) {
+                        const auto acknowledged = ticket - completed;
+                        if (!acknowledged || acknowledged > pending)
+                            throw std::runtime_error("Callback frontier accounting gap");
                         completed = ticket;
-                        --pending;
+                        pending -= static_cast<size_t>(acknowledged);
                     }
                     ready = published && !closed && !failed && pending == 0;
                     cv.notify_all();
@@ -213,9 +254,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             }
         } catch (...) {
             std::lock_guard<std::mutex> lock(mu);
-            failed = true;
-            (*gate)->fail();
-            node.index_failed.store(true);
+            Fail(WorkerFailure::Reconcile);
             cv.notify_all();
         }
         // The worker owns destruction as well as mutation. No Rust reference
@@ -285,7 +324,8 @@ WorkerStatus ArchivalWorker::Status() const {
     std::lock_guard<std::mutex> lock(m_impl->mu);
     return {m_impl->accepted, m_impl->completed, m_impl->discarded,
             m_impl->rejected, m_impl->pending,   m_impl->ready,
-            m_impl->failed,   m_impl->closed,    m_impl->joined};
+            m_impl->failed,   m_impl->closed,    m_impl->joined,
+            m_impl->failure,  m_impl->failure_pending, m_impl->tickets.size()};
 }
 bool ArchivalWorker::WaitThrough(uint64_t ticket, int milliseconds) {
     AssertLockNotHeld(cs_main);

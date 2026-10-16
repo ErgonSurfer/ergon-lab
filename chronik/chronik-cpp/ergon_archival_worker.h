@@ -16,10 +16,24 @@ struct TxView;
 struct RequestGate;
 struct ResponseLatch;
 struct PluginFixture;
+// Stable bounded diagnostics only: never expose an exception containing native
+// paths, data, plugin text or an operator identity.
+enum class WorkerFailure {
+    None,
+    NotificationHook,
+    CallbackCapacity,
+    SequenceExhausted,
+    TicketAllocation,
+    Reconcile,
+};
+const char *WorkerFailureName(WorkerFailure failure) noexcept;
 struct WorkerStatus {
     uint64_t accepted, completed, discarded, rejected;
     size_t pending;
     bool ready, failed, admission_closed, joined;
+    WorkerFailure failure;
+    size_t failure_pending;
+    size_t queued_tickets;
 };
 // Owned bounded callback reactor over the real upstream indexer. Ordinary
 // profiles have no daemon entry point; the separate regtest owner is opt-in.
@@ -30,6 +44,11 @@ struct WorkerStatus {
 // native locks. The full-chain bounded capture is not production performance.
 // Idle scalar polling notices silent native generation changes; exhausted
 // capture retries remain unavailable and retry after the queued callback fence.
+// The continuous regtest service stores an ordered accepted/completed frontier
+// instead of allocating one ticket per invalidation. No historical payload is
+// discarded: these callbacks contain no payload, and the owned native capture
+// still has to satisfy the unchanged source/generation/epoch publication law.
+// Strict component fixtures retain their original bounded ticket queue.
 class ArchivalWorker {
     struct Impl;
     std::unique_ptr<Impl> m_impl;
