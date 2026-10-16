@@ -11,6 +11,7 @@
 #include <txmempool.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <rust/cxx.h>
 #include <vector>
@@ -75,7 +76,10 @@ class ChronikBridge {
     // any worker/request can borrow this bridge. Own upstream's ancestors;
     // never hold native locks across DB/disk work. Default finish is strict;
     // only the bounded regtest service retains the old branch across progress.
-    void capture_startup_snapshot();
+    // The optional hook is a deterministic native fixture only. It runs after
+    // coherent value capture, outside both locks and before graph allocation.
+    // No CLI, CXX wire or runtime configuration exposes it.
+    void capture_startup_snapshot(std::function<void()> after_metadata = {});
     bool finish_startup_snapshot(bool allow_progress = false) const;
     // Native-only diagnostics/hooks; not an HTTP or CXX wire capability.
     NativePositionStats position_stats() const;

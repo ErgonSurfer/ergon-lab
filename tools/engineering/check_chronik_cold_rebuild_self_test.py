@@ -11,7 +11,8 @@ class Contract(unittest.TestCase):
     root = Path(__file__).resolve().parents[2]
 
     def test_exact_layer_and_input_binding(self):
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY)
+        from check_chronik_startup_metadata import TECHNICAL, POLICY
+        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY)
         self.assertEqual(gate.input_binding(self.root), gate.input_binding(self.root))
         original = gate.current_identity
         bound = gate.input_binding(self.root)
@@ -57,14 +58,21 @@ class Contract(unittest.TestCase):
                 bad if p == self.root / gate.RECORD else original(p)), self.assertRaises(ValueError): gate.validate(self.root)
 
     def test_unlisted_scope_and_mutable_parent_rejected(self):
+        import check_chronik_startup_metadata as successor
         original = gate.git
+        successor_git = successor.git
         with patch.object(gate, "git", side_effect=lambda r, *a:
-            original(r, *a) + b"unlisted.py\0" if a[0] == "ls-files" else original(r, *a)), self.assertRaises(ValueError): gate.validate(self.root)
+            original(r, *a) + b"unlisted.py\0" if a[0] == "ls-files" else original(r, *a)), \
+             patch.object(successor, "git", side_effect=lambda r, *a:
+            successor_git(r, *a) + b"unlisted.py\0" if a[0] == "ls-files" else successor_git(r, *a)), \
+             self.assertRaises(ValueError):
+            gate.validate(self.root)
         with patch.object(gate, "TREE", "0" * 40), self.assertRaises(ValueError): gate.validate(self.root)
 
     def test_historical_catchup_cannot_hide_new_scope_or_changed_compiled_bytes(self):
         import check_chronik_service_catchup as previous
-        self.assertEqual(previous.validate(self.root), previous.TECHNICAL | previous.POLICY | gate.TECHNICAL | gate.POLICY)
+        from check_chronik_startup_metadata import TECHNICAL, POLICY
+        self.assertEqual(previous.validate(self.root), previous.TECHNICAL | previous.POLICY | gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY)
         original = previous.current_identity
         path = sorted(previous.COMPILED)[0]
         with patch.object(previous, "current_identity", side_effect=lambda r, p:

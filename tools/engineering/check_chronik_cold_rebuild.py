@@ -56,8 +56,27 @@ def input_binding(root):
     return hashlib.sha256((json.dumps(rows, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode()).hexdigest()
 
 
-def validate(root):
+def successor_identity(root, path, previous):
+    """Old cold-rebuild bytes may change only through exact later manifests."""
+    result = previous
+    if (root / MANIFEST).exists():
+        rows = [row for row in load_json(root / MANIFEST)["files"] if row["path"] == path]
+        if rows:
+            require(path in TECHNICAL and len(rows) == 1 and rows[0]["before"] == result,
+                    "cold successor preimage drift")
+            result = rows[0]["after"]
+    from check_chronik_startup_metadata import successor_identity as metadata_successor
+    return metadata_successor(root, path, result)
+
+
+def validate(root, historical=False):
     root = root.resolve(strict=True)
+    from check_chronik_startup_metadata import MANIFEST as NEXT_MANIFEST, PARENT as NEXT_PARENT
+    from check_chronik_startup_metadata import validate as validate_next
+    if not historical and (root / NEXT_MANIFEST).exists():
+        return validate(root, historical=True) | validate_next(root)
+    def observed(path):
+        return revision_identity(root, NEXT_PARENT, path) if historical else current_identity(root, path)
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "cold parent drift")
     manifest = load_json(root / MANIFEST)
@@ -70,11 +89,14 @@ def validate(root):
     for row in manifest["files"]:
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
                 row["before"] is None and before_identity(root, row["path"]) is None and
-                row["after"] == current_identity(root, row["path"]) and
+                row["after"] == observed(row["path"]) and
+                current_identity(root, row["path"]) == successor_identity(root, row["path"], row["before"]) and
                 row["after"]["mode"] == "100644" and row["provenance"] == "A1/MIT" and
                 row["reachability"] == "test-only", "cold source drift")
-    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
-    changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
+    revisions = (PARENT, NEXT_PARENT) if historical else (PARENT,)
+    changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", *revisions).split(b"\0") if p}
+    if not historical:
+        changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
     require(changed == TECHNICAL | POLICY, "unexpected cold path")
     from check_change import ValidationError, validate as validate_change
     record = load_json(root / RECORD)
@@ -90,7 +112,7 @@ def validate(root):
         return None if v is None else {("git_blob_sha1" if k == "git_blob" else k): value for k, value in v.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]), "cold policy drift")
+                governed(row["after"]) == observed(row["path"]), "cold policy drift")
     for path in REUSED + ("CMakeLists.txt", "chronik/UpstreamLink.cmake", "src/init.cpp", "src/validation.cpp",
             "src/txmempool.cpp", "chronik/Cargo.lock", "chronik/chronik-cpp/chronik_bridge.cpp",
             "chronik/chronik-cpp/chronik_bridge.h", "chronik/chronik-cpp/ergon_archival_worker.cpp",
@@ -99,7 +121,10 @@ def validate(root):
             "chronik/chronik-lib/src/ergon_service.rs", "chronik/chronik-plugin-impl/src/context.rs",
             "chronik/chronik-indexer/src/indexer.rs", "chronik/bitcoinsuite-slp/src/alp/build.rs",
             "docs/engineering/changes/ergon-change-0055.json", "docs/engineering/chronik/upstream-service-catchup-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "cold changed frozen engine/oracle/history")
+        previous = before_identity(root, path)
+        require(observed(path) == previous and current_identity(root, path) ==
+                (successor_identity(root, path, previous) if historical else previous),
+                "cold changed frozen engine/oracle/history")
     client = ast.parse((root / "tests/compatibility/upstream-chronik/cold_rebuild_service.py").read_text())
     constants = {t.id: ast.literal_eval(n.value) for n in client.body if isinstance(n, ast.Assign)
                  for t in n.targets if isinstance(t, ast.Name) and t.id in ("CORPUS_HEIGHT", "FINAL_HEIGHT", "RETAINED_WINDOW")}

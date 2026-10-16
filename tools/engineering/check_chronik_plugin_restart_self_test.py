@@ -49,7 +49,8 @@ class Contract(unittest.TestCase):
             expected |= TECHNICAL | POLICY
         from check_chronik_service_catchup import TECHNICAL as CATCHUP_TECHNICAL, POLICY as CATCHUP_POLICY
         from check_chronik_cold_rebuild import TECHNICAL as COLD_TECHNICAL, POLICY as COLD_POLICY
-        self.assertEqual(gate.validate(root), expected | CATCHUP_TECHNICAL | CATCHUP_POLICY | COLD_TECHNICAL | COLD_POLICY)
+        from check_chronik_startup_metadata import TECHNICAL as METADATA_TECHNICAL, POLICY as METADATA_POLICY
+        self.assertEqual(gate.validate(root), expected | CATCHUP_TECHNICAL | CATCHUP_POLICY | COLD_TECHNICAL | COLD_POLICY | METADATA_TECHNICAL | METADATA_POLICY)
 
     def test_manifest_rejections(self):
         root = Path(__file__).resolve().parents[2]

@@ -12,7 +12,9 @@ class Contract(unittest.TestCase):
 
     def test_exact_layer(self):
         from check_chronik_cold_rebuild import TECHNICAL, POLICY
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY)
+        expected = gate.TECHNICAL | gate.POLICY | TECHNICAL | POLICY
+        from check_chronik_startup_metadata import TECHNICAL, POLICY
+        self.assertEqual(gate.validate(self.root), expected | TECHNICAL | POLICY)
         self.assertEqual(gate.input_binding(self.root), gate.input_binding(self.root))
 
     def test_contract_and_inventory_rejections(self):
@@ -66,8 +68,9 @@ class Contract(unittest.TestCase):
         native = "src/test/chronik_upstream_archival_tests.cpp"
         old_runner = gate.git(self.root, "show", gate.PARENT + ":" + runner).decode()
         old_native = gate.git(self.root, "show", gate.PARENT + ":" + native).decode()
-        new_runner = (self.root / runner).read_text()
-        new_native = (self.root / native).read_text()
+        from check_chronik_cold_rebuild import PARENT as accepted_successor
+        new_runner = gate.git(self.root, "show", accepted_successor + ":" + runner).decode()
+        new_native = gate.git(self.root, "show", accepted_successor + ":" + native).decode()
         gate.validate_retained_controls(old_runner, new_runner, old_native, new_native)
         for bad in (new_runner.replace("timeout=60", "timeout=120"),
                     new_runner.replace("timeout=60", "timeout=59")):

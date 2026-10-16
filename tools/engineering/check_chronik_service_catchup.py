@@ -75,14 +75,15 @@ def input_binding(root):
 
 def successor_identity(root, path, previous):
     """Old layer may change only through this exact bound successor row."""
-    if not (root / MANIFEST).exists():
-        return previous
-    rows = [r for r in load_json(root / MANIFEST)["files"] if r["path"] == path]
-    if not rows:
-        return previous
-    require(path in TECHNICAL and len(rows) == 1 and rows[0]["before"] == previous,
-            "catchup successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if (root / MANIFEST).exists():
+        rows = [r for r in load_json(root / MANIFEST)["files"] if r["path"] == path]
+        if rows:
+            require(path in TECHNICAL and len(rows) == 1 and rows[0]["before"] == result,
+                    "catchup successor preimage drift")
+            result = rows[0]["after"]
+    from check_chronik_cold_rebuild import successor_identity as cold_successor
+    return cold_successor(root, path, result)
 
 
 def validate_retained_controls(old_runner, new_runner, old_native, new_native):
@@ -124,7 +125,7 @@ def validate(root, historical=False):
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
                 row["before"] == before and row["after"] == observed(row["path"]) and
-                row["after"] == current_identity(root, row["path"]) and
+                current_identity(root, row["path"]) == successor_identity(root, row["path"], before) and
                 row["after"] != before and row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == "bounded-regtest-service-or-test-only", "catchup source drift")
@@ -156,8 +157,10 @@ def validate(root, historical=False):
         require(current_identity(root, path) == before_identity(root, path), "catchup changed frozen engine/oracle/history")
     runner_path = "tests/compatibility/upstream-chronik/run_repetitions.py"
     native_path = "src/test/chronik_upstream_archival_tests.cpp"
-    validate_retained_controls(git(root, "show", PARENT + ":" + runner_path).decode(), (root / runner_path).read_text(),
-                               git(root, "show", PARENT + ":" + native_path).decode(), (root / native_path).read_text())
+    latest_runner = git(root, "show", NEXT_PARENT + ":" + runner_path).decode() if historical else (root / runner_path).read_text()
+    latest_native = git(root, "show", NEXT_PARENT + ":" + native_path).decode() if historical else (root / native_path).read_text()
+    validate_retained_controls(git(root, "show", PARENT + ":" + runner_path).decode(), latest_runner,
+                               git(root, "show", PARENT + ":" + native_path).decode(), latest_native)
     client = ast.parse((root / "tests/compatibility/upstream-chronik/catchup_service.py").read_text())
     constants = {t.id: ast.literal_eval(n.value) for n in client.body if isinstance(n, ast.Assign)
                  for t in n.targets if isinstance(t, ast.Name) and t.id in ("NATIVE_CASES", "RAPID_BLOCKS", "FINAL_HEIGHT")}

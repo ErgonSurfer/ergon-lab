@@ -287,6 +287,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "catchup projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    metadata_manifest = source / "docs/engineering/chronik/upstream-startup-metadata-v1.json"
+    if metadata_manifest.exists():
+        from check_chronik_startup_metadata import PARENT, TREE, TECHNICAL
+        layer = json.loads(regular(metadata_manifest))
+        require(layer["schema"] == "ergon-upstream-startup-metadata/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(TECHNICAL),
+                "startup metadata projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"],
+                        "startup metadata projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")

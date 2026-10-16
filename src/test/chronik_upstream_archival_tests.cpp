@@ -231,6 +231,76 @@ CScript AlpScript(uint8_t op, const std::array<uint8_t, 32> &id = {}) {
 } // namespace
 
 BOOST_FIXTURE_TEST_SUITE(chronik_upstream_archival_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(startup_materialization_allows_native_progress_without_borrowing) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = chronik_bridge::make_bridge(access);
+    const auto old_hash = ChainActive().Tip()->GetBlockHash();
+    const auto old_generation = ChainActive().GetSourceGeneration();
+    int hooks = 0;
+    std::future<void> progress;
+    bridge->capture_startup_snapshot([&] {
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(g_mempool.cs);
+        // A separate native owner makes this a lock-progress witness even
+        // when diagnostic lock-order assertions are compiled out. Its future
+        // outlives the capture call, so an exceptional hook unwinds the locks
+        // before the joined future can be destroyed.
+        progress = std::async(std::launch::async, [&] {
+            CreateAndProcessBlock({}, CScript() << OP_2);
+        });
+        if (progress.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+            throw std::runtime_error("Native progress blocked during startup materialization");
+        progress.get();
+        ++hooks;
+    });
+    BOOST_CHECK_EQUAL(hooks, 1);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    BOOST_CHECK_EQUAL(bridge->get_chain_tip().nHeight, 100);
+    BOOST_CHECK(bridge->get_chain_tip().GetBlockHash() == old_hash);
+    BOOST_CHECK_EQUAL(bridge->chain_generation(), old_generation);
+    BOOST_CHECK(&bridge->get_chain_tip() != ChainActive()[100]);
+    BOOST_CHECK_EXCEPTION(bridge->finish_startup_snapshot(), std::exception,
+        [](const std::exception &error) {
+            return std::string(error.what()).find("source changed") != std::string::npos;
+        });
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
+BOOST_AUTO_TEST_CASE(startup_materialization_storage_drift_is_not_copied_or_accepted) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = chronik_bridge::make_bridge(access);
+    DataPositionRestore restore(100);
+    bridge->capture_startup_snapshot([&] {
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(g_mempool.cs);
+        LOCK(cs_main);
+        ++ChainActive()[100]->nDataPos;
+    });
+    BOOST_CHECK_EQUAL(bridge->get_chain_tip().nDataPos, restore.original);
+    BOOST_CHECK(bridge->get_chain_tip().nDataPos != ChainActive()[100]->nDataPos);
+    BOOST_CHECK_EXCEPTION(bridge->finish_startup_snapshot(), std::exception,
+        [](const std::exception &error) {
+            return std::string(error.what()).find("storage changed") != std::string::npos;
+        });
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
+BOOST_AUTO_TEST_CASE(startup_materialization_exception_keeps_graph_unpublished) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = chronik_bridge::make_bridge(access);
+    BOOST_CHECK_THROW(bridge->capture_startup_snapshot([&] {
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(g_mempool.cs);
+        throw std::runtime_error("synthetic materialization refusal");
+    }), std::runtime_error);
+    // Explicit fixture-only second invocation demonstrates the failed graph
+    // was never published. It is not an automatic service retry policy.
+    BOOST_CHECK_NO_THROW(bridge->capture_startup_snapshot());
+    BOOST_CHECK_EQUAL(bridge->get_chain_tip().nHeight, 100);
+    BOOST_CHECK_NO_THROW(bridge->finish_startup_snapshot());
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
 BOOST_AUTO_TEST_CASE(startup_owned_graph_and_source_storage_fences) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     auto bridge = ergon_archival::make_startup_bridge(access);

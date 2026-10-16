@@ -13,7 +13,8 @@ class Contract(unittest.TestCase):
     def test_exact_test_only_layer(self):
         from check_chronik_service_catchup import TECHNICAL as CATCHUP_TECHNICAL, POLICY as CATCHUP_POLICY
         from check_chronik_cold_rebuild import TECHNICAL as COLD_TECHNICAL, POLICY as COLD_POLICY
-        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | CATCHUP_TECHNICAL | CATCHUP_POLICY | COLD_TECHNICAL | COLD_POLICY)
+        from check_chronik_startup_metadata import TECHNICAL as METADATA_TECHNICAL, POLICY as METADATA_POLICY
+        self.assertEqual(gate.validate(self.root), gate.TECHNICAL | gate.POLICY | CATCHUP_TECHNICAL | CATCHUP_POLICY | COLD_TECHNICAL | COLD_POLICY | METADATA_TECHNICAL | METADATA_POLICY)
         self.assertEqual(gate.input_binding(self.root), gate.input_binding(self.root))
 
     def test_contract_inventory_and_new_file_rejections(self):

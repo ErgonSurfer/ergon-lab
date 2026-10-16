@@ -164,40 +164,69 @@ ChronikBridge::ChronikBridge(const ErgonNodeAccess &node)
     : m_node(node), m_positions(node) {}
 ChronikBridge::~ChronikBridge() = default;
 
-void ChronikBridge::capture_startup_snapshot() {
+void ChronikBridge::capture_startup_snapshot(std::function<void()> after_metadata) {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_node.mempool.cs);
     if (m_startup)
         throw std::runtime_error("Startup snapshot already captured");
     auto owned = std::make_unique<StartupSnapshot>();
-    LOCK2(cs_main, m_node.mempool.cs);
-    if (m_node.config.GetChainParams().NetworkIDString() != "regtest" ||
-        fPruneMode || ShutdownRequested() || m_node.index_failed.load() ||
-        ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
-        mapBlockIndex.size() > 4096 || m_node.mempool.size() > 4096 ||
-        !pcoinsTip || !ChainActive().GetSourceGeneration() ||
-        !m_node.mempool.GetSourceGeneration())
-        throw std::runtime_error(
-            "Startup snapshot exceeds healthy fixture profile");
-    for (const auto &[hash, index] : mapBlockIndex) {
-        if (!index || index->GetBlockHash() != hash || index->nHeight < 0 ||
-            index->nHeight > 2000)
-            throw std::runtime_error("Invalid startup native index identity");
-        auto copy = std::make_unique<CBlockIndex>(index->GetBlockHeader());
-        copy->nHeight = index->nHeight;
-        copy->nStatus = index->nStatus;
-        copy->nFile = index->nFile;
-        copy->nDataPos = index->nDataPos;
-        copy->nUndoPos = index->nUndoPos;
-        copy->nTx = index->nTx;
-        copy->nChainTx = index->nChainTx;
-        auto entry = owned->indexes.emplace(hash, std::move(copy)).first;
+    struct Metadata {
+        BlockHash hash;
+        CBlockHeader header;
+        int height, file;
+        BlockStatus status;
+        unsigned int data, undo, transactions, chain_transactions;
+        bool has_parent;
+    };
+    // Keep the existing fixture budget. Reserve before native locking, so the
+    // positive capture path copies values only, with no graph/map allocation.
+    // Metadata contains no native index/hash/parent/skip pointer.
+    constexpr size_t INDEX_LIMIT = 4096;
+    std::vector<Metadata> metadata;
+    metadata.reserve(INDEX_LIMIT);
+    BlockHash tip_hash;
+    {
+        LOCK2(cs_main, m_node.mempool.cs);
+        if (m_node.config.GetChainParams().NetworkIDString() != "regtest" ||
+            fPruneMode || ShutdownRequested() || m_node.index_failed.load() ||
+            ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
+            mapBlockIndex.size() > INDEX_LIMIT || m_node.mempool.size() > 4096 ||
+            !pcoinsTip || !ChainActive().GetSourceGeneration() ||
+            !m_node.mempool.GetSourceGeneration())
+            throw std::runtime_error(
+                "Startup snapshot exceeds healthy fixture profile");
+        for (const auto &[hash, index] : mapBlockIndex) {
+            if (!index || index->GetBlockHash() != hash || index->nHeight < 0 ||
+                index->nHeight > 2000)
+                throw std::runtime_error("Invalid startup native index identity");
+            metadata.push_back({hash, index->GetBlockHeader(), index->nHeight,
+                index->nFile, index->nStatus, index->nDataPos, index->nUndoPos,
+                index->nTx, index->nChainTx, index->pprev != nullptr});
+        }
+        tip_hash = ChainActive().Tip()->GetBlockHash();
+        owned->generation = ChainActive().GetSourceGeneration();
+        owned->revision = m_node.mempool.GetSourceGeneration();
+    }
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_node.mempool.cs);
+    if (after_metadata)
+        after_metadata();
+    for (const auto &row : metadata) {
+        auto copy = std::make_unique<CBlockIndex>(row.header);
+        copy->nHeight = row.height;
+        copy->nStatus = row.status;
+        copy->nFile = row.file;
+        copy->nDataPos = row.data;
+        copy->nUndoPos = row.undo;
+        copy->nTx = row.transactions;
+        copy->nChainTx = row.chain_transactions;
+        auto entry = owned->indexes.emplace(row.hash, std::move(copy)).first;
         entry->second->phashBlock = &entry->first;
     }
-    for (const auto &[hash, index] : mapBlockIndex) {
-        auto &copy = owned->indexes.at(hash);
-        if (index->pprev) {
-            auto parent = owned->indexes.find(index->pprev->GetBlockHash());
+    for (const auto &row : metadata) {
+        auto &copy = owned->indexes.at(row.hash);
+        if (row.has_parent) {
+            auto parent = owned->indexes.find(row.header.hashPrevBlock);
             if (parent == owned->indexes.end() ||
                 parent->second->nHeight + 1 != copy->nHeight)
                 throw std::runtime_error("Invalid startup ancestor graph");
@@ -206,10 +235,10 @@ void ChronikBridge::capture_startup_snapshot() {
             throw std::runtime_error("Missing startup ancestor");
         }
     }
-    owned->chain.SetTip(
-        owned->indexes.at(ChainActive().Tip()->GetBlockHash()).get());
-    owned->generation = ChainActive().GetSourceGeneration();
-    owned->revision = m_node.mempool.GetSourceGeneration();
+    owned->chain.SetTip(owned->indexes.at(tip_hash).get());
+    // Publish only a complete owned graph. Native progress during materializing
+    // it does not change the captured point: strict/service finish fences and
+    // storage checks remain responsible for admission, exactly as after capture.
     m_startup = std::move(owned);
     m_startup_active = true;
 }
