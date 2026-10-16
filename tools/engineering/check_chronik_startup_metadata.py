@@ -18,7 +18,7 @@ COMPILED = frozenset({"chronik/chronik-cpp/chronik_bridge.cpp",
 TECHNICAL = COMPILED | {"tests/compatibility/upstream-chronik/run_repetitions.py",
     "tests/compatibility/upstream-chronik/startup_metadata.py",
     "tests/compatibility/upstream-chronik/startup_metadata_self_test.py"}
-POLICY = frozenset({MANIFEST, RECORD, "docs/engineering/chronik/upstream-startup-metadata.md",
+BASE_POLICY = frozenset({MANIFEST, RECORD, "docs/engineering/chronik/upstream-startup-metadata.md",
     "tools/engineering/check_chronik_startup_metadata.py",
     "tools/engineering/check_chronik_startup_metadata_self_test.py",
     "tools/engineering/check_chronik_cold_rebuild.py",
@@ -33,6 +33,19 @@ POLICY = frozenset({MANIFEST, RECORD, "docs/engineering/chronik/upstream-startup
     "tools/engineering/check_chronik_service_recovery_self_test.py",
     "tools/engineering/check_chronik_service_plugins_self_test.py",
     ".github/workflows/chronik-upstream-link.yml"})
+FUTURE = frozenset({
+    ".github/workflows/chronik-upstream-link.yml",
+    "chronik/chronik-cpp/chronik_bridge.cpp",
+    "docs/engineering/changes/ergon-change-0058.json",
+    "docs/engineering/chronik/upstream-owned-skip-links-v1.json",
+    "docs/engineering/chronik/upstream-owned-skip-links.md",
+    "src/test/chronik_upstream_archival_tests.cpp",
+    "tools/engineering/check_chronik_owned_skip_links.py",
+    "tools/engineering/check_chronik_owned_skip_links_self_test.py",
+    "tools/engineering/check_chronik_startup_metadata.py",
+    "tests/compatibility/upstream-chronik/run_repetitions.py",
+})
+POLICY = BASE_POLICY | FUTURE
 REUSED = ("tests/compatibility/upstream-chronik/cold_rebuild_service.py",
     "tests/compatibility/upstream-chronik/catchup_service.py",
     "tests/compatibility/upstream-chronik/plugin_alp_service.py",
@@ -61,14 +74,21 @@ def before_identity(root, path):
 
 
 def successor_identity(root, path, previous):
+    result = previous
     if not (root / MANIFEST).exists():
-        return previous
+        return result
     rows = [row for row in load_json(root / MANIFEST)["files"] if row["path"] == path]
-    if not rows:
-        return previous
-    require(path in TECHNICAL and len(rows) == 1 and rows[0]["before"] == previous,
-            "startup metadata successor preimage drift")
-    return rows[0]["after"]
+    if rows:
+        require(path in TECHNICAL and len(rows) == 1,
+                "startup metadata successor path drift")
+        if result != rows[0]["after"]:
+            require(rows[0]["before"] == result,
+                    "startup metadata successor preimage drift")
+            result = rows[0]["after"]
+    if (root / "docs/engineering/chronik/upstream-owned-skip-links-v1.json").exists():
+        from check_chronik_owned_skip_links import successor_identity as skip_successor
+        result = skip_successor(root, path, result)
+    return result
 
 
 def input_binding(root):
@@ -110,7 +130,9 @@ def validate(root):
     for row in manifest["files"]:
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
-                row["before"] == before and row["after"] == current_identity(root, row["path"]) and
+                row["before"] == before and
+                successor_identity(root, row["path"], row["before"]) ==
+                    current_identity(root, row["path"]) and
                 row["after"] != before and row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == ("bounded-regtest-native-or-test-only" if row["path"] in COMPILED else "test-only"),
@@ -128,21 +150,32 @@ def validate(root):
             record["public_lineage"]["integration_parent"] == {"commit": PARENT, "tree": TREE} and
             record["evidence"] == {"delivery_state": "active", "knowledge_status": "Open Question",
                                    "ceiling": "record-review-only", "artifacts": []} and
-            [row["path"] for row in record["files"]] == sorted(changed - {RECORD}),
+            [row["path"] for row in record["files"]] ==
+                sorted((TECHNICAL | BASE_POLICY) - {RECORD}),
             "startup metadata governance drift")
     def governed(value):
         return None if value is None else {("git_blob_sha1" if key == "git_blob" else key): item
                                            for key, item in value.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]),
+                successor_identity(root, row["path"], governed(row["after"])) ==
+                    current_identity(root, row["path"]),
                 "startup metadata policy drift")
     old_native = git(root, "show", PARENT + ":src/test/chronik_upstream_archival_tests.cpp").decode()
     new_native = (root / "src/test/chronik_upstream_archival_tests.cpp").read_text()
     before, after = native_cases(old_native), native_cases(new_native)
+    permitted = {"startup_owned_graph_and_source_storage_fences"}
     require(len(before) == 53 and set(after) - set(before) == set(CASES) and
-            all(after.get(name) == body for name, body in before.items()),
+            all(after.get(name) == body for name, body in before.items()
+                if name not in permitted),
             "startup metadata changed inherited native case body")
+    if (root / "docs/engineering/chronik/upstream-owned-skip-links-v1.json").exists():
+        require(hashlib.sha256(after[next(iter(permitted))].encode()).hexdigest() ==
+                "f38668fa6e874883cbeb0edbb5e7eeca39e8db1c04710f8becc697a8330383cc",
+                "owned skip-link successor case drift")
+    else:
+        require(after[next(iter(permitted))] == before[next(iter(permitted))],
+                "startup metadata changed inherited ownership case")
     runner_path = "tests/compatibility/upstream-chronik/run_repetitions.py"
     require(without_projection(git(root, "show", PARENT + ":" + runner_path).decode()) ==
             without_projection((root / runner_path).read_text()),

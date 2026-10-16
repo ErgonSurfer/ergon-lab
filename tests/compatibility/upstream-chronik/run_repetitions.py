@@ -302,6 +302,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                         "startup metadata projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    skip_manifest = source / "docs/engineering/chronik/upstream-owned-skip-links-v1.json"
+    if skip_manifest.exists():
+        from check_chronik_owned_skip_links import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(skip_manifest))
+        require(layer["schema"] == "ergon-upstream-owned-skip-links/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES),
+                "owned skip-link projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"],
+                        "owned skip-link projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")

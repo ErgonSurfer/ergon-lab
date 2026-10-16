@@ -315,7 +315,15 @@ BOOST_AUTO_TEST_CASE(startup_owned_graph_and_source_storage_fences) {
             BOOST_CHECK(copy.GetBlockHash() ==
                         ChainActive()[h]->GetBlockHash());
             BOOST_CHECK(copy.phashBlock != ChainActive()[h]->phashBlock);
-            BOOST_CHECK(!copy.pskip);
+            BOOST_CHECK(
+                (h == 0 && !copy.pskip) ||
+                (h > 0 && copy.pskip && ChainActive()[h]->pskip &&
+                 copy.pskip != ChainActive()[h]->pskip &&
+                 copy.pskip->GetBlockHash() ==
+                     ChainActive()[h]->pskip->GetBlockHash() &&
+                 &bridge->lookup_block_index(
+                     Bytes(copy.pskip->GetBlockHash())) == copy.pskip &&
+                 copy.pskip->nHeight < h));
             if (h)
                 BOOST_CHECK(copy.pprev != ChainActive()[h]->pprev);
         }

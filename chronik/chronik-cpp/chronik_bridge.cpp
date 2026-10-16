@@ -236,6 +236,20 @@ void ChronikBridge::capture_startup_snapshot(std::function<void()> after_metadat
         }
     }
     owned->chain.SetTip(owned->indexes.at(tip_hash).get());
+    // Upstream resync repeatedly asks captured indexes for ancestors. Build
+    // skip links in height order only after every parent points into the owned
+    // graph. This covers active and side branches without borrowing any native
+    // CBlockIndex pointer.
+    std::vector<CBlockIndex *> by_height;
+    by_height.reserve(owned->indexes.size());
+    for (const auto &[_, index] : owned->indexes)
+        by_height.push_back(index.get());
+    std::sort(by_height.begin(), by_height.end(),
+              [](const auto *left, const auto *right) {
+                  return left->nHeight < right->nHeight;
+              });
+    for (auto *index : by_height)
+        index->BuildSkip();
     // Publish only a complete owned graph. Native progress during materializing
     // it does not change the captured point: strict/service finish fences and
     // storage checks remain responsible for admission, exactly as after capture.
