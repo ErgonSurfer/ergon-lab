@@ -26,6 +26,7 @@
 #include <limits>
 #include <map>
 #include <stdexcept>
+#include <thread>
 
 namespace {
 template <typename Hash> std::array<uint8_t, 32> HashBytes(const Hash &hash) {
@@ -164,7 +165,9 @@ ChronikBridge::ChronikBridge(const ErgonNodeAccess &node)
     : m_node(node), m_positions(node) {}
 ChronikBridge::~ChronikBridge() = default;
 
-void ChronikBridge::capture_startup_snapshot(std::function<void()> after_metadata) {
+void ChronikBridge::capture_startup_snapshot(
+    std::function<void()> after_metadata,
+    std::function<void(size_t)> after_batch) {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_node.mempool.cs);
     if (m_startup)
@@ -178,34 +181,81 @@ void ChronikBridge::capture_startup_snapshot(std::function<void()> after_metadat
         unsigned int data, undo, transactions, chain_transactions;
         bool has_parent;
     };
-    // Keep the existing fixture budget. Reserve before native locking, so the
-    // positive capture path copies values only, with no graph/map allocation.
-    // Metadata contains no native index/hash/parent/skip pointer.
+    // Reserve the existing fixture budget before locking. No native pointer
+    // or unordered-map iterator may survive a batch's lock scope.
     constexpr size_t INDEX_LIMIT = 4096;
+    constexpr size_t BATCH_LIMIT = 64;
     std::vector<Metadata> metadata;
     metadata.reserve(INDEX_LIMIT);
-    BlockHash tip_hash;
+    BlockHash tip_hash, next_hash;
+    size_t index_count, bucket_count;
+    auto healthy = [&] {
+        AssertLockHeld(cs_main);
+        AssertLockHeld(m_node.mempool.cs);
+        return m_node.config.GetChainParams().NetworkIDString() == "regtest" &&
+            !fPruneMode && !ShutdownRequested() && !m_node.index_failed.load() &&
+            ChainActive().Height() >= 0 && ChainActive().Height() <= 2000 &&
+            mapBlockIndex.size() <= INDEX_LIMIT && m_node.mempool.size() <= 4096 &&
+            pcoinsTip && ChainActive().GetSourceGeneration() &&
+            m_node.mempool.GetSourceGeneration();
+    };
     {
         LOCK2(cs_main, m_node.mempool.cs);
-        if (m_node.config.GetChainParams().NetworkIDString() != "regtest" ||
-            fPruneMode || ShutdownRequested() || m_node.index_failed.load() ||
-            ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
-            mapBlockIndex.size() > INDEX_LIMIT || m_node.mempool.size() > 4096 ||
-            !pcoinsTip || !ChainActive().GetSourceGeneration() ||
-            !m_node.mempool.GetSourceGeneration())
+        if (!healthy() || mapBlockIndex.empty())
             throw std::runtime_error(
                 "Startup snapshot exceeds healthy fixture profile");
-        for (const auto &[hash, index] : mapBlockIndex) {
-            if (!index || index->GetBlockHash() != hash || index->nHeight < 0 ||
-                index->nHeight > 2000)
-                throw std::runtime_error("Invalid startup native index identity");
-            metadata.push_back({hash, index->GetBlockHeader(), index->nHeight,
-                index->nFile, index->nStatus, index->nDataPos, index->nUndoPos,
-                index->nTx, index->nChainTx, index->pprev != nullptr});
-        }
+        index_count = mapBlockIndex.size();
+        bucket_count = mapBlockIndex.bucket_count();
+        next_hash = mapBlockIndex.begin()->first;
         tip_hash = ChainActive().Tip()->GetBlockHash();
         owned->generation = ChainActive().GetSourceGeneration();
         owned->revision = m_node.mempool.GetSourceGeneration();
+    }
+    auto unchanged = [&] {
+        AssertLockHeld(cs_main);
+        AssertLockHeld(m_node.mempool.cs);
+        return healthy() && mapBlockIndex.size() == index_count &&
+            mapBlockIndex.bucket_count() == bucket_count &&
+            ChainActive().Tip()->GetBlockHash() == tip_hash &&
+            ChainActive().GetSourceGeneration() == owned->generation &&
+            m_node.mempool.GetSourceGeneration() == owned->revision;
+    };
+    while (metadata.size() < index_count) {
+        size_t copied = 0;
+        {
+            LOCK2(cs_main, m_node.mempool.cs);
+            // Header insertions and rehashes do not advance chain generation.
+            // Bind size AND bucket count before reacquiring the saved key.
+            if (!unchanged())
+                throw std::runtime_error("Native source changed during startup capture");
+            auto cursor = mapBlockIndex.find(next_hash);
+            if (cursor == mapBlockIndex.end())
+                throw std::runtime_error("Startup capture cursor unavailable");
+            for (; cursor != mapBlockIndex.end() && copied < BATCH_LIMIT;
+                 ++cursor, ++copied) {
+                const auto &[hash, index] = *cursor;
+                if (!index || index->GetBlockHash() != hash || index->nHeight < 0 ||
+                    index->nHeight > 2000 || metadata.size() >= index_count)
+                    throw std::runtime_error("Invalid startup native index identity");
+                metadata.push_back({hash, index->GetBlockHeader(), index->nHeight,
+                    index->nFile, index->nStatus, index->nDataPos, index->nUndoPos,
+                    index->nTx, index->nChainTx, index->pprev != nullptr});
+            }
+            if ((cursor == mapBlockIndex.end()) != (metadata.size() == index_count))
+                throw std::runtime_error("Incomplete startup index traversal");
+            if (cursor != mapBlockIndex.end())
+                next_hash = cursor->first;
+        }
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(m_node.mempool.cs);
+        if (after_batch)
+            after_batch(copied); // Native-test-only; never a runtime option.
+        std::this_thread::yield();
+    }
+    {
+        LOCK2(cs_main, m_node.mempool.cs);
+        if (!unchanged())
+            throw std::runtime_error("Native source changed during startup capture");
     }
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_node.mempool.cs);
@@ -220,7 +270,10 @@ void ChronikBridge::capture_startup_snapshot(std::function<void()> after_metadat
         copy->nUndoPos = row.undo;
         copy->nTx = row.transactions;
         copy->nChainTx = row.chain_transactions;
-        auto entry = owned->indexes.emplace(row.hash, std::move(copy)).first;
+        auto inserted = owned->indexes.emplace(row.hash, std::move(copy));
+        if (!inserted.second)
+            throw std::runtime_error("Duplicate startup native index identity");
+        auto entry = inserted.first;
         entry->second->phashBlock = &entry->first;
     }
     for (const auto &row : metadata) {

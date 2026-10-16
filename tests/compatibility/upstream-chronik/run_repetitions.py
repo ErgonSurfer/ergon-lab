@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Fresh-process component observations, never automatic proof promotion.
 
-Six disjoint native groups have a fixed 60-second process deadline. Reports
+Disjoint native groups have a fixed 60-second process deadline. Reports
 exclude process text and binding paths. The source projection and CMake cache
 are checked, but are not a substitute for recorded binary construction.
 """
@@ -43,6 +43,13 @@ STARTUP = tuple(PREFIX + name for name in (
     "startup_owned_graph_and_source_storage_fences",
     "startup_drift_quarantines_database_without_stopping_node",
     "startup_nonempty_mempool_parent_child_and_reopen",
+))
+BATCHES = tuple(PREFIX + name for name in (
+    "startup_batches_release_both_locks_and_cover_every_index",
+    "startup_batches_reject_native_progress_before_publication",
+    "startup_batches_reject_pool_aba_and_index_rehash",
+    "startup_batches_cancel_and_hook_exception_leave_no_owner",
+    "startup_batches_final_fence_rejects_last_batch_drift",
 ))
 CAPTURE = tuple(PREFIX + name for name in (
     "actual_http_complete_read_profile_and_alp_lifecycle",
@@ -88,6 +95,7 @@ CHAINSTATE = tuple(PREFIX + name for name in (
 GROUPS = (
     ("native-bridge-and-disk", BRIDGE, 166),
     ("owned-startup", STARTUP, 607),
+    ("startup-metadata-batches", BATCHES, 54),
     ("capture-and-query-controls", CAPTURE, 1063),
     ("runtime-stop-and-reopen-controls", STOP, 307),
     ("silent-generation-and-control-locks", LIVENESS, 50),
@@ -333,6 +341,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                         "startup release projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    batches_manifest = source / "docs/engineering/chronik/upstream-startup-batches-v1.json"
+    if batches_manifest.exists():
+        from check_chronik_startup_batches import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(batches_manifest))
+        require(layer["schema"] == "ergon-upstream-startup-batches/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES),
+                "startup batches projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"],
+                        "startup batches projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -502,7 +525,7 @@ def refusal_class(error):
 def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
     require(profile in (None, "archival", "plugins", "regtest", "regtest-plugins"), "unknown repetition profile")
-    require(len({case for _, cases, _ in GROUPS for case in cases}) == 45, "non-disjoint test groups")
+    require(len({case for _, cases, _ in GROUPS for case in cases}) == 50, "non-disjoint test groups")
     groups = GROUPS + (PLUGIN_GROUPS if profile in ("plugins", "regtest-plugins") else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
     require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
             "plugin cases overlap inherited groups")

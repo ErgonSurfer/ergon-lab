@@ -231,6 +231,146 @@ CScript AlpScript(uint8_t op, const std::array<uint8_t, 32> &id = {}) {
 } // namespace
 
 BOOST_FIXTURE_TEST_SUITE(chronik_upstream_archival_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(startup_batches_release_both_locks_and_cover_every_index) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = chronik_bridge::make_bridge(access);
+    size_t indexes;
+    BlockHash tip;
+    {
+        LOCK(cs_main);
+        indexes = mapBlockIndex.size();
+        tip = ChainActive().Tip()->GetBlockHash();
+    }
+    size_t batches = 0, rows = 0, largest = 0, lock_handoffs = 0;
+    std::future<void> native;
+    bridge->capture_startup_snapshot({}, [&](size_t count) {
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(g_mempool.cs);
+        rows += count;
+        largest = std::max(largest, count);
+        ++batches;
+        native = std::async(std::launch::async, [&] {
+            LOCK2(cs_main, g_mempool.cs);
+            ++lock_handoffs;
+        });
+        if (native.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+            throw std::runtime_error("Native locks held across startup batch handoff");
+        native.get();
+    });
+    BOOST_REQUIRE_GT(indexes, 64);
+    BOOST_CHECK_EQUAL(rows, indexes);
+    BOOST_CHECK_EQUAL(batches, (indexes + 63) / 64);
+    BOOST_CHECK_EQUAL(lock_handoffs, batches);
+    BOOST_CHECK_EQUAL(largest, 64);
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), indexes);
+    BOOST_CHECK(bridge->get_chain_tip().GetBlockHash() == tip);
+    BOOST_CHECK_NO_THROW(bridge->finish_startup_snapshot());
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+    BOOST_CHECK(!access.index_failed.load());
+}
+BOOST_AUTO_TEST_CASE(startup_batches_reject_native_progress_before_publication) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = chronik_bridge::make_bridge(access);
+    size_t hooks = 0;
+    std::future<void> native;
+    BOOST_CHECK_EXCEPTION(bridge->capture_startup_snapshot({}, [&](size_t) {
+        ++hooks;
+        native = std::async(std::launch::async, [&] {
+            CreateAndProcessBlock({}, CScript() << OP_2);
+        });
+        if (native.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+            throw std::runtime_error("Native progress blocked between startup batches");
+        native.get();
+    }), std::exception, [](const std::exception &error) {
+        return std::string(error.what()) == "Native source changed during startup capture";
+    });
+    BOOST_CHECK_EQUAL(hooks, 1);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+    // Explicit fixture retry only; failed capture never published an owner.
+    BOOST_CHECK_NO_THROW(bridge->capture_startup_snapshot());
+    BOOST_CHECK_NO_THROW(bridge->finish_startup_snapshot());
+}
+BOOST_AUTO_TEST_CASE(startup_batches_reject_pool_aba_and_index_rehash) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    for (const bool rehash : {false, true}) {
+        auto bridge = chronik_bridge::make_bridge(access);
+        size_t hooks = 0;
+        const auto generation = ChainActive().GetSourceGeneration();
+        const auto legacy_pool = g_mempool.GetTransactionsUpdated();
+        const auto pool = g_mempool.GetSourceGeneration();
+        BOOST_CHECK_EXCEPTION(bridge->capture_startup_snapshot({}, [&](size_t) {
+            ++hooks;
+            LOCK2(cs_main, g_mempool.cs);
+            if (rehash) {
+                // No chain/pool generation change and no map-size change.
+                mapBlockIndex.rehash(mapBlockIndex.bucket_count() * 2 + 1);
+            } else {
+                g_mempool.AddTransactionsUpdated(UINT32_MAX);
+                g_mempool.AddTransactionsUpdated(1);
+            }
+        }), std::exception, [](const std::exception &error) {
+            return std::string(error.what()) == "Native source changed during startup capture";
+        });
+        BOOST_CHECK_EQUAL(hooks, 1);
+        BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+        BOOST_CHECK_EQUAL(ChainActive().GetSourceGeneration(), generation);
+        BOOST_CHECK_EQUAL(g_mempool.GetTransactionsUpdated(), legacy_pool);
+        BOOST_CHECK_EQUAL(g_mempool.GetSourceGeneration(),
+                          pool + (rehash ? 0 : (uint64_t{1} << 32)));
+        BOOST_CHECK(!access.index_failed.load());
+        BOOST_CHECK(!ShutdownRequested());
+    }
+}
+BOOST_AUTO_TEST_CASE(startup_batches_cancel_and_hook_exception_leave_no_owner) {
+    struct ShutdownRestore {
+        ~ShutdownRestore() { AbortShutdown(); }
+    } restore;
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    for (const bool cancel : {false, true}) {
+        auto bridge = chronik_bridge::make_bridge(access);
+        size_t hooks = 0;
+        BOOST_CHECK_THROW(bridge->capture_startup_snapshot({}, [&](size_t) {
+            ++hooks;
+            if (cancel) StartShutdown();
+            else throw std::runtime_error("synthetic startup batch refusal");
+        }), std::runtime_error);
+        BOOST_CHECK_EQUAL(hooks, 1);
+        BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+        BOOST_CHECK(!access.index_failed.load());
+        BOOST_CHECK_EQUAL(ShutdownRequested(), cancel);
+        AbortShutdown();
+        BOOST_CHECK_NO_THROW(bridge->capture_startup_snapshot());
+        BOOST_CHECK_NO_THROW(bridge->finish_startup_snapshot());
+    }
+}
+BOOST_AUTO_TEST_CASE(startup_batches_final_fence_rejects_last_batch_drift) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    auto bridge = chronik_bridge::make_bridge(access);
+    size_t indexes;
+    {
+        LOCK(cs_main);
+        indexes = mapBlockIndex.size();
+    }
+    size_t rows = 0, hooks = 0;
+    BOOST_CHECK_EXCEPTION(bridge->capture_startup_snapshot({}, [&](size_t count) {
+        rows += count;
+        ++hooks;
+        if (rows == indexes) {
+            LOCK(g_mempool.cs);
+            g_mempool.AddTransactionsUpdated(1);
+        }
+    }), std::exception, [](const std::exception &error) {
+        return std::string(error.what()) == "Native source changed during startup capture";
+    });
+    BOOST_CHECK_EQUAL(rows, indexes);
+    BOOST_CHECK_EQUAL(hooks, (indexes + 63) / 64);
+    BOOST_CHECK_EQUAL(bridge->startup_snapshot_index_count_for_testing(), 0);
+    BOOST_CHECK(!access.index_failed.load());
+    BOOST_CHECK(!ShutdownRequested());
+}
 BOOST_AUTO_TEST_CASE(startup_materialization_allows_native_progress_without_borrowing) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     auto bridge = chronik_bridge::make_bridge(access);

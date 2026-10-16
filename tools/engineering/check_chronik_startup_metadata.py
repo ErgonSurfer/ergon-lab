@@ -52,6 +52,11 @@ FUTURE = frozenset({
     "tools/engineering/check_chronik_owned_skip_links_self_test.py",
     "tools/engineering/check_chronik_startup_release.py",
     "tools/engineering/check_chronik_startup_release_self_test.py",
+    "docs/engineering/changes/ergon-change-0060.json",
+    "docs/engineering/chronik/upstream-startup-batches-v1.json",
+    "docs/engineering/chronik/upstream-startup-batches.md",
+    "tools/engineering/check_chronik_startup_batches.py",
+    "tools/engineering/check_chronik_startup_batches_self_test.py",
 })
 POLICY = BASE_POLICY | FUTURE
 REUSED = ("tests/compatibility/upstream-chronik/cold_rebuild_service.py",
@@ -176,6 +181,9 @@ def validate(root):
     release_manifest = root / "docs/engineering/chronik/upstream-startup-release-v1.json"
     release_cases = {"startup_finish_releases_owned_graph_before_publication"} \
         if release_manifest.exists() else set()
+    if (root / "docs/engineering/chronik/upstream-startup-batches-v1.json").exists():
+        from check_chronik_startup_batches import CASES as batch_cases
+        release_cases |= set(batch_cases)
     require(len(before) == 53 and
             set(after) - set(before) == set(CASES) | release_cases and
             all(after.get(name) == body for name, body in before.items()

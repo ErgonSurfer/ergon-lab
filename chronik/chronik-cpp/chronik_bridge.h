@@ -79,8 +79,12 @@ class ChronikBridge {
     // only the bounded regtest service retains the old branch across progress.
     // The optional hook is a deterministic native fixture only. It runs after
     // coherent value capture, outside both locks and before graph allocation.
-    // No CLI, CXX wire or runtime configuration exposes it.
-    void capture_startup_snapshot(std::function<void()> after_metadata = {});
+    // The second native-test hook runs after each <=64-row metadata batch,
+    // with neither native lock held. No CLI, CXX wire or runtime configuration
+    // exposes either hook.
+    void capture_startup_snapshot(
+        std::function<void()> after_metadata = {},
+        std::function<void(size_t)> after_batch = {});
     bool finish_startup_snapshot(bool allow_progress = false) const;
     // Native-only diagnostics/hooks; not an HTTP or CXX wire capability.
     size_t startup_snapshot_index_count_for_testing() const;

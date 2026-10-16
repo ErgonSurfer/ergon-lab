@@ -65,12 +65,18 @@ def successor_identity(root, path, previous):
         return previous
     rows = [row for row in load_json(root / MANIFEST)["files"]
             if row["path"] == path]
-    if not rows:
-        return previous
-    require(path in MANIFEST_FILES and len(rows) == 1 and
-            rows[0]["before"] == previous,
-            "startup release successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if rows:
+        require(path in MANIFEST_FILES and len(rows) == 1,
+                "startup release successor path drift")
+        if result != rows[0]["after"]:
+            require(rows[0]["before"] == result,
+                    "startup release successor preimage drift")
+            result = rows[0]["after"]
+    if (root / "docs/engineering/chronik/upstream-startup-batches-v1.json").exists():
+        from check_chronik_startup_batches import successor_identity as batches_successor
+        result = batches_successor(root, path, result)
+    return result
 
 
 def native_cases(text):
@@ -104,7 +110,8 @@ def validate(root):
         require(set(row) == {"path", "before", "after", "provenance",
                              "reachability"} and
                 row["before"] == before and
-                row["after"] == current_identity(root, row["path"]) and
+                successor_identity(root, row["path"], row["after"]) ==
+                    current_identity(root, row["path"]) and
                 row["after"] != before and row["after"]["mode"] == "100644" and
                 row["provenance"] ==
                     ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
@@ -115,7 +122,12 @@ def validate(root):
     changed |= {path.decode() for path in
                 git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
                 if path}
-    require(changed == CHANGED, "unexpected startup release path")
+    expected_changed = CHANGED
+    batches_present = (root / "docs/engineering/chronik/upstream-startup-batches-v1.json").exists()
+    if batches_present:
+        from check_chronik_startup_batches import CHANGED as batches_changed
+        expected_changed |= batches_changed
+    require(changed == expected_changed, "unexpected startup release path")
 
     from check_change import ValidationError, validate as validate_change
     record = load_json(root / RECORD)
@@ -138,14 +150,17 @@ def validate(root):
             for key, item in value.items()}
     for row in record["files"]:
         require(governed(row["before"]) == before_identity(root, row["path"]) and
-                governed(row["after"]) == current_identity(root, row["path"]),
+                successor_identity(root, row["path"], governed(row["after"])) ==
+                    current_identity(root, row["path"]),
                 "startup release policy drift")
 
     old_cases = native_cases(git(root, "show", PARENT +
         ":src/test/chronik_upstream_archival_tests.cpp").decode())
     new_cases = native_cases((root / "src/test/chronik_upstream_archival_tests.cpp").read_text())
+    from check_chronik_startup_batches import CASES as batches_cases
     require(len(old_cases) == 56 and
-            set(new_cases) - set(old_cases) == {TARGET_CASE} and
+            set(new_cases) - set(old_cases) == {TARGET_CASE} |
+                (set(batches_cases) if batches_present else set()) and
             set(old_cases) - set(new_cases) == set() and
             all(new_cases[name] == body for name, body in old_cases.items()),
             "startup release changed inherited native case")
@@ -185,7 +200,8 @@ def validate(root):
     runner_self = (root / "tests/compatibility/upstream-chronik/self_test.py").read_text()
     require(('"' + TARGET_CASE + '"') in runner and
             '("owned-startup", STARTUP, 607)' in runner and
-            '== 45, "non-disjoint test groups"' in runner and
+            ('== ' + ('50' if batches_present else '45') +
+             ', "non-disjoint test groups"') in runner and
             "assertions=607" in runner_self and
             "runner.STARTUP, 607" in runner_self,
             "startup release runner binding drift")
