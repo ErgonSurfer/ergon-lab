@@ -1,0 +1,73 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-upstream-plugin-alp/v1",
+  "license": "MIT",
+  "public_parent": {
+    "commit": "95143c437e45f64ea74a695251d4f6cd474ef8de",
+    "tree": "3555dfb168ee12f6c07bfa563fe305d21af72a55"
+  },
+  "contract": {
+    "scope": "test-only-no-production-or-dependency-change",
+    "profile": "regtest-plugins",
+    "compile_default": false,
+    "runtime_default": false,
+    "maximum_height": 2000,
+    "network": "bounded-unpruned-regtest",
+    "plugin": "exact-existing-public-ergon_public_probe-mode0",
+    "template_case": "chronik_upstream_regtest_tests/export_upstream_alp_templates",
+    "template_assertions": 4,
+    "cycle": [
+      "GENESIS-1000-plus-baton",
+      "MINT-500-plus-baton",
+      "SEND-1400-and-100",
+      "BURN-100"
+    ],
+    "inputs": "upstream-builder-templates-only-plus-existing-ERGN-LOKAD-push",
+    "oracles": "existing-ALP-native-wire-colors-spenders-token-history-UTXOs-AND-exact-plugin-ancestry-output-history-UTXOs",
+    "lifecycle": [
+      "pending",
+      "pending-process-reopen",
+      "confirm",
+      "disconnect",
+      "reconsider",
+      "confirmed-process-reopen"
+    ],
+    "daemon_processes_per_repetition": 3,
+    "default_repetitions": 3,
+    "native_value": "zero-inputs-outputs-fees-not-funded-token-economics",
+    "arbitrary_plugins": false,
+    "Python_security_sandbox": false,
+    "retained_controls": "all-five-profiles-exact-matrices-deadlines-cleanup-and-separate-service-clients",
+    "source_binding": "unchanged-compiled-adapter-projection-plus-exact-test-and-reused-input-digest",
+    "consensus_change": false,
+    "incoming_evidence": [],
+    "knowledge_status": "Open Question",
+    "evidence_ceiling": "record-review-only"
+  },
+  "files": [
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_alp_service.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12898,
+        "git_blob_sha1": "26d7d0e0a1a31d354c743822b84967c02bfea7d0",
+        "sha256": "b8d0a02c8613fd488defd6c0bf62b0061d416d2928c994579aa362bcc12a60b4"
+      },
+      "provenance": "A1/MIT",
+      "reachability": "test-only"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_alp_service_self_test.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8364,
+        "git_blob_sha1": "249d1b47c0c61e244ab48a390f7eaf936584c3c4",
+        "sha256": "aa6b56df152fc9941b305d76c90a30d722ccb5255d0164415a6061cf98cc0ef1"
+      },
+      "provenance": "A1/MIT",
+      "reachability": "test-only"
+    }
+  ]
+}

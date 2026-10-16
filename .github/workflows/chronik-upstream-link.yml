@@ -27,6 +27,7 @@ on:
       - "docs/engineering/changes/ergon-change-0051.json"
       - "docs/engineering/changes/ergon-change-0052.json"
       - "docs/engineering/changes/ergon-change-0053.json"
+      - "docs/engineering/changes/ergon-change-0054.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -55,6 +56,7 @@ on:
       - "docs/engineering/changes/ergon-change-0051.json"
       - "docs/engineering/changes/ergon-change-0052.json"
       - "docs/engineering/changes/ergon-change-0053.json"
+      - "docs/engineering/changes/ergon-change-0054.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -112,6 +114,9 @@ jobs:
           python3 -B tools/engineering/check_chronik_service_plugins.py check
           python3 -B tools/engineering/check_chronik_service_plugins_self_test.py
           python3 -B tests/compatibility/upstream-chronik/plugin_service_self_test.py
+          python3 -B tools/engineering/check_chronik_plugin_alp.py check
+          python3 -B tools/engineering/check_chronik_plugin_alp_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/plugin_alp_service_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -233,6 +238,16 @@ jobs:
             --build-root "$RUNNER_TEMP/ergon-upstream-build" \
             --work-parent "$RUNNER_TEMP/ergon-regtest-plugin-work" \
             --repetitions 3 --report "$RUNNER_TEMP/ergon-regtest-plugin.json"
+
+      - name: Full upstream ALP cycle with the existing public plugin active
+        if: matrix.profile == 'regtest-plugins'
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-plugin-alp-work"
+          python3 -B tests/compatibility/upstream-chronik/plugin_alp_service.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --build-root "$RUNNER_TEMP/ergon-upstream-build" \
+            --work-parent "$RUNNER_TEMP/ergon-plugin-alp-work" \
+            --repetitions 3 --report "$RUNNER_TEMP/ergon-plugin-alp.json"
 
       - name: Mine and stop with Chronik runtime default OFF
         shell: bash

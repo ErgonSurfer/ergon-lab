@@ -16,6 +16,8 @@ class Contract(unittest.TestCase):
         from check_chronik_service_alp import TECHNICAL, POLICY
         expected |= TECHNICAL | POLICY
         from check_chronik_service_plugins import TECHNICAL, POLICY
+        expected |= TECHNICAL | POLICY
+        from check_chronik_plugin_alp import TECHNICAL, POLICY
         self.assertEqual(gate.validate(self.root), expected | TECHNICAL | POLICY)
 
     def test_contract_and_inventory_rejections(self):

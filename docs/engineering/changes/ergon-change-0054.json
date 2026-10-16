@@ -1,0 +1,609 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0054",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0054.json",
+  "purpose": {
+    "summary": "Combine the existing upstream ALP and public synthetic plugin oracles on one real bounded-regtest daemon graph across the full token lifecycle, process reopen and reorg.",
+    "scope": [
+      "Direct child of the accepted public PR56 head; two new test clients and finite policy/documentation changes only.",
+      "Reuse unchanged public ALP builders/export, native RPC/HTTP daemon wrapper, ALP metadata/color/wire oracle and existing synthetic plugin data decoder.",
+      "Observe GENESIS1000, MINT500, SEND1400+100 and BURN100 with the existing public plugin active, including exact input ancestry and baton metadata.",
+      "Require both ALP and plugin response commitments across pending/confirmed fresh-process reopens and confirmation/disconnect/reconsider.",
+      "Retain all five profiles, previous clients and exact matrices, deadlines, assertions, durability and cleanup laws.",
+      "Bind the unchanged compiled projection separately from exact new test/reused public input commitments before and after execution."
+    ],
+    "exclusions": [
+      "No production source, token parser/validator, plugin engine/source, dependency, consensus, activation or default change.",
+      "No arbitrary/operator plugin, new listener, WebSocket/broadcast, Python sandbox or full-chain/production readiness claim.",
+      "No incoming private report, history, binary, operator data, server deployment, desktop integration or proof promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "95143c437e45f64ea74a695251d4f6cd474ef8de",
+      "tree": "3555dfb168ee12f6c07bfa563fe305d21af72a55"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "823b97d6a75fa98c652ac1e98525b8e8c22863982fe70a258b6663817cfbe666",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Unattributed donor code is excluded.",
+      "Private history, operator material, host metadata and unrelated private product material are excluded."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 12250,
+        "git_blob": "bfbd1b450a538248dbc032eb7bc37313b7cfdb60",
+        "sha256": "ba64017f48c7127e092057960c324effe9b2b5f2c77d04b1057aea9de406647d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13132,
+        "git_blob": "e04825cb18b36e34b124b0c3c19ea1908169cfd3",
+        "sha256": "d50974fc3e1e73f58304d256ee46b6321ac31064766385059c378b49c403dca4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-alp-v1.json",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2586,
+        "git_blob": "4e85993ca029921458f78605c586363505b2521c",
+        "sha256": "5f472734f3f9d35dfe24f0595299a0f7870f8b2d66f92798dd5382e413e1bfda"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-plugin-alp.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4292,
+        "git_blob": "28bce62a07b16a38b6505aac6026cc7581e6c5dd",
+        "sha256": "96a9f285d202fd3a9038ac7e9a3700bd0f242dc5266b3cb2cce6364192e514a9"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_alp_service.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12898,
+        "git_blob": "26d7d0e0a1a31d354c743822b84967c02bfea7d0",
+        "sha256": "b8d0a02c8613fd488defd6c0bf62b0061d416d2928c994579aa362bcc12a60b4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_alp_service_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8364,
+        "git_blob": "249d1b47c0c61e244ab48a390f7eaf936584c3c4",
+        "sha256": "aa6b56df152fc9941b305d76c90a30d722ccb5255d0164415a6061cf98cc0ef1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_alp.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7372,
+        "git_blob": "6f7ac7ed94f550827df565ffdc11bda1d4763aed",
+        "sha256": "754b76df1059a130fff2ede0c8be8e21da5c2ef26cabcdd0337d6fe72630707f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_alp_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3280,
+        "git_blob": "0672c8e50617c8547998cda032b597b713706a1f",
+        "sha256": "467eb6202e1eac1fb29435ff6d3d585640f449a288082d42998ecaf2d4345a8a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 4208,
+        "git_blob": "49e92cfbfb044bb3fc34579d3c1c54a1cd594576",
+        "sha256": "07c092b782d0886935994a78468f0f41706f53485336d540cdaeea3bf6a1b228"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4363,
+        "git_blob": "ca6ce6251e55e5e38fee24d8209c66fd6f76d342",
+        "sha256": "c705d87a9502d84e2387b4e13794fa9bc24cf34dbde07a7b2f224c675a3553da"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_regtest_service_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3316,
+        "git_blob": "a8068d4d0b10c3f78edd8cf2d94e1fd33bb5cc27",
+        "sha256": "1c7469796db7bf34a344f625c0af7a4b8191bbec78ed8f1ef69a0ae3eda452ab"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3418,
+        "git_blob": "2e1aea83de345b443f465908b791ad2a35d6972c",
+        "sha256": "23f071db7a6c11dd06a4ab23052a046df852a8d88a32cef628f3d23258c712a1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_alp_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3040,
+        "git_blob": "9b3053f29cc5c13c32d46dc68c0ca2b7ad4fd69f",
+        "sha256": "23217b9715db73ad786da3958d413c64b7b73500ecd8c16b4114102ae71e4d61"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3152,
+        "git_blob": "9ac59fe7629543b06c279d04bedc57d9de0efaef",
+        "sha256": "506d530c380016f964fe449434d8b7538f98240d9dfb7a88f7f96c0f45228e60"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_plugins.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8076,
+        "git_blob": "85232b86c1537465f1b6fc0d13ba251ac7f2c341",
+        "sha256": "9800da273b873cd13075e524dce0546ee10de36cd9e2e97853b5f89b388ed1c6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8811,
+        "git_blob": "ba80e700d9301872af5540bff5e41344718a6c94",
+        "sha256": "d3996b58fde59b59c170537ae7395f7b6d2f751a34ab4bcad390ff64efc9bb8a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_plugins_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3045,
+        "git_blob": "31b1a97310a412dfb4e3eefd576309365bf2c21e",
+        "sha256": "cb0b03d6d0a0553a307aa03a28b87cd4c01da2932866fc2f1d95c644b4d4651f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3129,
+        "git_blob": "7f340e706db2532b41e69a57c4cbdfb818349db6",
+        "sha256": "de62182bbfe299f2b0b940c4d86784a59d91f5159b147ef54e72f6f9dc610331"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_recovery_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3017,
+        "git_blob": "dff4ae3baae84a33f7dc8bf90285ef34dc3c1de7",
+        "sha256": "79be0468f0ce1048559da77ecebf9c4ffdbe246b076a3073141f160d530b8914"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3119,
+        "git_blob": "5e79e62e0264dea4118f6d4e9bb102599c692623",
+        "sha256": "1796bd436f00789c2ed7e5ceab91ad9dea2f336cb8907159b4e1570f405077f5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_startup_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 2967,
+        "git_blob": "0894f8d8bd4ab310dc3d801716b3aa1da8bd1532",
+        "sha256": "30c06cb76182549cb7cef9643ee904bd7e175133b941b22b51b42204be138d21"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3069,
+        "git_blob": "f368d4710c2df2282e5d12389a33aec539e4a06d",
+        "sha256": "0d8a9a5fec8b6329fb4e17e6ada82b882d3e09c14e226009113844c2a8885e50"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "None: test client/oracle, build workflow or governance metadata only; compiled source and defaults unchanged.",
+      "test_reachability": "Combined existing upstream ALP/public-plugin actual-daemon lifecycle and fail-closed source/oracle tests; no automatic proof promotion."
+    }
+  ],
+  "surfaces": {
+    "consensus": false,
+    "validation_mempool": false,
+    "p2p": false,
+    "storage_datadir": true,
+    "rpc_api": true,
+    "wallet": false,
+    "indexing_chronik": true,
+    "ui": false,
+    "build_release": true,
+    "tests": true,
+    "documentation_cockpit": true,
+    "data_research": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the independent compiled-out profile with all upstream/plugin/observer flags OFF; execute the existing native zero-subsidy mining and positive-stop smoke."
+        ],
+        "expected_results": [
+          "Native mining and shutdown work without linking Rust/Chronik; no Chronik state or external peer connection is created."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build the archival and plugin component profiles with regtest service OFF; retain their exact matrices and dormant smokes. Build the separate regtest profile with plugins OFF and retain its actual-daemon lifecycle and full ALP client."
+        ],
+        "expected_results": [
+          "Linking upstream or enabling plugin component fixtures alone starts no daemon index, plugin inputs or listener. Existing profiles remain independently bound."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Use the unchanged regtest-plugins native build; run all existing component/default-OFF/service clients, then plugin_alp_service.py --repetitions3 with separate canonical work/report bindings."
+        ],
+        "expected_results": [
+          "One exact upstream template process4 assertions and9 fresh daemons for3 repetitions. Both ALP and public-plugin colors/metadata/history/UTXOs match one native graph through pending/confirmed reopen and reorg, with positive joined shutdown and exclusive report creation after cleanup."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run plugin_alp_service.py --repetitions3 using the exact public source and existing bound regtest-plugins build; retain separate original ALP/plugin controls.",
+        "expected_results": [
+          "GENESIS1000 plus baton, MINT500 plus baton, SEND1400+100 and BURN100 all pass the existing upstream ALP oracle and exact public-plugin ancestry/output/group/history/UTXO oracle on the same native graph.",
+          "Pending and confirmed process reopen preserve combined response digests. Disconnect/reconsider track native mempool/block state and first-seen times without stale plugin data.",
+          "Exactly1400 unspent token atoms and one mint baton; plugin UTXOs additionally include non-token burn change. Actual native values/fees remain zero. No peer, altered input, new capability or unjoined stop."
+        ],
+        "failure_conditions": [
+          "Missing or ambiguous operation/input/output/plugin metadata, wrong token/baton/native field, phase/history/UTXO/source/build/binary drift, skipped oracle, timeout, nonzero exit, overwrite or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run plugin_alp_service.py --repetitions3 using the exact public source and existing bound regtest-plugins build; retain separate original ALP/plugin controls.",
+        "expected_results": [
+          "GENESIS1000 plus baton, MINT500 plus baton, SEND1400+100 and BURN100 all pass the existing upstream ALP oracle and exact public-plugin ancestry/output/group/history/UTXO oracle on the same native graph.",
+          "Pending and confirmed process reopen preserve combined response digests. Disconnect/reconsider track native mempool/block state and first-seen times without stale plugin data.",
+          "Exactly1400 unspent token atoms and one mint baton; plugin UTXOs additionally include non-token burn change. Actual native values/fees remain zero. No peer, altered input, new capability or unjoined stop."
+        ],
+        "failure_conditions": [
+          "Missing or ambiguous operation/input/output/plugin metadata, wrong token/baton/native field, phase/history/UTXO/source/build/binary drift, skipped oracle, timeout, nonzero exit, overwrite or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer full-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Canonical confirmed bytes are unchanged after full reindex and query admission remains opt-in."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the HTTP and observer chainstate-reindex canaries.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Ordered accepted callbacks rebuild the same confirmed protobuf without changing validation."
+        ],
+        "failure_conditions": [
+          "Stale index, response drift, validation effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run the two-role pruning canary with fresh-pruned bootstrap and concurrent requests during already-indexed pruning.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Concurrent old-transaction reads are either canonical 200 or protobuf 503, never a fabricated or partial response. After file removal the old transaction is 503; a retained recent transaction remains 200 and the node continues at its accepted height.",
+          "The pre-existing fresh-pruned observer bootstrap failure remains isolated from node correctness."
+        ],
+        "failure_conditions": [
+          "Silent 404 for an indexed pruned transaction, fabricated fallback, partial result, node shutdown, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Existing observer profile only, retained by chronik-port-core.yml: Run feature_chronik_token_http.py: extend to height 290 in bounded batches, disconnect below the retained projection anchor, reconsider, verify mismatched restart leaves HTTP disabled, then explicitly full-reindex. Separately exercise upstream retained-anchor and source-generation contradictions; the fixture observer closes while native progress continues.",
+        "expected_results": [
+          "Inherited observer coverage only; this scenario does not establish the upstream daemon's readiness.",
+          "Both known and unknown token/transaction IDs return protobuf 503 after observer closure, never stale 200 or misleading 404.",
+          "Node RPC and chain selection continue; reconsider does not reopen observation. A persistent-tip mismatch disables HTTP on restart and logs recovery=reindex. Explicit full reindex restores canonical token metadata and byte-identical confirmed transaction output."
+        ],
+        "failure_conditions": [
+          "Any accepted response after irreversible closure, missing-ID 404 from a degraded view, HTTP serving from a mismatched restarted runtime, missing mismatch diagnostic, failed canonical reindex recovery, node-authority effect, skip, timeout or nonzero exit."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04-ci-required",
+        "macos-26-arm64-local-preflight-observed-not-independent"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Test-only bounded unpruned local regtest, not full-chain availability, latency, power-loss recovery, funded token economics, deployment or independent reproduction.",
+    "Existing exact trusted public synthetic plugin only; Python is not sandboxed. Operator plugin configuration, actual-daemon version change/rebuild and server migration remain separate later work.",
+    "Original ALP invalid-mint/malformed-metadata and plugin refusal controls remain separate and unchanged; this combined client covers the valid four-operation lifecycle only.",
+    "Compiled adapter inputs are unchanged and separately bound. Test inputs are independently hashed; neither CMake cache/source checks nor those commitments prove that an externally supplied binary was built from the paired source.",
+    "All native values/fees are zero. Synthetic mining priority is not currency. Rust registry inputs are locked, OS/SDK/runner inputs are not. Upstream alerts and historical timeout counterevidence remain open."
+  ],
+  "counterevidence": [
+    "PR56's seven Linux CI checks passed on95143c437e45f64ea74a695251d4f6cd474ef8de. This does not remove its local normal stop/reopen repetition3 aggregate60s refusal, establish every cause or qualify diagnostic instrumentation as replacement evidence.",
+    "Separate ALP and plugin client successes did not establish their combined behavior. This new same-graph oracle requires its own actual-daemon run; metadata and synthetic rejection tests are not execution evidence.",
+    "No incoming report or automatic proof promotion. This record starts Open Question/record-review-only; observations must be generated and reviewed separately.",
+    "Initial local preflight on2026-10-16 passed three combined lifecycle repetitions:9 fresh daemons and one exact upstream template process4 assertions. Pending/confirmed process reopen and native reorg preserved both ALP and plugin oracles. This local result is not an incoming public report, independent reproduction or substitute for preserved aggregate-timeout controls."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
