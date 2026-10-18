@@ -16,6 +16,8 @@ struct NativePositionStats {
     uint64_t catalogue_added{0}, catalogue_removed{0}, cold_layouts{0};
     uint64_t warm_reads{0}, transaction_bytes{0}, undo_bytes{0};
     uint64_t cold_block_bytes{0};
+    uint64_t catalogue_batches{0}, catalogue_aborts{0}, catalogue_refresh_requests{0};
+    size_t maximum_catalogue_batch{0};
     size_t cached_layouts{0};
 };
 struct PositionedTransaction {
@@ -31,11 +33,15 @@ class NativePositionReader {
   public:
     explicit NativePositionReader(const ErgonNodeAccess &node);
     ~NativePositionReader();
+    // Invoke without native locks. Cold/suffix refreshes serialize only after
+    // releasing native locks. Abandoned captures never poison node validation.
     PositionedTransaction Read(uint32_t file, uint32_t position,
                                const uint32_t *expected_undo) const;
     NativePositionStats Stats() const;
     // Deterministic native fixture only; no CLI/config/network exposure.
     void BeforeReadForTesting(std::function<void()> hook);
+    // Runs between fixed-size native metadata captures, outside native locks.
+    void AfterCatalogueBatchForTesting(std::function<void()> hook);
 };
 } // namespace chronik_bridge
 #endif

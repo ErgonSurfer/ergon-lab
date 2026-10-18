@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 The Ergon developers
 #include <algorithm>
+#include <array>
 #include <chain.h>
 #include <chainparams.h>
 #include <chronik-cpp/ergon_node_access.h>
@@ -15,6 +16,7 @@
 #include <shutdown.h>
 #include <stdexcept>
 #include <streams.h>
+#include <txmempool.h>
 #include <undo.h>
 #include <util/system.h>
 #include <validation.h>
@@ -26,6 +28,7 @@ namespace {
 constexpr uint32_t PAYLOAD_LIMIT = 64 * 1024 * 1024;
 constexpr size_t TRANSACTION_LIMIT = 65536;
 constexpr size_t LAYOUT_LIMIT = 8;
+constexpr size_t CATALOGUE_BATCH = 64;
 using Key = std::pair<int, uint32_t>;
 struct Reference {
     int height;
@@ -158,70 +161,187 @@ std::vector<::Coin> ReadUndo(const Reference &ref, const Layout &layout,
 struct NativePositionReader::Impl {
     const ErgonNodeAccess &node;
     mutable std::mutex mutex;
-    std::map<Key, int> directory;
-    std::vector<Key> heights;
-    BlockHash last_tip;
-    uint64_t generation{0};
+    std::mutex refresh_mutex;
+    struct Catalogue {
+        std::map<Key, int> directory;
+        std::vector<Key> heights;
+        BlockHash last_tip;
+        uint64_t generation{0};
+    };
+    // A refresher temporarily owns this object exclusively. Other requests
+    // wait for it only after releasing every native and metadata lock.
+    // Readers never retain a catalogue pointer after releasing mutex.
+    std::unique_ptr<Catalogue> catalogue{std::make_unique<Catalogue>()};
     std::map<Key, std::shared_ptr<const Layout>> layouts;
     NativePositionStats stats;
     std::function<void()> before_read;
+    std::shared_ptr<const std::function<void()>> after_catalogue_batch;
     explicit Impl(const ErgonNodeAccess &access) : node(access) {}
 
-    // Lock order is native cs_main -> metadata mutex, never the reverse.
-    // No disk read/DB work occurs under this catalogue fence. Initial native
-    // metadata bootstrap is O(height); later work is O(changed suffix).
-    Reference Resolve(uint32_t file, uint32_t position) {
-        if (file > uint32_t(std::numeric_limits<int>::max()))
-            throw std::runtime_error("Invalid native file number");
-        LOCK(cs_main);
+    void Available() const EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
         if (fPruneMode || ShutdownRequested() || node.index_failed.load() ||
-            !ChainActive().Tip() || !ChainActive().GetSourceGeneration())
+            !ChainActive().Tip() || !ChainActive().GetSourceGeneration() ||
+            ChainActive().Height() < 0 ||
+            ChainActive().Height() == std::numeric_limits<int>::max())
             throw std::runtime_error("Native position source unavailable");
-        std::lock_guard<std::mutex> lock(mutex);
-        const auto current = ChainActive().GetSourceGeneration();
-        if (generation != current) {
-            int fork_height = -1;
-            auto old = mapBlockIndex.find(last_tip);
-            if (generation && old != mapBlockIndex.end()) {
-                const auto *fork = ChainActive().FindFork(old->second);
-                if (fork)
-                    fork_height = fork->nHeight;
-            }
-            while (heights.size() > size_t(fork_height + 1)) {
-                const auto key = heights.back();
-                if (key.first >= 0)
-                    directory.erase(key);
-                layouts.erase(key);
-                heights.pop_back();
-                ++stats.catalogue_removed;
-            }
-            for (int h = int(heights.size()); h <= ChainActive().Height();
-                 ++h) {
-                const auto pos = ChainActive()[h]->GetBlockPos();
-                const Key key{pos.nFile, pos.nPos};
-                if (!pos.IsNull() && !directory.emplace(key, h).second)
-                    throw std::runtime_error(
-                        "Ambiguous native storage catalogue");
-                heights.push_back(key);
-                ++stats.catalogue_added;
-            }
-            last_tip = ChainActive().Tip()->GetBlockHash();
-            generation = current;
-        }
-        auto found = directory.upper_bound({int(file), position});
-        if (found == directory.begin() || (--found)->first.first != int(file))
+    }
+    void SameSource(uint64_t generation, const BlockHash &tip) const
+        EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
+        Available();
+        if (ChainActive().GetSourceGeneration() != generation ||
+            ChainActive().Tip()->GetBlockHash() != tip)
+            throw std::runtime_error("Native catalogue source changed");
+    }
+    Reference Lookup(const Catalogue &value, uint32_t file, uint32_t position)
+        const EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
+        auto found = value.directory.upper_bound({int(file), position});
+        if (found == value.directory.begin() ||
+            (--found)->first.first != int(file))
             throw std::runtime_error("Position outside active native storage");
         const auto *index = ChainActive()[found->second];
         if (!index || index->GetBlockPos() !=
                           FlatFilePos(found->first.first, found->first.second))
-            throw std::runtime_error(
-                "Native catalogue storage identity changed");
-        return {index->nHeight,
-                index->GetBlockHash(),
-                index->GetBlockPos(),
+            throw std::runtime_error("Native catalogue storage identity changed");
+        return {index->nHeight, index->GetBlockHash(), index->GetBlockPos(),
                 index->GetUndoPos(),
                 index->pprev ? index->pprev->GetBlockHash() : BlockHash{},
-                current};
+                value.generation};
+    }
+
+    // Only constant-size stack metadata is captured under cs_main. Catalogue
+    // allocation, insertion, removal and destruction are outside native locks.
+    // Total initial work/memory is still O(height); append work is incremental.
+    // Lock order is refresh_mutex -> cs_main -> mutex, never the reverse.
+    // The fast path never takes refresh_mutex; waiting for refresh must never
+    // retain a native lock. No retry loop or index-failure authority is added.
+    Reference Resolve(uint32_t file, uint32_t position) {
+        if (file > uint32_t(std::numeric_limits<int>::max()))
+            throw std::runtime_error("Invalid native file number");
+        {
+            LOCK(cs_main);
+            Available();
+            std::lock_guard<std::mutex> lock(mutex);
+            if (catalogue && catalogue->generation == ChainActive().GetSourceGeneration())
+                return Lookup(*catalogue, file, position);
+        }
+        AssertLockNotHeld(cs_main);
+        AssertLockNotHeld(node.mempool.cs);
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            ++stats.catalogue_refresh_requests;
+        }
+        std::lock_guard<std::mutex> refresh(refresh_mutex);
+        std::unique_ptr<Catalogue> working;
+        std::shared_ptr<const std::function<void()>> hook;
+        uint64_t current;
+        BlockHash tip;
+        int height, fork_height = -1;
+        {
+            LOCK(cs_main);
+            Available();
+            std::lock_guard<std::mutex> lock(mutex);
+            if (!catalogue)
+                throw std::runtime_error("Native catalogue owner unavailable");
+            current = ChainActive().GetSourceGeneration();
+            if (catalogue->generation == current)
+                return Lookup(*catalogue, file, position);
+            tip = ChainActive().Tip()->GetBlockHash();
+            height = ChainActive().Height();
+            auto old = mapBlockIndex.find(catalogue->last_tip);
+            if (!catalogue->heights.empty() && old != mapBlockIndex.end()) {
+                // At most 31 ancestry probes, not a linear disconnected-suffix
+                // walk under the native lock. Header ancestry is immutable.
+                int low = 0;
+                int high = std::min({old->second->nHeight, height,
+                                    int(catalogue->heights.size()) - 1});
+                while (low <= high) {
+                    const int mid = low + (high - low) / 2;
+                    if (old->second->GetAncestor(mid) == ChainActive()[mid]) {
+                        fork_height = mid;
+                        low = mid + 1;
+                    } else {
+                        high = mid - 1;
+                    }
+                }
+            }
+            hook = after_catalogue_batch;
+            working = std::move(catalogue);
+        }
+        try {
+            // Exclusive local ownership: no metadata or native mutex needed
+            // for the O(changed suffix) container work below.
+            uint64_t removed = 0, added = 0;
+            working->generation = 0;
+            while (working->heights.size() > size_t(fork_height + 1)) {
+                const auto key = working->heights.back();
+                if (key.first >= 0)
+                    working->directory.erase(key);
+                decltype(layouts)::node_type retired;
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    retired = layouts.extract(key);
+                }
+                working->heights.pop_back();
+                ++removed;
+            }
+            working->heights.reserve(size_t(height) + 1);
+            while (working->heights.size() <= size_t(height)) {
+                std::array<Key, CATALOGUE_BATCH> batch;
+                const int first = int(working->heights.size());
+                const size_t count = std::min(CATALOGUE_BATCH,
+                    size_t(height) + 1 - working->heights.size());
+                {
+                    LOCK(cs_main);
+                    SameSource(current, tip);
+                    for (size_t i = 0; i < count; ++i) {
+                        const auto pos = ChainActive()[first + int(i)]->GetBlockPos();
+                        batch[i] = {pos.nFile, pos.nPos};
+                    }
+                }
+                for (size_t i = 0; i < count; ++i) {
+                    const auto key = batch[i];
+                    if (key.first >= 0 &&
+                        !working->directory.emplace(key, first + int(i)).second)
+                        throw std::runtime_error("Ambiguous native storage catalogue");
+                    working->heights.push_back(key);
+                    ++added;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    ++stats.catalogue_batches;
+                    stats.maximum_catalogue_batch =
+                        std::max(stats.maximum_catalogue_batch, count);
+                }
+                if (hook) (*hook)();
+            }
+            working->last_tip = tip;
+            working->generation = current;
+            {
+                LOCK(cs_main);
+                SameSource(current, tip);
+                std::lock_guard<std::mutex> lock(mutex);
+                stats.catalogue_removed += removed;
+                stats.catalogue_added += added;
+                catalogue = std::move(working);
+                // Publish even when this particular position is invalid;
+                // invalid queries must not discard a valid refreshed catalogue.
+                return Lookup(*catalogue, file, position);
+            }
+        } catch (...) {
+            if (working) {
+                // Discard any incomplete staging outside both native locks.
+                // Reuse the owner itself, so even allocation failure restores
+                // a usable empty catalogue without allocating during unwind.
+                working->directory.clear();
+                working->heights.clear();
+                working->last_tip = BlockHash{};
+                working->generation = 0;
+                std::lock_guard<std::mutex> lock(mutex);
+                ++stats.catalogue_aborts;
+                catalogue = std::move(working);
+            }
+            throw;
+        }
     }
     void Check(const Reference &ref) const {
         LOCK(cs_main);
@@ -308,5 +428,11 @@ NativePositionStats NativePositionReader::Stats() const {
 void NativePositionReader::BeforeReadForTesting(std::function<void()> hook) {
     std::lock_guard<std::mutex> lock(m_impl->mutex);
     m_impl->before_read = std::move(hook);
+}
+void NativePositionReader::AfterCatalogueBatchForTesting(std::function<void()> hook) {
+    auto value = hook ? std::make_shared<const std::function<void()>>(std::move(hook))
+                      : nullptr;
+    std::lock_guard<std::mutex> lock(m_impl->mutex);
+    m_impl->after_catalogue_batch = std::move(value);
 }
 } // namespace chronik_bridge

@@ -107,10 +107,10 @@ class Contract(unittest.TestCase):
     def test_plugin_profiles_exact_counts_and_single_context_processes(self):
         self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
         for profile, groups, count, assertions, processes in (
-                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 62, 2543, 130),
-                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 62, 2543, 130),
-                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 59, 2449, 100),
-                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 59, 2449, 100)):
+                ("plugins", runner.GROUPS + runner.CATALOGUE_GROUPS + runner.PLUGIN_GROUPS, 68, 2593, 190),
+                ("regtest-plugins", runner.GROUPS + runner.CATALOGUE_GROUPS + runner.PLUGIN_GROUPS, 68, 2593, 190),
+                ("archival", runner.GROUPS + runner.CATALOGUE_GROUPS + (runner.DISABLED_GROUP,), 65, 2499, 160),
+                ("regtest", runner.GROUPS + runner.CATALOGUE_GROUPS + (runner.DISABLED_GROUP,), 65, 2499, 160)):
             streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]
             with patch.object(runner, "execute", side_effect=streams):
                 result = runner.repeat(Path("synthetic"), Path("unused"), (), 10, profile)
@@ -121,6 +121,19 @@ class Contract(unittest.TestCase):
         for n in (0, 54, 56):
             with self.assertRaises(runner.Rejected):
                 runner.parse_streams((out, err.replace("55", str(n))), runner.PLUGIN_GROUPS[0][1], 55)
+
+    def test_position_catalogue_has_six_separate_exact_leaf_groups(self):
+        self.assertEqual(len(runner.CATALOGUE_GROUPS), 6)
+        self.assertEqual(sum(count for _, _, count in runner.CATALOGUE_GROUPS), 50)
+        self.assertEqual(len({case for _, cases, _ in runner.CATALOGUE_GROUPS for case in cases}), 6)
+        for _, cases, count in runner.CATALOGUE_GROUPS:
+            self.assertEqual(len(cases), 1)
+            self.assertEqual(runner.filter_for(cases), cases[0])
+            runner.parse_streams(self.streams(cases, count), cases, count)
+            with self.assertRaises(runner.Rejected):
+                runner.parse_streams(self.streams(cases, count - 1), cases, count)
+        unknown = (runner.CATALOGUE_PREFIX + "unreviewed",)
+        with self.assertRaises(runner.Rejected): runner.filter_for(unknown)
 
     def test_disabled_profile_rejects_enabled_engine_cache(self):
         with tempfile.TemporaryDirectory(prefix="ergon-runner-self-") as name:

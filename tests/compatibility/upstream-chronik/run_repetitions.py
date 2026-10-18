@@ -126,6 +126,15 @@ PLUGIN_GROUPS = tuple((name, (PREFIX + name,), count) for name, count in (
 ))
 DISABLED_GROUP = ("upstream-public-plugin-disabled",
                   (PREFIX + "upstream_public_plugin_disabled_refuses_setup",), 6)
+CATALOGUE_PREFIX = "chronik_native_position_catalogue_tests/"
+CATALOGUE_GROUPS = tuple((name, (CATALOGUE_PREFIX + name,), count) for name, count in (
+    ("position_catalogue_batches_release_native_locks", 12),
+    ("position_catalogue_staging_rejects_native_aba", 8),
+    ("position_catalogue_final_fence_rejects_cancelled_source", 7),
+    ("position_catalogue_final_fence_rejects_native_progress", 7),
+    ("position_catalogue_storage_drift_is_not_a_generation_fence", 5),
+    ("position_catalogue_concurrent_refresh_waits_without_native_locks", 11),
+))
 READ_INPUTS = frozenset({
     "chronik/UpstreamLink.cmake", "chronik/chronik-cpp/ergon_archival_probe.cpp",
     "chronik/chronik-cpp/ergon_archival_probe.h", "chronik/chronik-lib/src/ergon_archival.rs",
@@ -398,6 +407,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "long history projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    catalogue_manifest = source / "docs/engineering/chronik/upstream-position-catalogue-v1.json"
+    if catalogue_manifest.exists():
+        from check_chronik_position_catalogue import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(catalogue_manifest))
+        require(layer["schema"] == "ergon-upstream-position-catalogue/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES), "position catalogue projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "position catalogue projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -502,7 +524,7 @@ def remove_owned(run, work):
 
 def timeout_progress(path):
     """Bounded failure-only observation; never echo child text or paths."""
-    names = {case for _, cases, _ in (*GROUPS, *PLUGIN_GROUPS, DISABLED_GROUP) for case in cases}
+    names = {case for _, cases, _ in (*GROUPS, *CATALOGUE_GROUPS, *PLUGIN_GROUPS, DISABLED_GROUP) for case in cases}
     latest = {"start": "unavailable", "done": "unavailable"}
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
@@ -578,6 +600,8 @@ def parse_streams(streams, cases, assertions):
 def filter_for(cases):
     if cases == BRIDGE:
         return "chronik_native_upstream_bridge_tests,chronik_native_upstream_disk_tests"
+    if cases in tuple(group[1] for group in CATALOGUE_GROUPS):
+        return cases[0]
     require(all(case.startswith(PREFIX) for case in cases), "unexpected suite")
     return PREFIX + ",".join(case[len(PREFIX):] for case in cases)
 
@@ -599,7 +623,7 @@ def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
     require(profile in (None, "archival", "plugins", "regtest", "regtest-plugins"), "unknown repetition profile")
     require(len({case for _, cases, _ in GROUPS for case in cases}) == 58, "non-disjoint test groups")
-    groups = GROUPS + (PLUGIN_GROUPS if profile in ("plugins", "regtest-plugins") else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
+    groups = GROUPS + CATALOGUE_GROUPS + (PLUGIN_GROUPS if profile in ("plugins", "regtest-plugins") else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
     require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
             "plugin cases overlap inherited groups")
     result = []

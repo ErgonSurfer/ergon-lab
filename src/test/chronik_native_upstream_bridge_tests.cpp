@@ -16,6 +16,7 @@
 #include <shutdown.h>
 #include <streams.h>
 #include <test/setup_common.h>
+#include <txmempool.h>
 #include <undo.h>
 #include <util/system.h>
 #include <validation.h>
@@ -23,7 +24,10 @@
 
 #include <algorithm>
 #include <boost/test/unit_test.hpp>
+#include <chrono>
+#include <future>
 #include <limits>
+#include <thread>
 
 namespace {
 struct NativeBridgeBasic : BasicTestingSetup {
@@ -68,6 +72,26 @@ class ChangedByte {
             std::terminate();
     }
 };
+// Threads are joined after Read has unwound, including a failed lock-release
+// oracle. A failed oracle must not detach or deadlock during hook unwinding.
+struct JoinedPositionReaders {
+    std::vector<std::thread> threads;
+    ~JoinedPositionReaders() {
+        for (auto &thread : threads) thread.join();
+    }
+};
+struct NativeCoinbasePosition {
+    uint32_t file, position;
+    CTransactionRef tx;
+};
+NativeCoinbasePosition CoinbasePosition(chronik_bridge::ErgonNodeAccess &node) {
+    auto bridge = chronik_bridge::make_bridge(node);
+    const auto &tip = bridge->get_chain_tip();
+    auto block = bridge->load_block(tip);
+    auto undo = bridge->load_block_undo(tip);
+    const auto projection = chronik_bridge::bridge_block(*block, *undo, tip);
+    return {projection.file_num, projection.txs[0].data_pos, block->vtx[0]};
+}
 } // namespace
 
 BOOST_FIXTURE_TEST_SUITE(chronik_native_upstream_bridge_tests,
@@ -459,5 +483,193 @@ BOOST_AUTO_TEST_CASE(position_native_aba_and_suffix_reorg_recovery) {
     BOOST_CHECK_EQUAL(recovered.catalogue_added, 102);
     BOOST_CHECK_EQUAL(recovered.cold_layouts, removed.cold_layouts + 1);
     BOOST_CHECK_LE(recovered.cached_layouts, 8);
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE(chronik_native_position_catalogue_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(position_catalogue_batches_release_native_locks) {
+    chronik_bridge::ErgonNodeAccess node(GetConfig(), g_mempool);
+    const auto input = CoinbasePosition(node);
+    chronik_bridge::NativePositionReader reader(node);
+    JoinedPositionReaders peers;
+    reader.AfterCatalogueBatchForTesting([&] {
+        auto ready = std::make_shared<std::promise<bool>>();
+        auto observed = ready->get_future();
+        peers.threads.emplace_back([ready] {
+            LOCK2(cs_main, g_mempool.cs);
+            ready->set_value(true);
+        });
+        if (observed.wait_for(std::chrono::seconds(2)) != std::future_status::ready ||
+            !observed.get())
+            throw std::runtime_error("Native locks held across catalogue batch");
+    });
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    const auto cold = reader.Stats();
+    BOOST_CHECK_EQUAL(cold.catalogue_batches, 2);
+    BOOST_CHECK_EQUAL(cold.maximum_catalogue_batch, 64);
+    BOOST_CHECK_EQUAL(cold.catalogue_added, 101);
+    BOOST_CHECK_EQUAL(cold.catalogue_aborts, 0);
+    BOOST_CHECK_EQUAL(peers.threads.size(), 2);
+    reader.AfterCatalogueBatchForTesting({});
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_batches, cold.catalogue_batches);
+    CreateAndProcessBlock({}, input.tx->vout[0].scriptPubKey);
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 102);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_removed, 0);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_batches, 3);
+}
+
+BOOST_AUTO_TEST_CASE(position_catalogue_staging_rejects_native_aba) {
+    chronik_bridge::ErgonNodeAccess node(GetConfig(), g_mempool);
+    const auto input = CoinbasePosition(node);
+    chronik_bridge::NativePositionReader reader(node);
+    auto *original = ChainActive().Tip();
+    bool changed = false;
+    reader.AfterCatalogueBatchForTesting([&] {
+        if (changed) return;
+        changed = true;
+        CValidationState state;
+        if (!InvalidateBlock(GetConfig(), state, original) ||
+            !ActivateBestChain(GetConfig(), state))
+            throw std::runtime_error("Native ABA disconnect failed");
+        {
+            LOCK(cs_main);
+            ResetBlockFailureFlags(original);
+        }
+        if (!ActivateBestChain(GetConfig(), state))
+            throw std::runtime_error("Native ABA restoration failed");
+    });
+    BOOST_CHECK_THROW(reader.Read(input.file, input.position, nullptr), std::runtime_error);
+    BOOST_CHECK(changed);
+    BOOST_CHECK(ChainActive().Tip() == original);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 0);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_aborts, 1);
+    reader.AfterCatalogueBatchForTesting({});
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 101);
+    BOOST_CHECK(!node.index_failed.load());
+}
+
+BOOST_AUTO_TEST_CASE(position_catalogue_final_fence_rejects_cancelled_source) {
+    chronik_bridge::ErgonNodeAccess node(GetConfig(), g_mempool);
+    const auto input = CoinbasePosition(node);
+    chronik_bridge::NativePositionReader reader(node);
+    size_t batches = 0;
+    reader.AfterCatalogueBatchForTesting([&] {
+        if (++batches == 2) node.index_failed = true;
+    });
+    BOOST_CHECK_THROW(reader.Read(input.file, input.position, nullptr), std::runtime_error);
+    BOOST_CHECK_EQUAL(batches, 2);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 0);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_aborts, 1);
+    node.index_failed = false;
+    reader.AfterCatalogueBatchForTesting({});
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 101);
+    BOOST_CHECK(!node.index_failed.load());
+}
+
+BOOST_AUTO_TEST_CASE(position_catalogue_final_fence_rejects_native_progress) {
+    chronik_bridge::ErgonNodeAccess node(GetConfig(), g_mempool);
+    const auto input = CoinbasePosition(node);
+    chronik_bridge::NativePositionReader reader(node);
+    size_t batches = 0;
+    reader.AfterCatalogueBatchForTesting([&] {
+        if (++batches == 2)
+            CreateAndProcessBlock({}, input.tx->vout[0].scriptPubKey);
+    });
+    BOOST_CHECK_THROW(reader.Read(input.file, input.position, nullptr), std::runtime_error);
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 101);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 0);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_aborts, 1);
+    reader.AfterCatalogueBatchForTesting({});
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 102);
+    BOOST_CHECK(!node.index_failed.load());
+}
+
+BOOST_AUTO_TEST_CASE(position_catalogue_storage_drift_is_not_a_generation_fence) {
+    chronik_bridge::ErgonNodeAccess node(GetConfig(), g_mempool);
+    const auto input = CoinbasePosition(node);
+    chronik_bridge::NativePositionReader reader(node);
+    auto *tip = ChainActive().Tip();
+    const auto data_position = tip->nDataPos;
+    const auto generation = ChainActive().GetSourceGeneration();
+    size_t batches = 0;
+    reader.AfterCatalogueBatchForTesting([&] {
+        if (++batches == 2) {
+            LOCK(cs_main);
+            ++tip->nDataPos;
+        }
+    });
+    BOOST_CHECK_THROW(reader.Read(input.file, input.position, nullptr), std::runtime_error);
+    {
+        LOCK(cs_main);
+        tip->nDataPos = data_position;
+    }
+    BOOST_CHECK_EQUAL(ChainActive().GetSourceGeneration(), generation);
+    BOOST_CHECK_EQUAL(reader.Stats().cold_layouts, 0);
+    reader.AfterCatalogueBatchForTesting({});
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK(!node.index_failed.load());
+}
+
+BOOST_AUTO_TEST_CASE(position_catalogue_concurrent_refresh_waits_without_native_locks) {
+    chronik_bridge::ErgonNodeAccess node(GetConfig(), g_mempool);
+    const auto input = CoinbasePosition(node);
+    chronik_bridge::NativePositionReader reader(node);
+    JoinedPositionReaders peers;
+    bool tested = false;
+    std::future<bool> queued_result;
+    reader.AfterCatalogueBatchForTesting([&] {
+        if (tested) return;
+        tested = true;
+        auto ready = std::make_shared<std::promise<bool>>();
+        queued_result = ready->get_future();
+        peers.threads.emplace_back([&, ready] {
+            try {
+                ready->set_value(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+            } catch (...) {
+                ready->set_value(false);
+            }
+        });
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (reader.Stats().catalogue_refresh_requests < 2 &&
+               std::chrono::steady_clock::now() < deadline)
+            std::this_thread::yield();
+        if (reader.Stats().catalogue_refresh_requests != 2)
+            throw std::runtime_error("Concurrent reader did not reach refresh queue");
+        auto unlocked = std::make_shared<std::promise<bool>>();
+        auto observed = unlocked->get_future();
+        peers.threads.emplace_back([unlocked] {
+            LOCK2(cs_main, g_mempool.cs);
+            unlocked->set_value(true);
+        });
+        if (observed.wait_for(std::chrono::seconds(2)) != std::future_status::ready ||
+            !observed.get())
+            throw std::runtime_error("Queued reader retained native locks");
+    });
+    BOOST_CHECK(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+    BOOST_CHECK(tested);
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_aborts, 0);
+    BOOST_CHECK(queued_result.get());
+    reader.AfterCatalogueBatchForTesting({});
+    std::vector<std::future<bool>> results;
+    for (int i = 0; i < 4; ++i) {
+        auto ready = std::make_shared<std::promise<bool>>();
+        results.push_back(ready->get_future());
+        peers.threads.emplace_back([&, ready] {
+            try {
+                ready->set_value(reader.Read(input.file, input.position, nullptr).tx->GetId() == input.tx->GetId());
+            } catch (...) {
+                ready->set_value(false);
+            }
+        });
+    }
+    for (auto &result : results) BOOST_CHECK(result.get());
+    BOOST_CHECK_EQUAL(reader.Stats().catalogue_added, 101);
+    BOOST_CHECK_EQUAL(reader.Stats().cached_layouts, 1);
+    BOOST_CHECK(!node.index_failed.load());
 }
 BOOST_AUTO_TEST_SUITE_END()

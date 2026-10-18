@@ -78,7 +78,14 @@ HISTORY_POLICY = frozenset({"chronik/chronik-cpp/ergon_node_access.h",
     *("tools/engineering/check_chronik_" + name + ".py" for name in (
         "upstream_link", "service_catchup_self_test", "long_history", "long_history_self_test", "native_startup_self_test", "plugin_fixtures", "regtest_service",
         "plugin_restart", "service_recovery", "service_startup", "service_alp", "service_plugins"))})
-POLICY = BASE_POLICY | FUTURE | HISTORY_POLICY
+POSITION_POLICY = frozenset({"chronik/chronik-cpp/ergon_position_reader.cpp",
+    "chronik/chronik-cpp/ergon_position_reader.h", "src/test/chronik_native_upstream_bridge_tests.cpp",
+    "docs/engineering/changes/ergon-change-0063.json",
+    "docs/engineering/chronik/upstream-position-catalogue-v1.json",
+    "docs/engineering/chronik/upstream-position-catalogue.md",
+    "tools/engineering/check_chronik_position_catalogue.py",
+    "tools/engineering/check_chronik_position_catalogue_self_test.py"})
+POLICY = BASE_POLICY | FUTURE | HISTORY_POLICY | POSITION_POLICY
 REUSED = ("tests/compatibility/upstream-chronik/cold_rebuild_service.py",
     "tests/compatibility/upstream-chronik/catchup_service.py",
     "tests/compatibility/upstream-chronik/plugin_alp_service.py",

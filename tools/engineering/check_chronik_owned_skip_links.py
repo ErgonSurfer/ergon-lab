@@ -127,6 +127,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists():
         from check_chronik_long_history import CHANGED as history_changed
         expected_changed |= history_changed
+    if (root / "docs/engineering/chronik/upstream-position-catalogue-v1.json").exists():
+        from check_chronik_position_catalogue import CHANGED as catalogue_changed
+        expected_changed |= catalogue_changed
     require(changed == expected_changed, "unexpected owned skip-link path")
 
     from check_change import ValidationError, validate as validate_change

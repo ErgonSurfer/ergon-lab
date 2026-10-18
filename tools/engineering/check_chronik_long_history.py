@@ -67,6 +67,9 @@ def validate_runner_protocol(before, after):
             raise ValueError("malformed native runner protocol") from error
         return {node.name: ast.get_source_segment(text, node) for node in tree.body
                 if isinstance(node, ast.FunctionDef)}
+    if 'CATALOGUE_PREFIX = ' in after:
+        from check_chronik_position_catalogue import normalize_runner
+        after = normalize_runner(after)
     old, new = functions(before), functions(after)
     require(set(new) - set(old) == {"timeout_progress"} and not set(old) - set(new),
             "long history added unrelated runner behavior")
@@ -93,11 +96,13 @@ def successor_identity(root, path, previous):
     if not (root / MANIFEST).exists():
         return previous
     rows = [r for r in load_json(root / MANIFEST)["files"] if r["path"] == path]
-    if not rows:
-        return previous
-    require(path in MANIFEST_FILES and len(rows) == 1 and rows[0]["before"] == before_identity(root, path) and
-            previous in (rows[0]["before"], rows[0]["after"]), "long history successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if rows:
+        require(path in MANIFEST_FILES and len(rows) == 1 and rows[0]["before"] == before_identity(root, path) and
+                previous in (rows[0]["before"], rows[0]["after"]), "long history successor preimage drift")
+        result = rows[0]["after"]
+    from check_chronik_position_catalogue import successor_identity as catalogue_successor
+    return catalogue_successor(root, path, result)
 
 
 def validate(root):
@@ -113,13 +118,18 @@ def validate(root):
     for row in manifest["files"]:
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and row["before"] == before and
-                row["after"] != before and row["after"] == current_identity(root, row["path"]) and
+                row["after"] != before and successor_identity(root, row["path"], row["after"]) == current_identity(root, row["path"]) and
                 row["after"]["mode"] == "100644" and row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == ("regtest-native-or-test-only" if row["path"] in TECHNICAL else "test-only"),
                 "long history source drift")
     changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
     changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
-    require(changed == CHANGED, "unexpected long history path")
+    expected = CHANGED
+    if (root / "docs/engineering/chronik/upstream-position-catalogue-v1.json").exists():
+        from check_chronik_position_catalogue import CHANGED as catalogue_changed, validate as validate_catalogue
+        expected |= catalogue_changed
+        validate_catalogue(root)
+    require(changed == expected, "unexpected long history path")
     access = (root / "chronik/chronik-cpp/ergon_node_access.h").read_text()
     for token in ("const NativeReadScope m_scope", "scope = NativeReadScope::BoundedFixture",
                   "height < std::numeric_limits<int32_t>::max()", "height <= 2000", "count <= 4096"):
@@ -165,7 +175,7 @@ def validate(root):
     for row in record["files"]:
         normalize = lambda v: None if v is None else {("git_blob_sha1" if k == "git_blob" else k): i for k, i in v.items()}
         require(normalize(row["before"]) == before_identity(root, row["path"]) and
-                normalize(row["after"]) == current_identity(root, row["path"]), "long history record identity drift")
+                successor_identity(root, row["path"], normalize(row["after"])) == current_identity(root, row["path"]), "long history record identity drift")
     return CHANGED
 
 

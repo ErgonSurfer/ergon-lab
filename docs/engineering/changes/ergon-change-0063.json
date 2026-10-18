@@ -1,0 +1,685 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0063",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0063.json",
+  "purpose": {
+    "summary": "Capture historical native position metadata in fixed-size batches and construct the catalogue outside native locks without replacing upstream Chronik.",
+    "scope": [
+      "Direct child of the published signed PR65 head 7cb90b9; do not assume the parent merged or its integration hold resolved.",
+      "Capture at most 64 position rows per native-lock hold; build, allocate, remove and discard catalogue containers outside native locks.",
+      "Serialize concurrent refreshes only after releasing native and metadata locks; recheck completed state and retain the existing warm fast path.",
+      "Reject native health, tip and generation drift before each batch and publication; retain separate mutable-position and disk authentication checks.",
+      "Preserve all eight inherited bridge/disk case bodies and 166 assertions; add six independent leaf cases with 50 assertions, under the unchanged 60-second process deadline.",
+      "Preserve every inherited group, count, relative order, environment, cleanup and report rule. CI retains ten repetitions and all existing 5000-block upstream ALP/plugin reconstruction clients."
+    ],
+    "exclusions": [
+      "No mainnet/testnet admission, activation, consensus change or default-ON service.",
+      "No upstream indexer, ALP algorithm, plugin engine, schema, dependency-lock or daemon-client change.",
+      "No private reports/history/operator data, server access, deployment, cutover, release, desktop integration or proof promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "7cb90b95c34133163b8452a56c3239a7b976f5fd",
+      "tree": "c599903c2f2b1887466d1593fe23f813bc3ca24f"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "10954515a60a7bf429f3dbf810cfe03cfa288aab09e0af58594febd8aecbb491",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "No private material."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 17864,
+        "git_blob": "5af524dae8788776479653270820cef25d19b346",
+        "sha256": "d37c9977885c6d89174f9aea825cf727dbfdeaa178aac01c4e3efc34d0fd78e7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 18146,
+        "git_blob": "8bab5ac76a11100ad7bcb0c510b7d73d29f321f2",
+        "sha256": "82cde22dad1685ee559fd63fb6a7b3ae05bc61f99c9ee3c624af389f8e795f97"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_position_reader.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 13284,
+        "git_blob": "19ca04b1a863df5f7804edf6b356a74314f97f69",
+        "sha256": "e9bf03bef1d59b6506fa6bdd4c213aa09bc140eb17ba31935b1b37f92fc8589f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 19205,
+        "git_blob": "d5dbb3a18026e1ef8ecda36860747ccb9909f4ff",
+        "sha256": "a01c85cc31dbe24250e18fd55690735a29dbc8b3d4c952b6ac94c13e9fec9cef"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing optional upstream host adapter, admitted only by the explicitly opted-in local-regtest owner; no native validation authority.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_position_reader.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1347,
+        "git_blob": "be2035209f949c36d68f9eebca6f2d6741924fc9",
+        "sha256": "451b45e9988b7f3b1fb30579b51d55fec268b064bb686137e8789900fee604db"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1779,
+        "git_blob": "0964b83eccaf3437b704e442ec877ed1d69eff24",
+        "sha256": "c37bfeeb3d93342f0327cd6b42138eb7960c380697838f1252a050ccc5e1f075"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing optional upstream host adapter, admitted only by the explicitly opted-in local-regtest owner; no native validation authority.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-position-catalogue-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11409,
+        "git_blob": "a7dae95cc21807c54617e2deb02772a3967db472",
+        "sha256": "91b25195344fcaa9a883718736867e65ecfe53febf8ea7b9638f171b350c8df6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-position-catalogue.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4142,
+        "git_blob": "c5d1a5571d6e29cea134949b1cd78f948cb36988",
+        "sha256": "7be07d02afcf2bcab9fed4359d94cec17c4e7b8ec79d61eee80a18ac619075e0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "src/test/chronik_native_upstream_bridge_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 21955,
+        "git_blob": "4d99e9a71ee465b91b8ba49956825a3ab4ee791f",
+        "sha256": "c2afff37eae06f44c28f2ab7f7282d50fecf19e70389c29fa604afbf683c3e51"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 31655,
+        "git_blob": "8adee0e5725ea7df83625bd5eef2915e40ac1db2",
+        "sha256": "4bc38302593d0a7cae466b04d49dfeb7ed3c1ec0d2e62732c4fb5403b2e9a233"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 41523,
+        "git_blob": "3a55219e8b352fc07dc76644915be5497c2987ae",
+        "sha256": "5b4f77e1127496e2e7dc36d411fc91d5f72fdb744d5e7995c10f4d29bccf9a6b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 43077,
+        "git_blob": "89dd56ef0e8c7728172a2e1c868fb50e25adc1a1",
+        "sha256": "c83544cd3f465afa0641f39e703d9d709abcfa07e8659f8f3c0f57b8b085b8b7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 20942,
+        "git_blob": "1d1d07debe5310d512599b0d23a8683794849106",
+        "sha256": "9047402df5c4fbe2f86dcea73a7f98d54fb93ca2bc86310ccd0b2229ab2868f0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21877,
+        "git_blob": "990bdccb9ecafcd14c2301642161b2de208897c3",
+        "sha256": "60b27e91795da83cb5559908bd075840c2fd5c1618702c7e6ee6696bd8f5b680"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_long_history.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11949,
+        "git_blob": "9d45b3a13201a3d7011613f652be7595275eb80a",
+        "sha256": "9a5b578b7b733fd7c59630680abd8d83abed7077554fbc351525c231c311df1d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12624,
+        "git_blob": "7987050c1480edc30168500a2578487d07e523f6",
+        "sha256": "7910490f5e50ce91f222816404cc9441300d1c1f5218af3a7d31978025c25363"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_native_startup.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11552,
+        "git_blob": "1e5bf7dde9000cadce87be5d36515554a3db15b8",
+        "sha256": "a19a455c0d6b2b0d05900279eec936419dbdccdbc3d4fe11c20d9018a2ba749c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11761,
+        "git_blob": "46ffc69e112fe4bfb76878c68129cc623a9bc20c",
+        "sha256": "c87ba3567891549d3c3cdc5393a735c123af6f34e0f27ecf430edc11d0064abf"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_owned_skip_links.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11266,
+        "git_blob": "c875e02759b778b37250657ce20b4470fbb36df7",
+        "sha256": "2cd546435a40980dd897189e30678feef722a48ab683c79718a39d57a3a3ac63"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11483,
+        "git_blob": "12341f95d69635f67022889c5c901d50a3445e0b",
+        "sha256": "69a1362d685e7ac01f474cf5fbafd594b3f0c4d7637a96dd01f4e4e2c5dfedc4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_position_catalogue.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12252,
+        "git_blob": "4c92d9df33f5375a3747eb56340a6c564d19598c",
+        "sha256": "9bdada683c12b2ce43d65132bccab87102bb9fe755b0725f0c17eef134c11e2f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_position_catalogue_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4122,
+        "git_blob": "794a46e96b03ea231afb5bbd950118628a8616d2",
+        "sha256": "f2cbd6093e92dae9334008ae31a26b54842099a9ced10b2241ac3d64be299bc1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_batches.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10461,
+        "git_blob": "6cf27a6df4d8a032e01e687187351f312373034f",
+        "sha256": "32ac91e8c209c28b15c6ba2cd41b22bc748ff07d986a4e046c3739f4f5a821c7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10670,
+        "git_blob": "7410f656edacc19f735582b142831dc49e3d7716",
+        "sha256": "f8851e2be4a9b2b9b4aef46aa7e79251de4bc843409cfa6f88e8eeac7a10ff03"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_metadata.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 15618,
+        "git_blob": "d5bd9c8907cc57fbd610f05c266539c9bdea250d",
+        "sha256": "345f6e3230dbb020688b9169cfb46b24759229b8aac214e738c81cf0fe0a37e0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16137,
+        "git_blob": "3116adbf50a91ed5d51b374d907cbac99e0952f1",
+        "sha256": "8d2ce6e88c4f5915c00d5043b8fef774cb1a3cbbe0a0e8fb612cb57c0a1eb2ed"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_release.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12112,
+        "git_blob": "eea38c75d8573b676ebbe830fb568b3161a89c31",
+        "sha256": "b7dde2d8d68496ee28fb8f7b3d029bbeb73800638f6ae5b913e55b3bf34bf2a4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12329,
+        "git_blob": "d6ac1b4e18fa80fcf270cacb20b05a13ee15a2f9",
+        "sha256": "edd7aae9ec80c92183f08b17b6e70f1ebf9e5ff29b380c968998dd4e2036d8c0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_upstream_link.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 21864,
+        "git_blob": "916ce6636b905832b082d7058d52eb9c20e1b61d",
+        "sha256": "1b5fa66f4f996903ecc908b1f397a64126473fa6b337f5cea5cf782c15cdf95e"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22237,
+        "git_blob": "00226db6606c2690c4eca13b39d52635a7f28387",
+        "sha256": "22fc74aeac2ad00dfa6e1db1a88cb24690cfcbe21eed9a08453a12949985f65d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Six new native catalogue cases and all inherited standalone/upstream/ALP/plugin controls; no mainnet claim."
+    }
+  ],
+  "surfaces": {
+    "build_release": true,
+    "consensus": false,
+    "data_research": false,
+    "documentation_cockpit": true,
+    "indexing_chronik": true,
+    "p2p": false,
+    "rpc_api": false,
+    "storage_datadir": true,
+    "tests": true,
+    "ui": false,
+    "validation_mempool": false,
+    "wallet": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the exact public compiled-out profile with unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds without Chronik linkage and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build the exact public compiled-in-disabled profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds with runtime Chronik disabled by default and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the exact public regtest-plugins profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The daemon and native fixture build; inherited profiles retain their existing boundaries."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the six independent position-catalogue leaf processes plus all inherited matrix groups with ten CI repetitions; retain every existing daemon client including long_history_service.py.",
+        "expected_results": [
+          "The six new cases pass 12, 8, 7, 7, 5, 11 assertions; cross-batch and queued-reader native-lock probes succeed without timing-only acceptance.",
+          "All eight inherited bridge/disk cases pass 166 assertions with unchanged bodies, selection and process law.",
+          "The unchanged upstream 5000-block ALP/plugin cold reconstruction, same-index process reopen and native advance to 5001 continue to pass."
+        ],
+        "failure_conditions": [
+          "Changed native authentication, incomplete or stale catalogue publication, lock retention, wrong names/counts, skip, timeout, nonzero exit, source/build drift, unstable output or failed cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the unchanged inherited index-restart-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the unchanged inherited index-full-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the unchanged inherited index-chainstate-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the unchanged inherited index-pruned-datadir-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected acceptance, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the unchanged inherited index-deep-reorg-fail-closed controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected authority, stale publication, changed count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04",
+        "macos-arm64"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Initial total catalogue work and memory remain O(height); bounded metadata rows are not a wall-clock or production resource guarantee.",
+    "Continuous native progress can invalidate staging; no automatic retry or continuous-ingress admission is claimed.",
+    "Mutable storage position identity is separate from active-chain generation and remains independently checked.",
+    "Only unpruned local regtest is admitted; compiled-out, default-OFF, mempool, payload, live-window and deep-reorg contracts do not change.",
+    "The published PR65 parent remains a review dependency; do not integrate through or waive its unresolved historical local timeout hold.",
+    "No governed complete matrix or CI result for this change is claimed by this record. System dependencies remain unlocked; public binary provenance and mainnet-history readiness remain open."
+  ],
+  "counterevidence": [
+    "The parent lot retained two local normal-matrix capture-and-query-controls timeouts at repetition 2 under the unchanged 60-second deadline. Its passing Ubuntu CI and later diagnostics do not establish the exact local cause or retire those refusals.",
+    "Earlier startup/stop-reopen timeouts and upstream dependency alerts remain open.",
+    "No operator history, server comparison, deployment, activation or cutover is exercised."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
