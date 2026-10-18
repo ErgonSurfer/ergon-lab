@@ -59,7 +59,9 @@ class Contract(unittest.TestCase):
         before = gate.before_identity(self.root, path)
         self.assertEqual(gate.successor_identity(self.root, path, before), gate.current_identity(self.root, path))
         with self.assertRaises(ValueError): gate.successor_identity(self.root, path, dict(before, sha256="0" * 64))
-        frozen = "src/init.cpp"
+        # init.cpp now has an exact successor for service help text. Use an
+        # input that remains outside every reviewed technical successor.
+        frozen = "src/chainparams.cpp"
         previous = gate.before_identity(self.root, frozen)
         self.assertEqual(gate.successor_identity(self.root, frozen, previous), previous)
 

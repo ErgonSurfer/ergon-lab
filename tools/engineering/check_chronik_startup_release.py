@@ -131,6 +131,10 @@ def validate(root):
     if native_present:
         from check_chronik_native_startup import CHANGED as native_changed
         expected_changed |= native_changed
+    history_present = (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists()
+    if history_present:
+        from check_chronik_long_history import CHANGED as history_changed
+        expected_changed |= history_changed
     require(changed == expected_changed, "unexpected startup release path")
 
     from check_change import ValidationError, validate as validate_change
@@ -166,6 +170,9 @@ def validate(root):
     if native_present:
         from check_chronik_native_startup import CASES as native_cases_added
         native_additions = set(native_cases_added)
+    if history_present:
+        from check_chronik_long_history import CASES as history_cases
+        native_additions |= set(history_cases)
     require(len(old_cases) == 56 and
             set(new_cases) - set(old_cases) == {TARGET_CASE} |
                 (set(batches_cases) if batches_present else set()) | native_additions and
@@ -208,7 +215,7 @@ def validate(root):
     runner_self = (root / "tests/compatibility/upstream-chronik/self_test.py").read_text()
     require(('"' + TARGET_CASE + '"') in runner and
             '("owned-startup", STARTUP, 607)' in runner and
-            ('== ' + ('56' if native_present else '50' if batches_present else '45') +
+            ('== ' + ('58' if history_present else '56' if native_present else '50' if batches_present else '45') +
              ', "non-disjoint test groups"') in runner and
             "assertions=607" in runner_self and
             "runner.STARTUP, 607" in runner_self,

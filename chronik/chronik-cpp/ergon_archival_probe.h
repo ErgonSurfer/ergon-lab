@@ -31,6 +31,8 @@ struct CaptureStats {
 // Native fixture or separately opted-in bounded regtest owner must outlive the
 // synchronous Rust box. Not general runtime admission or live-source validation.
 void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node);
+void archival_capture_height_guard(const chronik_bridge::ErgonNodeAccess &node,
+                                   int32_t height);
 // Fixture-only: hold both native locks throughout synchronous reconciliation.
 // This intentionally blocks mutation and is NOT a production service design.
 void reconcile_archival(ArchivalProbe &probe,

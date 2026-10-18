@@ -47,13 +47,18 @@ void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node) {
     if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
         fPruneMode || ShutdownRequested() || node.index_failed.load() ||
         !ChainActive().GetSourceGeneration() ||
-        !node.mempool.GetSourceGeneration() || ChainActive().Height() < 0 ||
-        ChainActive().Height() > 2000 || node.mempool.size() > 4096 ||
+        !node.mempool.GetSourceGeneration() || !node.permits_height(ChainActive().Height()) ||
+        node.mempool.size() > 4096 ||
         !pcoinsTip || !pcoinsdbview) {
         throw std::runtime_error(
             "Archival probe requires a healthy, unpruned, bounded-mempool "
-            "regtest fixture (height <= 2000)");
+            "regtest source within its immutable native access scope");
     }
+}
+void archival_capture_height_guard(const chronik_bridge::ErgonNodeAccess &node,
+                                   int32_t height) {
+    if (!node.permits_height(height))
+        throw std::runtime_error("Capture height outside native access scope");
 }
 std::unique_ptr<chronik_bridge::ChronikBridge>
 make_startup_bridge(const chronik_bridge::ErgonNodeAccess &node) {
@@ -128,7 +133,7 @@ void archival_reconcile_guard(const chronik_bridge::ErgonNodeAccess &node) {
         fPruneMode || node.index_failed.load() ||
         !ChainActive().GetSourceGeneration() ||
         !node.mempool.GetSourceGeneration() || !pcoinsTip || !pcoinsdbview ||
-        ChainActive().Height() < 0 || ChainActive().Height() > 2000 ||
+        !node.permits_height(ChainActive().Height()) ||
         node.mempool.size() > 4096) {
         throw std::runtime_error(
             "Reconciliation requires a healthy bounded regtest fixture");

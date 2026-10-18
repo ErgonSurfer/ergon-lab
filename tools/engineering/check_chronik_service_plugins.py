@@ -118,7 +118,8 @@ def validate(root, historical=False):
                  "tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py",
                  "docs/engineering/changes/ergon-change-0052.json",
                  "docs/engineering/chronik/upstream-service-alp-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "service plugin changed frozen input")
+        from check_chronik_long_history import successor_identity as history_successor
+        require(current_identity(root, path) == history_successor(root, path, before_identity(root, path)), "service plugin changed frozen input")
     return TECHNICAL | POLICY
 
 

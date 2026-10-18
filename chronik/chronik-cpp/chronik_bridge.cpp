@@ -385,8 +385,8 @@ void ChronikBridge::capture_native_startup() {
         const auto *tip = ChainActive().Tip();
         if (m_node.config.GetChainParams().NetworkIDString() != "regtest" ||
             fPruneMode || ShutdownRequested() || m_node.index_failed.load() ||
-            !tip || tip->nHeight < 0 || tip->nHeight > 2000 ||
-            mapBlockIndex.size() > 4096 || m_node.mempool.size() > 4096 ||
+            !tip || !m_node.permits_height(tip->nHeight) ||
+            !m_node.permits_index_count(mapBlockIndex.size()) || m_node.mempool.size() > 4096 ||
             !pcoinsTip || !ChainActive().GetSourceGeneration() ||
             !m_node.mempool.GetSourceGeneration() ||
             LookupBlockIndex(tip->GetBlockHash()) != tip)

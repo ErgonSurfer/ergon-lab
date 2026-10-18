@@ -46,7 +46,10 @@ def require_absent_index(index, inputs):
                    "cold reconstruction requires absent index and plugin inputs")
 
 
-def observe(binary, work, scripts):
+def observe(binary, work, scripts, *, final_height=FINAL_HEIGHT, startup_timeout=30):
+    runner.require(type(final_height) is int and FINAL_HEIGHT <= final_height <= 5000 and
+                   type(startup_timeout) is int and 30 <= startup_timeout <= 120,
+                   "finite historical reconstruction profile required")
     root = Path(tempfile.mkdtemp(prefix="ergon-upstream-", dir=work)).resolve()
     data = root / "data"
     data.mkdir()
@@ -58,7 +61,10 @@ def observe(binary, work, scripts):
                                 enabled=enabled, public_plugin=enabled)
         daemons.append(daemon)
         if enabled:
-            daemon.ready()
+            if startup_timeout == 30:
+                daemon.ready()
+            else:
+                daemon.ready(startup_timeout=startup_timeout)
         else:
             service.wait_for(lambda: daemon.rpc("getblockchaininfo"))
         return daemon
@@ -90,11 +96,11 @@ def observe(binary, work, scripts):
                        bind_ancestry(block, (funding["txid"], 0)) == ids and
                        [daemon.rpc("getrawtransaction", (txid, False, confirmed)) for txid in ids] == wires,
                        "native corpus identity, ancestry or wire drift")
-        for _ in range(FINAL_HEIGHT - CORPUS_HEIGHT):
+        for _ in range(final_height - CORPUS_HEIGHT):
             tip = daemon.rpc("generatetoaddress", (1, service.p2sh_true_address()))[0]
-        runner.require(daemon.rpc("getblockcount") == FINAL_HEIGHT and
+        runner.require(daemon.rpc("getblockcount") == final_height and
                        daemon.rpc("getbestblockhash") == tip and
-                       FINAL_HEIGHT - CORPUS_HEIGHT >= RETAINED_WINDOW and
+                       final_height - CORPUS_HEIGHT >= RETAINED_WINDOW and
                        daemon.rpc("getrawmempool") == [] and
                        daemon.rpc("getconnectioncount") == 0,
                        "native-only cold reconstruction precondition drift")
@@ -102,7 +108,7 @@ def observe(binary, work, scripts):
         require_absent_index(index, inputs_root)
 
         daemon = start("cold-first-index", True)
-        daemon.tip(FINAL_HEIGHT, tip)
+        daemon.tip(final_height, tip)
         daemon.pool([])
         # No index observed the original mempool. Never invent continuity of
         # first-seen timestamps from native block/header or filesystem times.
@@ -115,12 +121,12 @@ def observe(binary, work, scripts):
         daemon.stop()
 
         daemon = start("cold-index-reopen", True)
-        daemon.tip(FINAL_HEIGHT, tip)
+        daemon.tip(final_height, tip)
         daemon.pool([])
         runner.require(combined.snapshot(daemon, ids, wires, [0] * 4, CORPUS_HEIGHT, confirmed) == expected,
                        "rebuilt ALP/plugin process-reopen snapshot drift")
         next_tip = daemon.rpc("generatetoaddress", (1, service.p2sh_true_address()))[0]
-        daemon.tip(FINAL_HEIGHT + 1, next_tip)
+        daemon.tip(final_height + 1, next_tip)
         runner.require(combined.snapshot(daemon, ids, wires, [0] * 4, CORPUS_HEIGHT, confirmed) == expected,
                        "rebuilt ALP/plugin snapshot drift after native progress")
         runner.require(runner.regular(index / "ergon-identity.json") == identity and
@@ -133,8 +139,8 @@ def observe(binary, work, scripts):
         runner.require(daemon.http("/ws")[0] == 501 and daemon.http("/broadcast-tx", "POST")[0] == 501,
                        "cold reconstruction service capability widened")
         daemon.stop()
-        return {"corpus_height": CORPUS_HEIGHT, "initial_tip": FINAL_HEIGHT,
-            "final_tip": FINAL_HEIGHT + 1, "retained_capture_window": RETAINED_WINDOW,
+        return {"corpus_height": CORPUS_HEIGHT, "initial_tip": final_height,
+            "final_tip": final_height + 1, "retained_capture_window": RETAINED_WINDOW,
             "index_absent_during_native_history": True,
             "upstream_cold_reconstruction_and_same_index_reopen": True,
             "ALP_and_public_plugin_oracles": True,

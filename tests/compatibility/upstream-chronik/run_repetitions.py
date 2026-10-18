@@ -59,6 +59,10 @@ NATIVE_STARTUP = tuple(PREFIX + name for name in (
     "native_startup_foreign_index_and_borrow_lifetime",
     "native_startup_upstream_rewinds_offline_branch_and_reopens",
 ))
+HISTORY_SCOPE = tuple(PREFIX + name for name in (
+    "history_scope_default_fixture_bounds_are_unchanged",
+    "history_scope_service_keeps_height_arithmetic_and_authority_closed",
+))
 CAPTURE = tuple(PREFIX + name for name in (
     "actual_http_complete_read_profile_and_alp_lifecycle",
     "actual_alp_invalid_mint_and_malformed_metadata_do_not_change_consensus",
@@ -105,6 +109,7 @@ GROUPS = (
     ("owned-startup", STARTUP, 607),
     ("startup-metadata-batches", BATCHES, 54),
     ("native-startup", NATIVE_STARTUP, 74),
+    ("history-scope", HISTORY_SCOPE, 16),
     ("capture-and-query-controls", CAPTURE, 1063),
     ("runtime-stop-and-reopen-controls", STOP, 307),
     ("silent-generation-and-control-locks", LIVENESS, 50),
@@ -380,6 +385,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                         "native startup projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    history_manifest = source / "docs/engineering/chronik/upstream-long-history-v1.json"
+    if history_manifest.exists():
+        from check_chronik_long_history import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(history_manifest))
+        require(layer["schema"] == "ergon-upstream-long-history/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES), "long history projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "long history projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -482,6 +500,31 @@ def remove_owned(run, work):
     shutil.rmtree(run)
     require(not run.exists(), "disposable root cleanup incomplete")
 
+def timeout_progress(path):
+    """Bounded failure-only observation; never echo child text or paths."""
+    names = {case for _, cases, _ in (*GROUPS, *PLUGIN_GROUPS, DISABLED_GROUP) for case in cases}
+    latest = {"start": "unavailable", "done": "unavailable"}
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                return latest
+            raw = os.read(fd, 2 * 1024 * 1024 + 1)
+        finally:
+            os.close(fd)
+        if len(raw) > 2 * 1024 * 1024:
+            return latest
+        text = raw.decode("utf-8", errors="strict")
+        for line in text.splitlines():
+            for event in latest:
+                prefix = "Fixture " + event + ": "
+                if line.startswith(prefix) and line[len(prefix):] in names:
+                    latest[event] = line[len(prefix):]
+    except (OSError, UnicodeError):
+        pass
+    return latest
+
+
 def execute(command, work, forbidden, timeout=60):
     run = Path(tempfile.mkdtemp(prefix="ergon-upstream-", dir=work)).resolve()
     proc = None
@@ -503,6 +546,12 @@ def execute(command, work, forbidden, timeout=60):
             require(not any(str(p) in text for p in (*forbidden, run, env["TMPDIR"])), "binding path in output")
             streams.append(text)
         return tuple(streams)
+    except subprocess.TimeoutExpired:
+        # The original inner finally has already stopped the owned child group.
+        progress = timeout_progress(run / "stderr")
+        print("REFUSED: native-process-timeout; last_started=" + progress["start"] +
+              "; last_completed=" + progress["done"], file=sys.stderr, flush=True)
+        raise
     finally:
         if proc is not None:
             stop_group(proc)
@@ -549,7 +598,7 @@ def refusal_class(error):
 def repeat(binary, work, forbidden, repetitions, profile=None):
     require(1 <= repetitions <= 20, "repetitions outside bounded range")
     require(profile in (None, "archival", "plugins", "regtest", "regtest-plugins"), "unknown repetition profile")
-    require(len({case for _, cases, _ in GROUPS for case in cases}) == 56, "non-disjoint test groups")
+    require(len({case for _, cases, _ in GROUPS for case in cases}) == 58, "non-disjoint test groups")
     groups = GROUPS + (PLUGIN_GROUPS if profile in ("plugins", "regtest-plugins") else (DISABLED_GROUP,) if profile in ("archival", "regtest") else ())
     require(len({case for _, cases, _ in groups for case in cases}) == sum(len(c) for _, c, _ in groups),
             "plugin cases overlap inherited groups")

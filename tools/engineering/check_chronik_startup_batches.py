@@ -105,6 +105,9 @@ def validate(root):
         from check_chronik_native_startup import PARENT as native_parent, validate as validate_native
         expected |= native_changed
         validate_native(root)
+    if (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists():
+        from check_chronik_long_history import CHANGED as history_changed
+        expected |= history_changed
     require(changed == expected, "unexpected startup batches path")
 
     old = git(root, "show", PARENT + ":" + BRIDGE).decode()
@@ -133,6 +136,9 @@ def validate(root):
     if native_present:
         from check_chronik_native_startup import CASES as native_cases_added
         additions |= set(native_cases_added)
+    if (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists():
+        from check_chronik_long_history import CASES as history_cases
+        additions |= set(history_cases)
     require(len(before) == 57 and set(after) - set(before) == additions and
             all(after.get(name) == body for name, body in before.items()),
             "startup batches changed inherited native cases")

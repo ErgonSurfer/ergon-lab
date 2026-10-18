@@ -101,7 +101,8 @@ def validate(root, historical=False):
                  "docs/engineering/chronik/upstream-plugin-restart-v1.json"):
         require(observed(path) == before_identity(root, path), "service changed frozen boundary")
         if historical and path not in NEXT_TECHNICAL:
-            require(current_identity(root, path) == observed(path), "successor changed frozen service input")
+            from check_chronik_long_history import successor_identity as history_successor
+            require(current_identity(root, path) == history_successor(root, path, observed(path)), "successor changed frozen service input")
     def text_at_boundary(path):
         return git(root, "show", NEXT_PARENT + ":" + path).decode() if historical else (root / path).read_text()
     init = text_at_boundary("src/init.cpp")

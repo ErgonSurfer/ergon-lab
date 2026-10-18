@@ -441,7 +441,7 @@ void SetupServerArgs() {
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
     gArgs.AddArg("-chronikupstreamregtest",
                  "Enable experimental bounded Chronik upstream service on "
-                 "local regtest only (unpruned, height <= 2000, plugins default OFF; "
+                 "local regtest only (unpruned, archival history, bounded live capture, plugins default OFF; "
                  "default: 0; ephemeral loopback HTTP port logged at startup)",
                  false, OptionsCategory::OPTIONS);
 #endif

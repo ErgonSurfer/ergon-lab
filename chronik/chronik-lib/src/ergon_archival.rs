@@ -125,6 +125,7 @@ mod ffi {
         type StartupHook;
         fn run(self: &StartupHook) -> Result<()>;
         fn archival_fixture_guard(node: &ErgonNodeAccess) -> Result<()>;
+        fn archival_capture_height_guard(node: &ErgonNodeAccess, height: i32) -> Result<()>;
         fn archival_reconcile_guard(node: &ErgonNodeAccess) -> Result<()>;
         fn archival_mempool_revision(node: &ErgonNodeAccess) -> u64;
         fn archival_chain_generation(node: &ErgonNodeAccess) -> u64;
@@ -418,8 +419,8 @@ pub fn new_capture(
     if generation == 0 || revision == 0 {
         bail!("Exhausted native source generation");
     }
-    if !(0..=2000).contains(&height)
-        || !(0..=height).contains(&start_height)
+    ffi::archival_capture_height_guard(node, height)?;
+    if !(0..=height).contains(&start_height)
         || (height - start_height + 1) as usize > 2 * RETAINED_BLOCKS
     {
         bail!("Capture height outside fixture profile");

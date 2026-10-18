@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Synthetic standard-library failure-path checks; no trusted node required."""
 import copy
+import contextlib
+import io
 import json
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -13,6 +16,57 @@ from unittest.mock import patch
 import run_repetitions as runner
 
 class Contract(unittest.TestCase):
+    def test_timeout_progress_is_bounded_public_names_only(self):
+        unavailable = {"start": "unavailable", "done": "unavailable"}
+        with tempfile.TemporaryDirectory(prefix="ergon-timeout-self-") as name:
+            root = Path(name); path = root / "stderr"
+            self.assertEqual(runner.timeout_progress(path), unavailable)
+            private = "SYNTHETIC_PRIVATE_OUTPUT " + str(root / "secret")
+            path.write_text("Fixture start: " + runner.CAPTURE[0] + "\n" + private +
+                "\nFixture done: " + runner.CAPTURE[0] + "\nFixture start: " + runner.CAPTURE[1] +
+                "\nFixture start: " + private + "\n")
+            self.assertEqual(runner.timeout_progress(path), {"start": runner.CAPTURE[1], "done": runner.CAPTURE[0]})
+            self.assertNotIn(private, runner.canonical(runner.timeout_progress(path)).decode())
+            for raw in (b"\xff", b"x" * (2 * 1024 * 1024 + 1)):
+                path.write_bytes(raw)
+                self.assertEqual(runner.timeout_progress(path), unavailable)
+            path.unlink(); path.symlink_to(root / "other")
+            (root / "other").write_text("Fixture start: " + runner.CAPTURE[0] + "\n")
+            self.assertEqual(runner.timeout_progress(path), unavailable)
+            path.unlink(); os.mkfifo(path)
+            self.assertEqual(runner.timeout_progress(path), unavailable)
+
+    def test_timeout_diagnostic_retains_failure_cleanup_and_privacy(self):
+        with tempfile.TemporaryDirectory(prefix="ergon-timeout-self-") as name:
+            work = Path(name).resolve()
+            private = "SYNTHETIC_PRIVATE_TIMEOUT_OUTPUT"
+            output = io.StringIO()
+            stops = []
+            original_progress = runner.timeout_progress
+            class Child:
+                returncode = None
+                def wait(self, timeout):
+                    raise subprocess.TimeoutExpired("synthetic", timeout)
+            def launch(command, **kwargs):
+                self.assertTrue(kwargs["start_new_session"])
+                kwargs["stderr"].write(("Fixture start: " + runner.CAPTURE[0] + "\n" + private + "\n").encode())
+                kwargs["stderr"].flush()
+                return Child()
+            def stop(proc):
+                proc.returncode = -15; stops.append(proc.returncode)
+            def progress(path):
+                self.assertTrue(stops); self.assertIsNotNone(stops[0])
+                return original_progress(path)
+            with patch.object(runner.subprocess, "Popen", side_effect=launch), \
+                    patch.object(runner, "stop_group", side_effect=stop), \
+                    patch.object(runner, "timeout_progress", side_effect=progress), \
+                    contextlib.redirect_stderr(output), self.assertRaises(subprocess.TimeoutExpired):
+                runner.execute(["synthetic"], work, (), timeout=0.5)
+            self.assertIn("last_started=" + runner.CAPTURE[0], output.getvalue())
+            self.assertIn("last_completed=unavailable", output.getvalue())
+            self.assertNotIn(private, output.getvalue()); self.assertNotIn(str(work), output.getvalue())
+            self.assertEqual(list(work.iterdir()), [])
+
     def test_restart_projection_finite_parent_and_preimage(self):
         source = Path(__file__).resolve().parents[3]
         paths = [source / p for p in ("docs/engineering/chronik/upstream-host-adaptation-v1.json",
@@ -44,19 +98,19 @@ class Contract(unittest.TestCase):
         for _, cases, assertions in runner.GROUPS:
             result = runner.parse_streams(self.streams(cases, assertions), cases, assertions)
             self.assertEqual(result["cases"], list(cases))
-        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 56)
-        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 56)
-        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2427)
-        self.assertEqual(len(runner.GROUPS), 8)
+        self.assertEqual(sum(len(c) for _, c, _ in runner.GROUPS), 58)
+        self.assertEqual(len({n for _, c, _ in runner.GROUPS for n in c}), 58)
+        self.assertEqual(sum(a for _, _, a in runner.GROUPS), 2443)
+        self.assertEqual(len(runner.GROUPS), 9)
         self.assertEqual(runner.filter_for(runner.STARTUP).count(runner.PREFIX), 1)
 
     def test_plugin_profiles_exact_counts_and_single_context_processes(self):
         self.assertEqual(sum(a for _, _, a in runner.PLUGIN_GROUPS), 100)
         for profile, groups, count, assertions, processes in (
-                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 60, 2527, 120),
-                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 60, 2527, 120),
-                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 57, 2433, 90),
-                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 57, 2433, 90)):
+                ("plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 62, 2543, 130),
+                ("regtest-plugins", runner.GROUPS + runner.PLUGIN_GROUPS, 62, 2543, 130),
+                ("archival", runner.GROUPS + (runner.DISABLED_GROUP,), 59, 2449, 100),
+                ("regtest", runner.GROUPS + (runner.DISABLED_GROUP,), 59, 2449, 100)):
             streams = [self.streams(cases, n) for _, cases, n in groups for _ in range(10)]
             with patch.object(runner, "execute", side_effect=streams):
                 result = runner.repeat(Path("synthetic"), Path("unused"), (), 10, profile)

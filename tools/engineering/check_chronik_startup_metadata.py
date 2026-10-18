@@ -66,7 +66,19 @@ FUTURE = frozenset({
     "tools/engineering/check_chronik_native_startup.py",
     "tools/engineering/check_chronik_native_startup_self_test.py",
 })
-POLICY = BASE_POLICY | FUTURE
+HISTORY_POLICY = frozenset({"chronik/chronik-cpp/ergon_node_access.h",
+    "chronik/chronik-cpp/ergon_regtest_service.cpp", "src/init.cpp",
+    "tests/compatibility/upstream-chronik/regtest_service.py",
+    "tests/compatibility/upstream-chronik/cold_rebuild_service.py",
+    "tests/compatibility/upstream-chronik/long_history_service.py",
+    "tests/compatibility/upstream-chronik/long_history_service_self_test.py",
+    "docs/engineering/changes/ergon-change-0062.json",
+    "docs/engineering/chronik/upstream-long-history-v1.json",
+    "docs/engineering/chronik/upstream-long-history.md",
+    *("tools/engineering/check_chronik_" + name + ".py" for name in (
+        "upstream_link", "service_catchup_self_test", "long_history", "long_history_self_test", "native_startup_self_test", "plugin_fixtures", "regtest_service",
+        "plugin_restart", "service_recovery", "service_startup", "service_alp", "service_plugins"))})
+POLICY = BASE_POLICY | FUTURE | HISTORY_POLICY
 REUSED = ("tests/compatibility/upstream-chronik/cold_rebuild_service.py",
     "tests/compatibility/upstream-chronik/catchup_service.py",
     "tests/compatibility/upstream-chronik/plugin_alp_service.py",
@@ -195,6 +207,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
         from check_chronik_native_startup import CASES as native_cases_added
         release_cases |= set(native_cases_added)
+    if (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists():
+        from check_chronik_long_history import CASES as history_cases
+        release_cases |= set(history_cases)
     require(len(before) == 53 and
             set(after) - set(before) == set(CASES) | release_cases and
             all(after.get(name) == body for name, body in before.items()

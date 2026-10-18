@@ -121,7 +121,8 @@ def validate(root, historical=False):
                  "docs/engineering/chronik/upstream-plugin-helpers-v1.json"):
         require(observed(path) == before_identity(root, path), "restart changed frozen history/default/native/donor input")
         if historical and path not in SERVICE_TECHNICAL | RECOVERY_TECHNICAL | STARTUP_TECHNICAL:
-            require(current_identity(root, path) == observed(path), "successor changed unreviewed frozen restart input")
+            from check_chronik_long_history import successor_identity as history_successor
+            require(current_identity(root, path) == history_successor(root, path, observed(path)), "successor changed unreviewed frozen restart input")
     return TECHNICAL | POLICY
 
 

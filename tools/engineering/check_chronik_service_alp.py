@@ -111,7 +111,8 @@ def validate(root, historical=False):
                  "docs/engineering/chronik/upstream-service-startup-v1.json"):
         require(observed(path) == before_identity(root, path), "ALP changed frozen production/history/input")
         if historical and path not in NEXT_TECHNICAL:
-            require(current_identity(root, path) == observed(path), "successor changed frozen ALP input")
+            from check_chronik_long_history import successor_identity as history_successor
+            require(current_identity(root, path) == history_successor(root, path, observed(path)), "successor changed frozen ALP input")
     return TECHNICAL | POLICY
 
 

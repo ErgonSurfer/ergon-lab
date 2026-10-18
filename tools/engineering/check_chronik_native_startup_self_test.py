@@ -34,7 +34,7 @@ class Contract(unittest.TestCase):
         read = Path.read_text
         for before, after in (("copied < BATCH_LIMIT", "copied < INDEX_LIMIT"),
                               ("    m_startup.reset();", "    // retain"),
-                              ("mapBlockIndex.size() > 4096", "false"),
+                              ("m_node.permits_index_count(mapBlockIndex.size())", "true"),
                               ("LastCommonAncestor(&index, m_native_startup->tip)", "ChainActive().FindFork(&index)"),
                               ("    CheckStorage(index, snapshot);", "    // skip storage recheck")):
             bad = original.replace(before, after)

@@ -124,6 +124,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
         from check_chronik_native_startup import CHANGED as native_changed
         expected_changed |= native_changed
+    if (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists():
+        from check_chronik_long_history import CHANGED as history_changed
+        expected_changed |= history_changed
     require(changed == expected_changed, "unexpected owned skip-link path")
 
     from check_change import ValidationError, validate as validate_change
@@ -164,6 +167,9 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-native-startup-v1.json").exists():
         from check_chronik_native_startup import CASES as native_cases_added
         expected_additions |= set(native_cases_added)
+    if (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists():
+        from check_chronik_long_history import CASES as history_cases
+        expected_additions |= set(history_cases)
     require(len(old_cases) == 56 and
             set(new_cases) - set(old_cases) == expected_additions and
             set(old_cases) - set(new_cases) == set() and

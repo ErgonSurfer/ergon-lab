@@ -1,0 +1,1099 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0062",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0062.json",
+  "purpose": {
+    "summary": "Separate strict fixture ceilings from archival local-regtest service history and test cold upstream reconstruction across 5000 native blocks.",
+    "scope": [
+      "Direct child of signed public main 3c84f5d integrated by PR64.",
+      "Default immutable native read scope retains height 2000/index 4096; only the joined opted-in service owner selects archival regtest history.",
+      "Remove artificial history ceilings only for that service; preserve signed-height arithmetic, local-regtest/unpruned admission, mempool, payload, retained-window and deep-reorg budgets.",
+      "Retain all 68 preceding archival native case bodies; add two scope-law cases with 16 assertions.",
+      "Add a failure-only timeout trace of allowlisted public case names after stopping the child group; preserve exact success behavior, assertion parsing, the timeout exception and the 60-second process/cleanup law.",
+      "Reuse the cold-reconstruction driver with a 5000-block scenario and a separately declared 120-second startup budget; inherited 402-block scenario and 30/60-second deadlines remain unchanged."
+    ],
+    "exclusions": [
+      "No mainnet/testnet network admission, activation, consensus change or default-ON service.",
+      "No upstream indexer, ALP algorithm, plugin engine, schema or dependency-lock change.",
+      "No private reports/history/operator data, server access, deployment, cutover, release, desktop integration or automatic proof promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "3c84f5dcda5a5671ea5ead1ebdd7180f6c76838a",
+      "tree": "5b6438e2780e93b2f9d84edfd0dc2ffe3f44e2bc"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "2ff2f1c1da6f85db7b62a45f04c8d185afbd5d91c275c7eb7571fc3e4392de86",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "No private material."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 16956,
+        "git_blob": "311650ee6400921e7fc4222a85af9a2a0ddbc17b",
+        "sha256": "dd08dba53061f539efdef911f522ff23c370c2f6c3f8805c6213b5ff4cee01a9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 17864,
+        "git_blob": "5af524dae8788776479653270820cef25d19b346",
+        "sha256": "d37c9977885c6d89174f9aea825cf727dbfdeaa178aac01c4e3efc34d0fd78e7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_bridge.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 32216,
+        "git_blob": "971b7192c06a3c7bab2dde2bdac5249c8b5e3a52",
+        "sha256": "fd3c964a5e4a864e153b2b238329681d0e644983352e057c8c73ef8f636f7e55"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 32235,
+        "git_blob": "3a6cc7a4324ad10c9c5f2d9b5ec72595458db868",
+        "sha256": "4c078f2594a1f47b49a512246de482c38e235e1df07a375c73b5d482dd28e4e9"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 27020,
+        "git_blob": "5fd9503a1039300147055cd62bc646d82163d3c2",
+        "sha256": "c80b82160dc70ac1c7d7ffff361389789ba53be28e81fe7944ca7e4b3f1717e6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 27266,
+        "git_blob": "c6bd4b6b520203a69e62824774c43dec1137f2ab",
+        "sha256": "71bd9a034daf61a965dec50b93cb2beafb4814f578eb2485d5cb82a1d14c7de7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3326,
+        "git_blob": "093b1e57ae83b2197575df8285403b8a912ab41a",
+        "sha256": "5ae793b34562e7ec28b068cc642d9f6f0c7ff568c70b1ae39960282e0b5e987d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3458,
+        "git_blob": "b2a990a7a3c8f2302688d9221f95a47018b48555",
+        "sha256": "60881e15430bde52d08cb69261b86f67dbef4d7db6132722471c53e8f48a312c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_node_access.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1571,
+        "git_blob": "3389d500cfbb8ac50dcdab94750182ddd9fa18ce",
+        "sha256": "3ee9bb1d25b6eacfb370b24ad1755368e352974b4231ece923125224ce96beb5"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2375,
+        "git_blob": "f625b123d3f6d61879e92ed45f2a7b21fba5b24a",
+        "sha256": "9a55754affdc405d1bb8b7cbef21c6c5c83df15e157a6382b00fb4b48a30344c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_regtest_service.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 6253,
+        "git_blob": "0e696ac23e5a55d6cab977d47cd6198d88de1bdf",
+        "sha256": "5c796c233bcf8e0d139a19e4d3325b6c6fc359d65f6b020a7d0e7e8523d15c75"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6326,
+        "git_blob": "ef03f70da3e2d809799bff2230b289e33b7bf470",
+        "sha256": "09c319915d064f143546264cce1406b09e7013fd996b72bdb362e4e281864256"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 68811,
+        "git_blob": "32ce048e4949dfa925256d0e423376c7faa9239f",
+        "sha256": "b4615a077d93db489bc6ddbd377078613d14b4dbf0983bdd95d60e145c1eba4a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 68918,
+        "git_blob": "3388aeadc9c72f9853347661e41d2f3fc6e0685a",
+        "sha256": "922ac80093728d9f034c72bd44527a9e1638d391f11c8a5ed6f7c6fd7e3a9a91"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-long-history-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 20797,
+        "git_blob": "93ac42ef7448a398a521d338c30a44de0d019e5e",
+        "sha256": "21d30c18d48f9e728e3db50a4fcef062d499809bda390f418601048339731207"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-long-history.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5525,
+        "git_blob": "9ccc2bc1245d0aca8731f4aeafc7dc5d0f1f08a6",
+        "sha256": "17efe3ea042ef8e28ff812e9870cf9ed9eec6b2740bf3e63cd817fdb892d9bbf"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 119793,
+        "git_blob": "66183486d9d627196505e9349a2bbff4535ab7c0",
+        "sha256": "17d19c0eea24be50e9530b415b151bd8858a4cbdbf2eaf92a6fb209b396a14de"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 119817,
+        "git_blob": "52495e474839c240601302a46a0c5d0b1389ddb3",
+        "sha256": "06faa5fbe7845207d71d2ee75b9fbef59b6e426afdddb346d13eaa0cb8c2a786"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Existing explicitly opted-in local-regtest service only; immutable history scope, no native validation authority.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 185663,
+        "git_blob": "e63e3c68225c4a8778b4a3962e04787586098aa0",
+        "sha256": "57a37adeda132c5a726489b1a71d4e3a1b7692cef189083f6350341ed6735428"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 187062,
+        "git_blob": "e7ec7fe84adc9151ba963c2d6df3f64372a7f169",
+        "sha256": "83a0fe33749a424ec4f75e53bdd22a78056dccc32f6d5a03ba21aa5ead6c4e03"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12483,
+        "git_blob": "ee29c6d99e29c491b6ebe0bd2b87874609352e02",
+        "sha256": "0126c76cc1db63db27a0c01702539b207e9060fb7ea1476b16ca06ac7ceca996"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12899,
+        "git_blob": "3cdd0dc3cd287478735e28676d228822adbbaffc",
+        "sha256": "a614bb62004bd01547d745a914ff53d2368d4a929409b6d512247458ae635fdc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/long_history_service.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4468,
+        "git_blob": "c5c3a438f1a2ed2ab6ab8d080a9c62968f45fca3",
+        "sha256": "cce94ec9e0f816caea8ddbe66c94da72324e4bc23e6adc5610d3e564caece0fc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/long_history_service_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2482,
+        "git_blob": "c21e94972980c63d4de1ec67fe7337a1b2c2fbdd",
+        "sha256": "4f94dbec7310280ed2bda980a7c210bdd6aa1842c6bfe4ef4fc20f8c2fd22726"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/regtest_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 21197,
+        "git_blob": "8d95bdb34c4c8765dff9159535fba4125df8725c",
+        "sha256": "d9081991853ba690fa055c9b5d07970278c76b7c5ae2b81f11ee846fbcdcd131"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21245,
+        "git_blob": "f109113f7b4587d3dbd12ea9b38406d4c55eec8d",
+        "sha256": "78678b3299a3fe10371eb201952b744e8511bcd97482186cf8efc2f94a6e9f4c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 39132,
+        "git_blob": "d63786f3eea2bbf2ac2828dfd7cb12ed5ca1dbae",
+        "sha256": "5f98df3eb7bcdb0156ba2f3ddd085bfd47c6827c7d6d95b253b5abfc9559505f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 41523,
+        "git_blob": "3a55219e8b352fc07dc76644915be5497c2987ae",
+        "sha256": "5b4f77e1127496e2e7dc36d411fc91d5f72fdb744d5e7995c10f4d29bccf9a6b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 17705,
+        "git_blob": "e49230e1fc601361d81812da43a405cfa70ea346",
+        "sha256": "7607fa0b398d6f9f566461709fb3e3b5055aa88d1744bdf724b022ac7234cc1c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20942,
+        "git_blob": "1d1d07debe5310d512599b0d23a8683794849106",
+        "sha256": "9047402df5c4fbe2f86dcea73a7f98d54fb93ca2bc86310ccd0b2229ab2868f0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_long_history.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11949,
+        "git_blob": "9d45b3a13201a3d7011613f652be7595275eb80a",
+        "sha256": "9a5b578b7b733fd7c59630680abd8d83abed7077554fbc351525c231c311df1d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_long_history_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2757,
+        "git_blob": "15b2a7994b5db6829969e8b51237322157dc21e7",
+        "sha256": "0af4524c4b88cdce3845f38df38789f440edf526307ddd534927ab422cf0a180"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_native_startup.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10729,
+        "git_blob": "f12871536350b1042e30f0ecccba6b01647acf80",
+        "sha256": "3f5820b450153b0ca94fcd5b1fe10339833ec17d2293bd33c4f183ceafc020e7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11552,
+        "git_blob": "1e5bf7dde9000cadce87be5d36515554a3db15b8",
+        "sha256": "a19a455c0d6b2b0d05900279eec936419dbdccdbc3d4fe11c20d9018a2ba749c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_native_startup_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3002,
+        "git_blob": "9b07110591fa66cdfd6506b0b866a6754128a06c",
+        "sha256": "50281eeeb35f0eac4ed20b6bff545c63cd5207500646651dfd739d11eaed1071"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3022,
+        "git_blob": "2a24fccc56a36664cc35c7840105caf52fba0b26",
+        "sha256": "a6f922e2dd4d40325141f813f31fc397f088d493147eb04a97ecbda275e2c25f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_owned_skip_links.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10863,
+        "git_blob": "81bbc9436792f5fe9dc702e33098858f283dadb1",
+        "sha256": "44ad2a4aa5d59c8d6fc3c81a8725faf4c8360844ed52ebad433f04526efc5d48"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11266,
+        "git_blob": "c875e02759b778b37250657ce20b4470fbb36df7",
+        "sha256": "2cd546435a40980dd897189e30678feef722a48ab683c79718a39d57a3a3ac63"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_fixtures.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11070,
+        "git_blob": "b33935bb757b3ccf56b3ec1d79c87030969c9bbd",
+        "sha256": "8fc37c69a2fc37f8bef3c69a307066319402e1162a2f85c75e2fc2eb94ab3687"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11204,
+        "git_blob": "ec8106dab825a081e9ae60edbe94a5cb798b3fd5",
+        "sha256": "83a9f066b690ec14c92ee2646bb92188f2a773d746cdde12bf84bbfd491da028"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_plugin_restart.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8519,
+        "git_blob": "911102663e3392f6b25c6da9c7183d5a55c8418c",
+        "sha256": "4cda6372c65665c10c444125ea9584f55b07713117f01c319b0f9a3ff501b4a6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8641,
+        "git_blob": "15406847b2160a0fca5c5b5480c091c3cba8afae",
+        "sha256": "334e010733caa67f3e5ef17f9f5c614eecee4a71c558284725da72c6c3e23b51"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_regtest_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8607,
+        "git_blob": "792435d519ad3dc55419ccbc9069a7441c65e050",
+        "sha256": "d18001f0db7c3fadbf418fe9b3abbef162da65f0d4610d6fa50715badd535270"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8729,
+        "git_blob": "96aa9233ed73211e2c9a9aaabd1875aec18d74f1",
+        "sha256": "61d4e11be16540b83ab9446634e28c81630fdea4835c8266f58ded6cbd17a915"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_alp.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8570,
+        "git_blob": "4efbd998b3556f18b804f6f8951073d7ae7f2cee",
+        "sha256": "48b59840f9da4d7ef46f887263cbfab0ca2e61bddb9ce564698b48c6c2678593"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8692,
+        "git_blob": "219328d388281c3735a16fd63a5c9eb2f823f8da",
+        "sha256": "5f284b21293436ac1c2661234ccf9af7f075774069909cd10a38df4733940a26"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_catchup_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 6864,
+        "git_blob": "94529740150d04f15ee3bd460ee75470af8ad789",
+        "sha256": "6c23829d14114dd1e2856beafff117f52f348e7b1d85d0437aaec27a6dc36468"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 7020,
+        "git_blob": "4737695b79f7fef7de7a1f7c4eed5af198b32e81",
+        "sha256": "1836753d0d1c3f33c4684ab4538b376bb74d25d122a38de582461a1cfa518c58"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_plugins.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8886,
+        "git_blob": "a59c5cbe35d22383d0790b502fdb3130644f9ccb",
+        "sha256": "b25964cc634b768b74c1bc0faeefa07858d2983a1ac9bdbad8db2ff107f855b6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9004,
+        "git_blob": "9dab0d147150b95e2d1d1019c7a55cc8efaf0c9c",
+        "sha256": "828ad568f9af73f11152dca3be4c0b800ac3b8259f31b75dede7ca40e17c42bc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_recovery.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 8443,
+        "git_blob": "f0986f7d3f80fd75215dcaf891d67fcf4456451d",
+        "sha256": "827d2205e9a8f785b608c037c0ef9c79b8f5e95d71fc31f20fb41bc02cadc8a3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8565,
+        "git_blob": "d4d07303aaf24654f16f276ed72f0ff5128aa85e",
+        "sha256": "7d0ff9645342c889a198de4c666ffaf24bea4b11d9e9e628ab1ed419670027e0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_service_startup.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 9303,
+        "git_blob": "1b4575bc6f2df952656eb4901d93a96213328baa",
+        "sha256": "ca20a9cd214fe65883799420560e38fbc2c9c93d8ac4ac8cfbc1b74ac7655231"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9524,
+        "git_blob": "a7d028182d2fe50e5ffed99c8d6cc5b30eec224e",
+        "sha256": "c59108d7d6b7d0520cd3eccee23023bdf7d2e79055cd7e4e118d66e6184096d1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_batches.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10075,
+        "git_blob": "7e0bf6e09a7a78ce9405bbacda47d5dab9b47ea2",
+        "sha256": "bc52aaf582f1ee6dffaef3f44e19d4168c4178dda4bb8457dd6fd3c28c222ff7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10461,
+        "git_blob": "6cf27a6df4d8a032e01e687187351f312373034f",
+        "sha256": "32ac91e8c209c28b15c6ba2cd41b22bc748ff07d986a4e046c3739f4f5a821c7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_metadata.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 14479,
+        "git_blob": "c52dfe24defe5bcc4305f1acebb3b8f2ef6d0313",
+        "sha256": "6beaa735e45ebb98d4a9832896a8299f165c737afbfe775798985d5e1853fd7c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 15618,
+        "git_blob": "d5bd9c8907cc57fbd610f05c266539c9bdea250d",
+        "sha256": "345f6e3230dbb020688b9169cfb46b24759229b8aac214e738c81cf0fe0a37e0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_release.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11703,
+        "git_blob": "5f8e321d78614e7f9d6efc0b382757b67e3c2558",
+        "sha256": "60bc4de6f72b210bb1f124234ccd7373029d3c02b7e5c22c48f005d01cd8b706"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12112,
+        "git_blob": "eea38c75d8573b676ebbe830fb568b3161a89c31",
+        "sha256": "b7dde2d8d68496ee28fb8f7b3d029bbeb73800638f6ae5b913e55b3bf34bf2a4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    },
+    {
+      "path": "tools/engineering/check_chronik_upstream_link.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 21511,
+        "git_blob": "08931969f8893f8433bf11196cf4662a4e479ad8",
+        "sha256": "0954d1278adb0c0c9fc386af1a9e778d721bc1d0f82b29f057c08e8e96ecab50"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21864,
+        "git_blob": "916ce6636b905832b082d7058d52eb9c20e1b61d",
+        "sha256": "1b5fa66f4f996903ecc908b1f397a64126473fa6b337f5cea5cf782c15cdf95e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "No production runtime; public tests, policy, documentation or CI only.",
+      "test_reachability": "Long native regtest history and unchanged inherited node/Chronik/ALP/plugin controls; no mainnet claim."
+    }
+  ],
+  "surfaces": {
+    "build_release": true,
+    "consensus": false,
+    "data_research": false,
+    "documentation_cockpit": true,
+    "indexing_chronik": true,
+    "p2p": false,
+    "rpc_api": false,
+    "storage_datadir": true,
+    "tests": true,
+    "ui": false,
+    "validation_mempool": false,
+    "wallet": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the exact public compiled-out profile with unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds without Chronik linkage and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build the exact public compiled-in-disabled profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds with runtime Chronik disabled by default and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the exact public regtest-plugins profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The daemon and native fixture build; inherited profiles retain their existing boundaries."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run the two-case history-scope native group and all inherited groups; run long_history_service.py against the exact regtest-plugins build.",
+        "expected_results": [
+          "Two scope-law cases and 16 assertions pass; default fixture ceilings and ordinary runtime authority stay closed.",
+          "5000 node-accepted blocks precede first index startup, historical ALP/plugin data at height 102 is reconstructed through upstream, the same index reopens in another process and advances to 5001."
+        ],
+        "failure_conditions": [
+          "Wrong scope/count, widened network/live-resource budget, height overflow, stale or incomplete historical view, timeout, skip, nonzero exit, source/build drift or failed cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the inherited index-restart-288 controls with their original scope and deadlines.",
+        "expected_results": [
+          "The inherited lifecycle, pruning/deep-reorg refusal, historical fixtures and service budgets remain unchanged."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the inherited index-full-reindex-288 controls with their original scope and deadlines.",
+        "expected_results": [
+          "The inherited lifecycle, pruning/deep-reorg refusal, historical fixtures and service budgets remain unchanged."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the inherited index-chainstate-reindex-288 controls with their original scope and deadlines.",
+        "expected_results": [
+          "The inherited lifecycle, pruning/deep-reorg refusal, historical fixtures and service budgets remain unchanged."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the inherited index-pruned-datadir-288 controls with their original scope and deadlines.",
+        "expected_results": [
+          "The inherited lifecycle, pruning/deep-reorg refusal, historical fixtures and service budgets remain unchanged."
+        ],
+        "failure_conditions": [
+          "Any unexpected acceptance, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the inherited index-deep-reorg-fail-closed controls with their original scope and deadlines.",
+        "expected_results": [
+          "The inherited lifecycle, pruning/deep-reorg refusal, historical fixtures and service budgets remain unchanged."
+        ],
+        "failure_conditions": [
+          "Any unexpected authority, stale publication, changed count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04",
+        "macos-arm64"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "A finite 5000-block regtest history is not mainnet historical parity, operator-binary evidence or a production resource guarantee.",
+    "Only the joined local-regtest service has archival history scope; strict owned snapshots remain bounded at height 2000 and 4096 indexes.",
+    "Signed-height arithmetic excludes INT32_MAX; live reconciliation still retains 288 blocks, caps payload at 64 MiB and mempool at 4096, and refuses deep reorg below its retained anchor.",
+    "The positioned-transaction catalogue still has O(height) first-query bootstrap under cs_main; full-history query latency and memory admission remain open.",
+    "The new 120-second long-history listener budget is declared separately; inherited 30-second startup waits and 60-second native process deadlines are not increased.",
+    "System dependencies remain unlocked; no reproducible-build, continuous-ingress, operator-plugin or mainnet readiness claim."
+  ],
+  "counterevidence": [
+    "The local normal regtest-plugins matrix for this lot timed out in capture-and-query-controls at repetition 2 under the unchanged 60-second deadline. No passing complete report exists for that run; later diagnostic observations cannot replace it.",
+    "Historical startup and aggregate stop/reopen timeouts and upstream dependency alerts remain open.",
+    "No mainnet datadir, server comparison, deployment or operator cutover is exercised."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

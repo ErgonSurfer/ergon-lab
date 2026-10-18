@@ -118,8 +118,11 @@ def validate(root, historical=False):
                  "docs/engineering/changes/ergon-change-0049.json", "docs/engineering/changes/ergon-change-0050.json",
                  "docs/engineering/chronik/upstream-regtest-service-v1.json",
                  "docs/engineering/chronik/upstream-service-recovery-v1.json"):
+        from check_chronik_long_history import successor_identity as history_successor
+        previous = before_identity(root, path)
         require((observed(path) if historical and path in plugin_successor else current_identity(root, path))
-                == before_identity(root, path), "startup changed frozen authority/history/input")
+                == (previous if historical and path in plugin_successor else history_successor(root, path, previous)),
+                "startup changed frozen authority/history/input")
     return TECHNICAL | POLICY
 
 

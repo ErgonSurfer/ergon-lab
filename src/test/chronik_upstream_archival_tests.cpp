@@ -23,6 +23,7 @@
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <miner.h>
 #include <pow.h>
@@ -231,6 +232,29 @@ CScript AlpScript(uint8_t op, const std::array<uint8_t, 32> &id = {}) {
 } // namespace
 
 BOOST_FIXTURE_TEST_SUITE(chronik_upstream_archival_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(history_scope_default_fixture_bounds_are_unchanged) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
+    BOOST_CHECK(access.permits_height(0));
+    BOOST_CHECK(access.permits_height(2000));
+    BOOST_CHECK(!access.permits_height(-1));
+    BOOST_CHECK(!access.permits_height(2001));
+    BOOST_CHECK(access.permits_index_count(4096));
+    BOOST_CHECK(!access.permits_index_count(4097));
+    BOOST_CHECK_THROW(ergon_archival::archival_capture_height_guard(access, 5000), std::exception);
+    BOOST_CHECK(!chronik_bridge::upstream_runtime_permitted(access));
+}
+BOOST_AUTO_TEST_CASE(history_scope_service_keeps_height_arithmetic_and_authority_closed) {
+    chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool,
+        chronik_bridge::NativeReadScope::ArchivalRegtestService);
+    BOOST_CHECK(access.permits_height(5000));
+    BOOST_CHECK(access.permits_height(std::numeric_limits<int32_t>::max() - 1));
+    BOOST_CHECK(!access.permits_height(std::numeric_limits<int32_t>::max()));
+    BOOST_CHECK(!access.permits_height(-1));
+    BOOST_CHECK(access.permits_index_count(5001));
+    BOOST_CHECK_NO_THROW(ergon_archival::archival_capture_height_guard(access, 5000));
+    BOOST_CHECK_THROW(ergon_archival::archival_capture_height_guard(access, -1), std::exception);
+    BOOST_CHECK(!chronik_bridge::upstream_runtime_permitted(access));
+}
 BOOST_AUTO_TEST_CASE(native_startup_header_loan_has_no_owned_graph) {
     chronik_bridge::ErgonNodeAccess access(GetConfig(), g_mempool);
     auto bridge = ergon_archival::make_service_startup_bridge(access);

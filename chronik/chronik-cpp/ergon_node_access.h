@@ -5,11 +5,15 @@
 #define ERGON_CHRONIK_CPP_ERGON_NODE_ACCESS_H
 
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 
 class Config;
 class CTxMemPool;
 
 namespace chronik_bridge {
+enum class NativeReadScope { BoundedFixture, ArchivalRegtestService };
 
 /**
  * Small Ergon host binding, not an ABC NodeContext or consensus owner.
@@ -19,16 +23,32 @@ namespace chronik_bridge {
  * object or the referenced native resources. Chain and mempool access still
  * require their native locks; const references do not grant safe snapshots.
  *
- * This link profile never instantiates the context in the daemon or starts a
- * service. Native unit tests may construct it around their owned fixtures.
+ * The default scope retains historical fixture limits. Only the explicitly
+ * opted-in, joined regtest service owner selects the archival history scope.
+ * This scope does not grant network admission or native validation authority.
  */
 struct ErgonNodeAccess {
     const Config &config;
     CTxMemPool &mempool;
     mutable std::atomic<bool> index_failed{false};
 
-    ErgonNodeAccess(const Config &config_in, CTxMemPool &mempool_in)
-        : config(config_in), mempool(mempool_in) {}
+  private:
+    const NativeReadScope m_scope;
+
+  public:
+
+    ErgonNodeAccess(const Config &config_in, CTxMemPool &mempool_in,
+                   NativeReadScope scope = NativeReadScope::BoundedFixture)
+        : config(config_in), mempool(mempool_in), m_scope(scope) {}
+
+    bool permits_height(int height) const noexcept {
+        // Retained-window arithmetic uses height + 1 in both C++ and Rust.
+        return height >= 0 && height < std::numeric_limits<int32_t>::max() &&
+            (m_scope == NativeReadScope::ArchivalRegtestService || height <= 2000);
+    }
+    bool permits_index_count(size_t count) const noexcept {
+        return m_scope == NativeReadScope::ArchivalRegtestService || count <= 4096;
+    }
 
     ErgonNodeAccess(const ErgonNodeAccess &) = delete;
     ErgonNodeAccess &operator=(const ErgonNodeAccess &) = delete;

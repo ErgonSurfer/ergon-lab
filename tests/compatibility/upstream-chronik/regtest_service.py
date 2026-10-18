@@ -159,7 +159,7 @@ class Daemon:
         finally:
             connection.close()
 
-    def ready(self, available=True):
+    def ready(self, available=True, *, startup_timeout=30):
         wait_for(lambda: self.rpc("getblockchaininfo"))
         if available:
             def port():
@@ -168,7 +168,7 @@ class Daemon:
                                      str(int(self.public_plugin)) + r"\b", text)
                 runner.require(len(matches) <= 1, "ambiguous service listener")
                 return int(matches[0]) if matches else None
-            self.port = wait_for(port)
+            self.port = wait_for(port, timeout=startup_timeout)
         else:
             wait_for(lambda: "Chronik upstream regtest unavailable node_continues=1" in self.log.read_text())
             runner.require("Chronik upstream regtest listening=" not in self.log.read_text(), "failed root served")

@@ -68,7 +68,8 @@ struct OwnedService::Impl {
             }
             // Worker/HTTP/DB users die before access AND plugin owner, and
             // before this thread is joined. No Python finalization/reinit.
-            chronik_bridge::ErgonNodeAccess access(config, g_mempool);
+            chronik_bridge::ErgonNodeAccess access(config, g_mempool,
+                chronik_bridge::NativeReadScope::ArchivalRegtestService);
             ergon_archival::ArchivalWorker worker(fs::canonical(root).string(), access,
                 128, {}, {}, {}, {}, plugins ? &**plugins : nullptr, true);
             uint16_t listening = 0;

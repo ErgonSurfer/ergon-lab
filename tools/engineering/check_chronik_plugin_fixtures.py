@@ -147,7 +147,9 @@ def validate(root, historical=False):
                  "docs/engineering/chronik/owned-chainstate-reads-v1.json",
                  "docs/engineering/chronik/upstream-host-adaptation-v1.json",
                  "docs/engineering/chronik/chronik-port-lot-a-donor-v1.json"):
-        require(current_identity(root, path) == before_identity(root, path), "plugin changed frozen native/history boundary")
+        from check_chronik_long_history import successor_identity as history_successor
+        require(current_identity(root, path) == history_successor(root, path, before_identity(root, path)),
+                "plugin changed frozen native/history boundary")
     before = tomllib.loads(git(root, "show", PARENT + ":chronik/Cargo.lock").decode())["package"]
     after = tomllib.loads((root / "chronik/Cargo.lock").read_text())["package"]
     require([p for p in before if "source" in p] == [p for p in after if "source" in p],

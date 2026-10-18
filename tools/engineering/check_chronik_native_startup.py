@@ -64,13 +64,15 @@ def before_identity(root, path):
 
 def successor_identity(root, path, previous):
     rows = [r for r in load_json(root / MANIFEST)["files"] if r["path"] == path]
-    if not rows:
-        return previous
-    require(path in MANIFEST_FILES and len(rows) == 1 and
-            rows[0]["before"] == before_identity(root, path) and
-            previous in (rows[0]["before"], rows[0]["after"]),
-            "native startup successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if rows:
+        require(path in MANIFEST_FILES and len(rows) == 1 and
+                rows[0]["before"] == before_identity(root, path) and
+                previous in (rows[0]["before"], rows[0]["after"]),
+                "native startup successor preimage drift")
+        result = rows[0]["after"]
+    from check_chronik_long_history import successor_identity as history_successor
+    return history_successor(root, path, result)
 
 
 def section(text, start, end):
@@ -84,6 +86,7 @@ def validate(root):
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"",
             "native startup parent drift")
     manifest = load_json(root / MANIFEST)
+    history_present = (root / "docs/engineering/chronik/upstream-long-history-v1.json").exists()
     require(set(manifest) == {"$comment", "schema", "license", "public_parent", "contract", "files"} and
             manifest["$comment"] == "SPDX-License-Identifier: MIT" and
             manifest["schema"] == "ergon-upstream-native-startup/v1" and
@@ -95,14 +98,19 @@ def validate(root):
         before = before_identity(root, row["path"])
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
                 row["before"] == before and row["after"] != before and
-                row["after"] == current_identity(root, row["path"]) and row["after"]["mode"] == "100644" and
+                successor_identity(root, row["path"], row["after"]) == current_identity(root, row["path"]) and row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if before is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == ("bounded-regtest-native-or-test-only"
                     if row["path"] in TECHNICAL else "test-only"),
                 "native startup source identity drift")
     changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
     changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
-    require(changed == CHANGED, "unexpected native startup path")
+    expected = CHANGED
+    if history_present:
+        from check_chronik_long_history import CHANGED as history_changed, validate as validate_history
+        expected |= history_changed
+        validate_history(root)
+    require(changed == expected, "unexpected native startup path")
     old = git(root, "show", PARENT + ":" + BRIDGE).decode()
     bridge = (root / BRIDGE).read_text()
     for start, end in (("void ChronikBridge::capture_startup_snapshot", "bool ChronikBridge::finish_startup_snapshot"),
@@ -113,7 +121,8 @@ def validate(root):
     capture = section(bridge, "void ChronikBridge::capture_native_startup", "bool ChronikBridge::finish_native_startup")
     require("std::make_unique<NativeStartup>()" in capture and
             capture.index("std::make_unique<NativeStartup>()") < capture.index("LOCK2(") and
-            "captured->tip = tip" in capture and "mapBlockIndex.size() > 4096" in capture and
+            "captured->tip = tip" in capture and
+            ("m_node.permits_index_count(mapBlockIndex.size())" if history_present else "mapBlockIndex.size() > 4096") in capture and
             all(token not in capture for token in ("for (", "while (", "CChain ", "std::vector", "std::map")),
             "native startup complete graph copy or admission drift")
     fork = section(bridge, "const CBlockIndex &ChronikBridge::find_fork", "void ChronikBridge::lookup_spent_coins")
@@ -128,7 +137,11 @@ def validate(root):
                 "native startup disk read fence drift")
     before = native_cases(git(root, "show", PARENT + ":" + NATIVE).decode())
     after = native_cases((root / NATIVE).read_text())
-    require(len(before) == 62 and set(after) - set(before) == set(CASES) and
+    additions = set(CASES)
+    if history_present:
+        from check_chronik_long_history import CASES as history_cases
+        additions |= set(history_cases)
+    require(len(before) == 62 and set(after) - set(before) == additions and
             all(after.get(name) == body for name, body in before.items()),
             "native startup changed inherited native case")
     host = (root / "chronik/chronik-lib/src/ergon_archival.rs").read_text()
@@ -149,7 +162,7 @@ def validate(root):
                  "chronik/chronik-cpp/ergon_node_access.h",
                  "chronik/chronik-indexer/src/indexer.rs",
                  "chronik/chronik-plugin-impl/src/context.rs"):
-        require(current_identity(root, path) == before_identity(root, path),
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)),
                 "native startup changed immutable/storage/lifetime or upstream contract")
     from check_change import validate as validate_change
     record = load_json(root / RECORD)
@@ -163,7 +176,7 @@ def validate(root):
     for row in record["files"]:
         normalized = lambda v: None if v is None else {("git_blob_sha1" if k == "git_blob" else k): i for k, i in v.items()}
         require(normalized(row["before"]) == before_identity(root, row["path"]) and
-                normalized(row["after"]) == current_identity(root, row["path"]),
+                successor_identity(root, row["path"], normalized(row["after"])) == current_identity(root, row["path"]),
                 "native startup governance identity drift")
     return CHANGED
 
