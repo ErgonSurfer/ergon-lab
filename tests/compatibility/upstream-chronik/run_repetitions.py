@@ -167,6 +167,8 @@ PLUGIN_ADAPTER_INPUTS = (
 )
 PLUGIN_ENABLED_INPUTS = (
     "chronik/chronik-plugin-impl/src/module.rs",
+    "chronik/chronik-plugin-impl/src/plugin.rs",
+    "chronik/chronik-plugin-impl/src/plugin.py",
     "chronik/chronik-plugin-impl/python/upstream/script.py",
     "chronik/chronik-plugin-impl/python/upstream/slp.py",
 )
@@ -418,6 +420,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
         for row in layer["files"]:
             if row["path"] in merged:
                 require(row["before"] == merged[row["path"]]["after"], "position catalogue projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
+    multi_lokad_manifest = source / "docs/engineering/chronik/upstream-multi-lokad-v1.json"
+    if multi_lokad_manifest.exists():
+        from check_chronik_multi_lokad import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(multi_lokad_manifest))
+        require(layer["schema"] == "ergon-upstream-multi-lokad/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES), "multi-lokad projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "multi-lokad projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
     for row in rows:

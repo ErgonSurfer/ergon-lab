@@ -113,6 +113,8 @@ def validate(root):
     if (root / "docs/engineering/chronik/upstream-position-catalogue-v1.json").exists():
         from check_chronik_position_catalogue import CHANGED as catalogue_changed
         expected |= catalogue_changed
+    from check_chronik_multi_lokad import additional_paths
+    expected |= additional_paths(root)
     require(changed == expected, "unexpected native startup path")
     old = git(root, "show", PARENT + ":" + BRIDGE).decode()
     bridge = (root / BRIDGE).read_text()

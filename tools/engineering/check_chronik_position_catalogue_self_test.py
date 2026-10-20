@@ -10,7 +10,8 @@ class Contract(unittest.TestCase):
     root = Path(__file__).resolve().parents[2]
 
     def test_exact_layer(self):
-        self.assertEqual(gate.validate(self.root), gate.CHANGED)
+        from check_chronik_multi_lokad import additional_paths
+        self.assertEqual(gate.validate(self.root), gate.CHANGED | additional_paths(self.root))
 
     def test_runner_cannot_change_old_process_contract(self):
         before = gate.git(self.root, "show", gate.PARENT + ":" + gate.RUNNER).decode()

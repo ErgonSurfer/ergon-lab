@@ -37,6 +37,7 @@ on:
       - "docs/engineering/changes/ergon-change-0061.json"
       - "docs/engineering/changes/ergon-change-0062.json"
       - "docs/engineering/changes/ergon-change-0063.json"
+      - "docs/engineering/changes/ergon-change-0064.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   push:
@@ -75,6 +76,7 @@ on:
       - "docs/engineering/changes/ergon-change-0061.json"
       - "docs/engineering/changes/ergon-change-0062.json"
       - "docs/engineering/changes/ergon-change-0063.json"
+      - "docs/engineering/changes/ergon-change-0064.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
   workflow_dispatch:
@@ -157,6 +159,9 @@ jobs:
           python3 -B tests/compatibility/upstream-chronik/long_history_service_self_test.py
           python3 -B tools/engineering/check_chronik_position_catalogue.py check
           python3 -B tools/engineering/check_chronik_position_catalogue_self_test.py
+          python3 -B tools/engineering/check_chronik_multi_lokad.py check
+          python3 -B tools/engineering/check_chronik_multi_lokad_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/multi_lokad_component_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -226,6 +231,28 @@ jobs:
 
       - name: Build standalone daemon and native boundary fixtures
         run: cmake --build "$RUNNER_TEMP/ergon-upstream-build" --target bitcoind test_bitcoin -j2
+
+      - name: Build and exercise bounded multi-identifier plugin metadata
+        if: matrix.profile == 'plugins' || matrix.profile == 'regtest-plugins'
+        env:
+          CARGO_HOME: ${{ runner.temp }}/ergon-upstream-cargo-home
+          CARGO_TARGET_DIR: ${{ runner.temp }}/ergon-upstream-target
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_INCREMENTAL: "0"
+          PYO3_PYTHON: /usr/bin/python3.12
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          cargo test --manifest-path chronik/Cargo.toml --package chronik-plugin-impl \
+            --lib --no-run --message-format=json --locked --offline -j2 \
+            > "$RUNNER_TEMP/ergon-multi-lokad-artifacts.jsonl"
+          cargo build --manifest-path chronik/Cargo.toml --package chronik-plugin-impl \
+            --example ergon-public-multi-lokad --locked --offline -j2
+          mkdir "$RUNNER_TEMP/ergon-multi-lokad-work"
+          python3 -B tests/compatibility/upstream-chronik/multi_lokad_component.py \
+            --source-root "$GITHUB_WORKSPACE" \
+            --target-dir "$RUNNER_TEMP/ergon-upstream-target" \
+            --cargo-artifacts "$RUNNER_TEMP/ergon-multi-lokad-artifacts.jsonl" \
+            --work-parent "$RUNNER_TEMP/ergon-multi-lokad-work"
 
       - name: Repeat exact profile-bound component cases in fresh processes
         if: matrix.profile != 'compiled-out'
