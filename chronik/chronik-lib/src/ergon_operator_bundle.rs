@@ -38,6 +38,7 @@ impl OperatorBundle {
         let domain: &[u8] = match network {
             "regtest" => DOMAIN,
             "main" => b"ergon-trusted-operator-plugin-bundle/main/v1\n",
+            "ergon-testnet-v1" => b"ergon-trusted-operator-plugin-bundle/ergon-testnet-v1/v1\n",
             _ => bail!("Unsupported trusted plugin network"),
         };
         if !root.is_absolute()
@@ -271,8 +272,14 @@ mod tests {
         let old = r.inspect().unwrap();
         let regtest = OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "regtest").unwrap();
         let main = OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "main").unwrap();
+        let testnet = OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "ergon-testnet-v1").unwrap();
         assert_eq!(old.binding, regtest.binding);
         assert_ne!(main.binding, regtest.binding);
+        assert_ne!(testnet.binding, main.binding);
+        assert_ne!(testnet.binding, regtest.binding);
+        assert!(testnet.check("3.12.0", "public-test-interpreter").is_ok());
+        assert!(OperatorBundle::admit_network(&r.0, &main.binding, "3.12.0", "public-test-interpreter", "ergon-testnet-v1").is_err());
+        assert!(OperatorBundle::admit_network(&r.0, &testnet.binding, "3.12.0", "public-test-interpreter", "main").is_err());
         assert!(main.check("3.12.0", "public-test-interpreter").is_ok());
         assert!(OperatorBundle::admit_network(&r.0, &regtest.binding, "3.12.0", "public-test-interpreter", "main").is_err());
         assert!(OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "test").is_err());

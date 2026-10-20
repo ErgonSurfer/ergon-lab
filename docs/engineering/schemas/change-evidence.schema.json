@@ -36,6 +36,7 @@
       "enum": [
         "legacy-compatibility",
         "optional-indexing",
+        "testnet-preparation",
         "testnet-activation",
         "mainnet-readiness",
         "research"
@@ -155,6 +156,21 @@
             "chronik_compile_time_default": "off",
             "chronik_runtime_default": "off",
             "chronik_enabled_scope": "explicit-native-network-genesis-bound-main-or-regtest",
+            "mainnet_parameters_modified": false
+          }
+        },
+        {
+          "const": {
+            "consensus_authority": "standalone-node",
+            "chronik_role": "observe-and-index-only",
+            "chronik_consensus_authority": false,
+            "chronik_mempool_authority": false,
+            "chronik_activation_authority": false,
+            "chronik_chain_selection_authority": false,
+            "chronik_required_for_correctness": false,
+            "chronik_compile_time_default": "off",
+            "chronik_runtime_default": "off",
+            "chronik_enabled_scope": "explicit-native-network-genesis-bound-main-regtest-or-ergon-testnet-v1",
             "mainnet_parameters_modified": false
           }
         }
@@ -307,6 +323,7 @@
           "enum": [
             "legacy-compatibility",
             "optional-indexing",
+            "testnet-preparation",
             "testnet-activation",
             "mainnet-readiness",
             "research"

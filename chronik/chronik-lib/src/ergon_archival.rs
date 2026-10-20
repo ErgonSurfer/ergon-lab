@@ -599,7 +599,7 @@ fn identity(genesis: [u8; 32]) -> Vec<u8> {
     format!("{{\"schema\":\"ergon-archival-probe/v1\",\"network\":\"regtest\",\"genesis_le\":\"{hex}\",\"public_parent\":\"8ae2e14af4765b0ffa5c8f4bd89d6ba3850ae84a\",\"donor\":\"784d83de2e19eab726898d77bfe7465410d27a9c\",\"adapter_sha256\":\"{}\",\"token\":true,\"lokad\":true,\"scripthash\":true,\"plugins\":false}}\n", env!("CHRONIK_ERGON_ADAPTER_ID")).into_bytes()
 }
 fn historical_identity(genesis: [u8; 32], network: &str) -> Result<Vec<u8>> {
-    if !matches!(network, "main" | "regtest") {
+    if !matches!(network, "main" | "regtest" | "ergon-testnet-v1") {
         bail!("Unsupported historical native network");
     }
     // A distinct authority domain: never adopt a regtest/fixture identity.

@@ -58,6 +58,9 @@ struct Params {
     int64_t nASERTHalfLife;
     int64_t nPowTargetTimespan;
     int64_t nValueCalibration;
+    // Existing networks retain their exact historical bootstrap target.
+    // A new development network must not inherit the two-S9 startup target.
+    uint32_t nBootstrapBits{0x1a04b500};
     int64_t DifficultyAdjustmentInterval() const {
         return nPowTargetTimespan / nPowTargetSpacing;
     }

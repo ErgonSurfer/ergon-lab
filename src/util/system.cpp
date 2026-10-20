@@ -395,6 +395,7 @@ const std::list<SectionInfo> ArgsManager::GetUnrecognizedSections() const {
     static const std::set<std::string> available_sections{
         CBaseChainParams::REGTEST,
         CBaseChainParams::TESTNET, CBaseChainParams::TESTNET4, CBaseChainParams::SCALENET,
+        CBaseChainParams::ERGON_TESTNET,
         CBaseChainParams::MAIN};
 
     LOCK(cs_args);
@@ -1134,10 +1135,14 @@ std::string ArgsManager::GetChainName() const {
     bool fTestNet = ArgsManagerHelper::GetNetBoolArg(*this, "-testnet");
     bool fTestNet4 = ArgsManagerHelper::GetNetBoolArg(*this, "-testnet4");
     bool fScaleNet = ArgsManagerHelper::GetNetBoolArg(*this, "-scalenet");
+    bool fErgonTestNet = ArgsManagerHelper::GetNetBoolArg(*this, "-ergontestnet");
 
-    if (fTestNet + fTestNet4 + fScaleNet + fRegTest > 1) {
+    if (fTestNet + fTestNet4 + fScaleNet + fRegTest + fErgonTestNet > 1) {
         throw std::runtime_error(
-            "Invalid combination of -regtest, -testnet, -testnet4, and -scalenet.");
+            "Invalid combination of -regtest, -testnet, -testnet4, -scalenet, and -ergontestnet.");
+    }
+    if (fErgonTestNet) {
+        return CBaseChainParams::ERGON_TESTNET;
     }
     if (fRegTest) {
         return CBaseChainParams::REGTEST;

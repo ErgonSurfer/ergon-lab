@@ -3578,6 +3578,37 @@ BOOST_AUTO_TEST_CASE(upstream_public_plugin_disabled_refuses_setup) {
 #endif
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE(ergon_testnet_chronik_tests, TestChain100Setup)
+BOOST_AUTO_TEST_CASE(development_binding_is_explicit_and_network_specific) {
+    DummyConfig development(CBaseChainParams::ERGON_TESTNET);
+    const auto genesis = development.GetChainParams().GetConsensus().hashGenesisBlock.ToString();
+    const auto main = CreateChainParams(CBaseChainParams::MAIN);
+    const auto mainGenesis = main->GetConsensus().hashGenesisBlock.ToString();
+    const chronik_bridge::HistoricalReadBinding binding(development, "ergon-testnet-v1", genesis);
+    BOOST_CHECK(binding.Matches(development));
+    BOOST_CHECK_EQUAL(binding.Network(), "ergon-testnet-v1");
+    BOOST_CHECK(!binding.Matches(GetConfig()));
+    BOOST_CHECK_THROW(chronik_bridge::HistoricalReadBinding(development, "main", genesis), std::exception);
+    BOOST_CHECK_THROW(chronik_bridge::HistoricalReadBinding(development, "ergon-testnet-v1", mainGenesis), std::exception);
+    BOOST_CHECK_THROW(chronik_bridge::HistoricalReadBinding(GetConfig(), "ergon-testnet-v1", genesis), std::exception);
+    BOOST_CHECK_THROW(chronik_bridge::HistoricalReadBinding(development, "test", genesis), std::exception);
+}
+BOOST_AUTO_TEST_CASE(foreign_active_chain_refused_before_index_root_mutation) {
+    DummyConfig development(CBaseChainParams::ERGON_TESTNET);
+    const auto genesis = development.GetChainParams().GetConsensus().hashGenesisBlock.ToString();
+    chronik_bridge::ErgonNodeAccess access(development, g_mempool,
+        chronik_bridge::HistoricalReadBinding(development, "ergon-testnet-v1", genesis),
+        chronik_bridge::HistoricalClientAdmission::Explicit);
+    const auto root = Root("development-foreign-active-chain");
+    const auto shutdown = ShutdownRequested();
+    BOOST_CHECK_THROW(ergon_archival::open_historical_clients(root, access), std::exception);
+    BOOST_CHECK(fs::is_empty(fs::path(root)));
+    BOOST_CHECK_EQUAL(ChainActive().Height(), 100);
+    BOOST_CHECK_EQUAL(ShutdownRequested(), shutdown);
+    BOOST_CHECK(!access.index_failed.load());
+}
+BOOST_AUTO_TEST_SUITE_END()
+
 #ifdef CHRONIK_ERGON_PLUGIN_TESTS
 namespace {
 // A public corpus of ACTUALLY accepted native blocks, not a donor datadir or

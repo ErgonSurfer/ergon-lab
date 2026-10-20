@@ -22,6 +22,7 @@ public:
     static const std::string TESTNET4;
     static const std::string SCALENET;
     static const std::string REGTEST;
+    static const std::string ERGON_TESTNET;
 
     const std::string &DataDir() const { return strDataDir; }
     int RPCPort() const { return nRPCPort; }

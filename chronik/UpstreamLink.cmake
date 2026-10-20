@@ -131,6 +131,9 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
     list(APPEND _identity_inputs CMakeLists.txt src/init.cpp
         chronik/chronik-cpp/ergon_regtest_service.h
         chronik/chronik-cpp/ergon_regtest_service.cpp)
+    list(APPEND _identity_inputs src/chainparams.cpp src/chainparamsbase.cpp
+        src/chainparamsbase.h src/consensus/params.h src/pow.cpp src/util/system.cpp
+        src/rpc/blockchain.cpp src/bitcoind.cpp)
     if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
         list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs
             chronik/chronik-plugin-impl/src/context.rs

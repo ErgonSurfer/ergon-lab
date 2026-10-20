@@ -29,7 +29,7 @@ def metadata(meta, limit):
 
 
 def inspect(root, python_version, python_id, network="regtest"):
-    require(network in ("main", "regtest"))
+    require(network in ("main", "regtest", "ergon-testnet-v1"))
     root = Path(root)
     require(root.is_absolute() and root.resolve(strict=True) == root)
     require(stat.S_ISDIR(root.lstat().st_mode))
@@ -54,7 +54,7 @@ def inspect(root, python_version, python_id, network="regtest"):
         require(total <= MAX_TOTAL)
         files[name] = data
     require("plugins.toml" in files and len(files) >= 2)
-    identity = bytearray(DOMAIN if network == "regtest" else b"ergon-trusted-operator-plugin-bundle/main/v1\n")
+    identity = bytearray(f"ergon-trusted-operator-plugin-bundle/{network}/v1\n".encode("ascii"))
 
     def field(data):
         identity.extend(len(data).to_bytes(8, "little"))
@@ -74,7 +74,7 @@ def main():
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--python-version", required=True)
     parser.add_argument("--python-id", required=True)
-    parser.add_argument("--network", choices=("main", "regtest"), default="regtest")
+    parser.add_argument("--network", choices=("main", "regtest", "ergon-testnet-v1"), default="regtest")
     args = parser.parse_args()
     try:
         require(re.fullmatch(r"3\.12\.[0-9]+", args.python_version) is not None)

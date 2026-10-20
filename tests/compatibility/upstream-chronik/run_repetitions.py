@@ -195,6 +195,8 @@ ADAPTER_INPUTS = (
     "src/init.cpp",
     "chronik/chronik-cpp/ergon_regtest_service.h",
     "chronik/chronik-cpp/ergon_regtest_service.cpp",
+    "src/chainparams.cpp", "src/chainparamsbase.cpp", "src/chainparamsbase.h",
+    "src/consensus/params.h", "src/pow.cpp", "src/util/system.cpp", "src/rpc/blockchain.cpp", "src/bitcoind.cpp",
 )
 PLUGIN_ADAPTER_INPUTS = (
 )
@@ -501,6 +503,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
             require(row["before"] == before_identity(source, row["path"]), "continuous parent preimage drift")
             if row["path"] in merged:
                 require(row["before"] == merged[row["path"]]["after"], "continuous projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
+    testnet_manifest = source / "docs/engineering/testnet/source-v1.json"
+    if testnet_manifest.exists():
+        from check_ergon_testnet import PARENT, TREE, FILES, CONTRACT, before_identity
+        layer = json.loads(regular(testnet_manifest))
+        require(layer["schema"] == "ergon-development-source/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                layer["contract"] == CONTRACT and
+                [r["path"] for r in layer["files"]] == sorted(FILES), "testnet projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            require(row["before"] == before_identity(source, row["path"]), "testnet public parent preimage drift")
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "testnet projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
     for row in rows:

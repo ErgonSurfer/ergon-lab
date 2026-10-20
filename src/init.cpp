@@ -462,7 +462,7 @@ void SetupServerArgs() {
     gArgs.AddArg("-chronikupstreamservice",
                  "Enable the separately bound continuous Chronik client service (default: 0; unpruned; loopback only)",
                  false, OptionsCategory::OPTIONS);
-    gArgs.AddArg("-chronikupstreamservicenetwork=<main|regtest>",
+    gArgs.AddArg("-chronikupstreamservicenetwork=<main|regtest|ergon-testnet-v1>",
                  "Required expected native network for the continuous service",
                  false, OptionsCategory::OPTIONS);
     gArgs.AddArg("-chronikupstreamservicegenesis=<hex>",
@@ -485,7 +485,7 @@ void SetupServerArgs() {
                  "Enable a separate historical read-only Chronik shadow index "
                  "(default: 0; unpruned; ephemeral loopback HTTP only; trusted plugins separately bound; no broadcast or WebSockets)",
                  false, OptionsCategory::OPTIONS);
-    gArgs.AddArg("-chronikupstreamshadownetwork=<main|regtest>",
+    gArgs.AddArg("-chronikupstreamshadownetwork=<main|regtest|ergon-testnet-v1>",
                  "Explicit expected native network for the shadow index; required with the shadow flag",
                  false, OptionsCategory::OPTIONS);
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
@@ -1737,6 +1737,15 @@ bool AppInitBasicSetup() {
 bool AppInitParameterInteraction(Config &config) {
     const CChainParams &chainparams = config.GetChainParams();
     // Step 2: parameter interactions
+
+    if (chainparams.NetworkIDString() == CBaseChainParams::ERGON_TESTNET) {
+        for (const auto &key : {"-emaactivationtime", "-axionactivationtime",
+                                "-tachyonactivationtime"}) {
+            if (gArgs.IsArgSet(key)) {
+                return InitError("Ergon testnet v1 does not permit activation-time overrides");
+            }
+        }
+    }
 
 #ifdef ENABLE_CHRONIK_UPSTREAM_SERVICE
     const bool continuous=gArgs.GetBoolArg("-chronikupstreamservice",false);

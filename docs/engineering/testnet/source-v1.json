@@ -1,0 +1,585 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-development-source/v1",
+  "license": "MIT",
+  "public_parent": {
+    "commit": "1029eb3295fa9ba986cac0a0020c74f74b9a6914",
+    "tree": "e03012dbae6d0fac5095f25d2102e6bb28a65dad"
+  },
+  "contract": {
+    "network": "ergon-testnet-v1",
+    "genesis": "00000066119ff801d756659ca11217fe21c0b5f66779eaf9fbc87a8945aa8b4c",
+    "asset_display": {
+      "name": "Ergon Testnet",
+      "ticker": "tXRG",
+      "decimals": 8
+    },
+    "mainnet_source": "CMainParams-byte-identical-to-accepted-parent",
+    "mainnet_consensus_or_activation_change": false,
+    "testnet_consensus": {
+      "pow": "sha256d",
+      "daa": "existing-ergon-ema",
+      "bootstrap_bits": "1e00ffff",
+      "pow_limit_hex": "000000ffff000000000000000000000000000000000000000000000000000000",
+      "target_spacing_seconds": 600,
+      "decay_interval_blocks": 144,
+      "value_calibration": 7100000000000,
+      "ema_activation_time": 0,
+      "reward_model": "existing-proportional-integer-without-floor-or-cap",
+      "coinbase_maturity_blocks": 100,
+      "cashtokens_activation": "not-implemented"
+    },
+    "explicit_differences": [
+      "independent-identity-and-genesis",
+      "easier-bootstrap-and-pow-limit",
+      "current-rules-at-chain-origin",
+      "no-inherited-seeds-or-history-assumptions"
+    ],
+    "reward_floor_or_cap": false,
+    "cpu_exclusive": false,
+    "universal_signature_replay_protection": false,
+    "network_bridge_or_mainnet_fallback": false,
+    "daa_redesign": false,
+    "token_activation": false,
+    "chronik": "optional-explicit-native-network-genesis-bound-observe-index-and-upstream-client-checks",
+    "chronik_compile_or_runtime_default_enabled": false,
+    "existing_runtime_cases_repetitions_assertions_deadlines": "unchanged",
+    "historical_source_gates": "exact-accepted-parent-not-weakened",
+    "Rust_registry_changes": false,
+    "system_dependencies_locked": false,
+    "knowledge_status": "Open Question",
+    "evidence_ceiling": "record-review-only",
+    "incoming_evidence": [],
+    "deployment_by_CI": false,
+    "desktop_integration": false
+  },
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "before": {
+        "mode": "100644",
+        "bytes": 5902,
+        "sha256": "b66c599378608258c4f51c06279d63d0e60783022678d0e2096de084e72322e8",
+        "git_blob_sha1": "6d187bcec3243954ebb5aef4ea0abaf5375e4295"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6575,
+        "sha256": "569ce2a0757d24ca657c46ba25c469ae43f77339e2ac2417303a9229e5b8e626",
+        "git_blob_sha1": "316cdb6b989ad539ceeefa2d35796cd133ec8723"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "before": {
+        "mode": "100644",
+        "bytes": 20668,
+        "sha256": "7f0cbf37f44e4fabe2cc68a8b8d64560b0de9e697ef3a17d68ca01c489736419",
+        "git_blob_sha1": "967793718139c37d80424411d46313436141363e"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22911,
+        "sha256": "48a88497f80290053c5fda2e4881456d9cdfec9420866f6a04565fb309bf07ec",
+        "git_blob_sha1": "fbdd7367369ba0c59415dfafd9443baac1d8d2fb"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "before": {
+        "mode": "100644",
+        "bytes": 14159,
+        "sha256": "4336bc756342a36e2889033d83c67d7295ea27ba58118ce33fc107a46cbffd83",
+        "git_blob_sha1": "b934e07de85927176609ae2d48dae44437db3f01"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14370,
+        "sha256": "1ea53b7f3c17ade10b81dd39ca59526bc33829d68097dfdc50f2a35d2b0dd1d1",
+        "git_blob_sha1": "ac989373c0e0f603eebcacac5db3b284b93fefa6"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_node_access.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 6055,
+        "sha256": "6a49371ad5a4089c657d2c09b03acee019d6eb8b778ebf04bbe7463eacf9a16f",
+        "git_blob_sha1": "826dd6fd97cf868b500edb7febb18147b449457a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6177,
+        "sha256": "71f22e05e274e10ef55fb6f5dc24ab30a4ef79b57bc7f49e1a8352c97418fd65",
+        "git_blob_sha1": "08b35717cc7c610fd75631a9dde7748dc6a154ef"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "before": {
+        "mode": "100644",
+        "bytes": 86906,
+        "sha256": "c462733f8b88cdd15a45755b778a48b015c0789183571b017658e246897e2b77",
+        "git_blob_sha1": "322be2534f7320cb9ff81d8d658b144be0bf4f36"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 86927,
+        "sha256": "a1d3bc600cbafd1995eddd56cde81f44d5f39a10280b23ef68216c083ae60509",
+        "git_blob_sha1": "b2b99b07ab711a8463c9313d717869e0d9f8790a"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_operator_bundle.rs",
+      "before": {
+        "mode": "100644",
+        "bytes": 14479,
+        "sha256": "8b000f04d0fa2bdc09695a1e88a33fb75c91cb9f45a8ea1827c18cd330d90032",
+        "git_blob_sha1": "c9d6b4cdccf29d33f6b088663cba89b30e5f1d8a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 15146,
+        "sha256": "99546ab7494a529f39a9de68779c50362d485195afb4a3e874cfd277f0a2e5fb",
+        "git_blob_sha1": "f6642ad8782420315a4c73cc469982ae51543ec1"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
+      "before": {
+        "mode": "100644",
+        "bytes": 12805,
+        "sha256": "a3a36bf57f77505f21bbade3ef8d4ff998ef595cdee73efc98ac7114985083e9",
+        "git_blob_sha1": "07dcec533879f5b3c52acc68e476f84e28c13d11"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13106,
+        "sha256": "a0c6da403e94eb0475eedc850bccebb345e7ec338e8ec39ecff8147254a4e202",
+        "git_blob_sha1": "38270a9659ec7ef28a1f3bfa5000688ecf046f51"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "contrib/testnet/ergon-testnet-v1.conf.example",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 678,
+        "sha256": "7ca0fb50634956870fdec077d57a655723e51b733a3b5a6393329e5f36ae5e0f",
+        "git_blob_sha1": "11a2b4dfd3af160d36ed3d3c142d1a4de927ca8b"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "docs/engineering/schemas/change-evidence.schema.json",
+      "before": {
+        "mode": "100644",
+        "bytes": 16152,
+        "sha256": "2bb0c43340b3b7dbdfce9841f6bd83c70371c423071c0f1b323b45b1a3e0bceb",
+        "git_blob_sha1": "1b900e30af1f22547921e433e6483760bc82b71d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16897,
+        "sha256": "ddfea965ce1b5107a3a945d75ba233fb4642708af6a72c6cab636ad720d72b25",
+        "git_blob_sha1": "e6164bd9c12cf6a45025decb1755df5e83f92bdd"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "docs/engineering/testnet/README.md",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4498,
+        "sha256": "d24014cc35e561c5e05f14df03cd6897c164aa13b119190a19575e89b6aa3455",
+        "git_blob_sha1": "20d106a71520ed877c74bd12d877f0a8351c1947"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "docs/engineering/testnet/REWARD_THRESHOLDS.md",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5417,
+        "sha256": "035727647111570f1efb55b378e2d4fe333afebda730f91476a4caea48ce6fc8",
+        "git_blob_sha1": "d57f19aa71e5e089a04faffa2186d322257783d3"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "docs/engineering/testnet/ergon-testnet-v1.json",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2417,
+        "sha256": "8e859378d0216e1871db954aeb142fd2a3b1c6720e2db46d00b9487e0267c615",
+        "git_blob_sha1": "90f392df3df20f4558f652cff01c6c4875019851"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "src/Makefile.test.include",
+      "before": {
+        "mode": "100644",
+        "bytes": 22839,
+        "sha256": "0a32abe7c35463028e6bb452751ea03732c9ffc3be034d39301dcad0e8bf61bb",
+        "git_blob_sha1": "fc9ebd16dc0f5983c42c245f3b479b806d6f4293"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22872,
+        "sha256": "beeb1b0cf8422ef59c88018109091eac389154e30bdd6048d383cf56e4fbff1e",
+        "git_blob_sha1": "ee6bdbbcef9ebf67ead16a67ff777ef055b5cd9e"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/bitcoind.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 7426,
+        "sha256": "4483a45e5b94d50b57d8e6db5f213d8fef6146c58fb57ebb6e875edc712712ba",
+        "git_blob_sha1": "9df9074ffa59b7c9f4644ed02f9a92765aefdd36"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8010,
+        "sha256": "ae98d84e267228fb20a6eda5c6e50c6446ace89ef77f1b9e711b1c3d9cef4c58",
+        "git_blob_sha1": "174b508869b4c66ae47ec2939db611e92303ac09"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/chainparams.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 32540,
+        "sha256": "28e4929af9003e829b74ed69c0dd057b1770112f20c3f4c787ef6e498c4f4e0a",
+        "git_blob_sha1": "56c0d9ee522194b4ced0aaebc5728d448f2c72e0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 35771,
+        "sha256": "d8295be94035e119f5280d0c85db644c356be1da05de5852aafb0ff596a702db",
+        "git_blob_sha1": "380e006eb39d91e1f02ba6402264ed755c69fc48"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/chainparamsbase.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 2411,
+        "sha256": "5c2cfff369ed9deebe048844362f353bd8ef057cc35da18553fb6a2ed7b1da85",
+        "git_blob_sha1": "3bb7a4a2086f28c1654a1711431efa6b4036c84b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2793,
+        "sha256": "5b9570c0e934a09269dd99a59093206400d3fe4976bf890aab462683e3de562e",
+        "git_blob_sha1": "2dba6e93302740765dbd007605195f83d670d38c"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/chainparamsbase.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 1756,
+        "sha256": "7754c198f598eb6d7b536ef3d1f0e8cd41a8eb9872c7074dd57a231ac8360950",
+        "git_blob_sha1": "2a4bf5b3af1cf81217c752435bf28472d064b2c8"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1800,
+        "sha256": "1691d0d8ef453aab84385477c5960a3dcae0bf31dde1e9bbe8ca259fac4364e2",
+        "git_blob_sha1": "ae6e410d0a34b5e2d70cc4d57695348ebd8d75e6"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/consensus/params.h",
+      "before": {
+        "mode": "100644",
+        "bytes": 2709,
+        "sha256": "d9553a3b531558c9ba0fb0de1a81556be9afd9ac121c3b44bd02b4035698353d",
+        "git_blob_sha1": "9aed5c79b60b18daf2a4d9b8e3f302c716338aa2"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2900,
+        "sha256": "1fc3cae830cc88fd00d3d9f7397b16fbc52d3424eb2f2758c7a448da0a48fb92",
+        "git_blob_sha1": "96d990aa50f52a71a487978dc214c641cf103dd0"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/init.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 130008,
+        "sha256": "268213344284a77ca0ba7f61ebe7865b3f010859b45690dd2267d8daf2756395",
+        "git_blob_sha1": "327c1b57c9086e36d783bacde9da98a6a50d7127"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 130423,
+        "sha256": "532e68544ca8b68280ece8c60a04685c9ba4b6a91decb03fcff94d773d4153c8",
+        "git_blob_sha1": "a9537fb440bdbb9a7ac41da07e908792c42336ce"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/pow.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 27424,
+        "sha256": "b52b5f52c3fa8ac6aca22363ff15948a8af1df0d38c7cfe1c94ceb6f379fd31d",
+        "git_blob_sha1": "ae025661f2189141ef5a8c97970407675f52e9e4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 27400,
+        "sha256": "1d0bf58899403218bbd5275d8a5cbf9ef60f97ed323e97d82f3bad4560be5aec",
+        "git_blob_sha1": "f1377317df92a986dcda79e18155fd64ad43f5f4"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/rpc/blockchain.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 111037,
+        "sha256": "89a47b4979aaaa39b642864f615fa4cc6eda3d3fcd40f73191e61d0fc4a804b4",
+        "git_blob_sha1": "e14d2ce0c09b68cea4b1af3c0006c55081a8da53"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 111506,
+        "sha256": "2847b2c2abcc108447fb104dafe4cc2475ca3e881b051afabee338353919ff83",
+        "git_blob_sha1": "5e11ec1f78d4718b80938f8893c9abc178c3c61c"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/test/CMakeLists.txt",
+      "before": {
+        "mode": "100644",
+        "bytes": 6036,
+        "sha256": "11ca7da49d3f6c7c4e99e59c6b288a20059ad950c76ad8980687133082315ebf",
+        "git_blob_sha1": "f9c7e75fd0841553c817e0fb5d64bf02630e7d71"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6062,
+        "sha256": "9ffc0870f70a613ceab92c83d6fa1a302cf80681cf4c4f4bf4efc5f6c69b8886",
+        "git_blob_sha1": "c52dcb2a47ceaf0a73f8b05fb938b646e7d6a3ea"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 186418,
+        "sha256": "d318d6de5c23c01e6906123b4d459e9b68e87e5a8b262a311508c5c4ba382bf8",
+        "git_blob_sha1": "ddb9fc1d7387eb748fb632fe0e8fea245363a836"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 188483,
+        "sha256": "fe0ac0f27eac2f22eac955e8fe3835cd6b652b848d632c55364090b406aec171",
+        "git_blob_sha1": "1edfbbde5e08abca8796d86672e92ce26de1b131"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "src/test/ergon_testnet_tests.cpp",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11239,
+        "sha256": "46c1a67cc425f0b4c942a4445fa545881ec4ad5a5baaffdfac3198a165218399",
+        "git_blob_sha1": "e1c5a14cc1a014624759a19c043baaf7290591cf"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "src/util/system.cpp",
+      "before": {
+        "mode": "100644",
+        "bytes": 47155,
+        "sha256": "5f60e4c39d5b050b7cd9cd044b582723b7968791d3dfda622cde550b4715003e",
+        "git_blob_sha1": "90d16746bcf52c299e462fada3ed5b88032f4913"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 47389,
+        "sha256": "37ac1579914a4be939a69b98a16be971f447af63e7e164e287e39f258664e0fe",
+        "git_blob_sha1": "468d0401881929faaba5071dbc5b6277db2e484d"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/operator_bundle_binding.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 3390,
+        "sha256": "b5638c22f732bc86bafe528000566d14631f4c78147d57396e729b21b5719f8f",
+        "git_blob_sha1": "eb64440b66b0198775d17fd3f6b48ebf22113b81"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3415,
+        "sha256": "2cf52fd48ff56c7744296875105595dba0fc3651efe5c7311c53118534cbed70",
+        "git_blob_sha1": "92ca34e05361ff19834683690ed03b168eb96cc4"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 4290,
+        "sha256": "ebc90b201e1d383b94d499516a7aad7974ad6c388df94547c2443bb723030883",
+        "git_blob_sha1": "13443ae2f0ed9025106a2172edb7af47e26f4b35"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4524,
+        "sha256": "56263a1dcb973b77cbd19ed17a74a5b28e4db3ac4a54fe9e0b6f4454d130d2ef",
+        "git_blob_sha1": "53f1ebb476e2c0abcd7af28362b76b1eac5dec9d"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 47246,
+        "sha256": "cd93fa9cc13a2f8496f2cfb8fa825b191610c9eb9133fab9a79154654fd15d93",
+        "git_blob_sha1": "b393728f8974fe8ddda284dd229324c60b0eb56c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 48415,
+        "sha256": "a4f73841399b99777f89eb697c7d1fb6301212c62528405262a1ee1c366359dc",
+        "git_blob_sha1": "0d82ed8b5e700e7d62184b12a5f28685e7dcb0b4"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "tools/engineering/check_change.py",
+      "before": {
+        "mode": "100755",
+        "bytes": 45552,
+        "sha256": "68421dea23fa0693ed65362f885338dfa37abd734cf6e33851451490ed81a1e7",
+        "git_blob_sha1": "a539891d18d86cd3c575446507c324f5767b6f2b"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 46648,
+        "sha256": "813ddda7314cee644ac0f37cd75d1cb01b8577ffe807efe9c37de83ddd658ac4",
+        "git_blob_sha1": "87421990ec015b14c1e2c66ed4fc28281ad0cc3e"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "tools/engineering/check_ergon_testnet.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11564,
+        "sha256": "d7818e17710393b0f092f6707ab5592390cb19803b32f6d2074650b325c3159f",
+        "git_blob_sha1": "fb4f7d42d182f1804f6374e35993d6fdb33832ad"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/engineering/check_ergon_testnet_self_test.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4805,
+        "sha256": "ed906f2cc373098dd0db7f3c857d429361ddfc3b991d6e78c13c71d2cfd73692",
+        "git_blob_sha1": "2e7f79eac138e71a2fc0101e8f5a878a9eae4440"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/testnet/genesis.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2661,
+        "sha256": "f1d336869f8fda0580b52c38036244268eceadb153e89d55a8051417e08e7ecb",
+        "git_blob_sha1": "3ce6559ed1c59004dd834cdb3ad44baa7274f428"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/testnet/model.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5698,
+        "sha256": "2cbe20f4060b65f6d455c9d8d2daeda2e26f93c15570671603eb8564bd7219c2",
+        "git_blob_sha1": "efc822184e52a8fb7d3be15fc550d89329b3ff9b"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/testnet/run_smoke.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12307,
+        "sha256": "e67887e1331f5295612b0fa9795a779f70d47209dbf93208c1394bdb7dbbe61d",
+        "git_blob_sha1": "57670c1baf16c46974f0ce95308aeb6ee28ac4bc"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/testnet/self_test.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 6064,
+        "sha256": "26d70a705d0871c5e1cb6a461d672c3f3bc29f26ab40c712a3eb6b0f76f54805",
+        "git_blob_sha1": "00fa8e6a47458413b6913aba3c5a2474c9f99c2c"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/testnet/smoke_self_test.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5642,
+        "sha256": "bd9e0def069b19a7ed35c9578e3859c572dc99974be49c4a7dec968a85dd6ddb",
+        "git_blob_sha1": "191a4b76119238ed43650456d6d591fcc9cdf5c6"
+      },
+      "provenance": "A1/MIT"
+    },
+    {
+      "path": "tools/testnet/thresholds.py",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4201,
+        "sha256": "37519efe1fe5bc04797c49a0fe46a52c98f65d9c969089aa8fc64f9cad58b04d",
+        "git_blob_sha1": "017a0c226e358223c36131f1247e3ffc9005f40d"
+      },
+      "provenance": "A1/MIT"
+    }
+  ]
+}

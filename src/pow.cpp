@@ -681,7 +681,7 @@ uint32_t GetNextExpWorkRequired(const CBlockIndex *pindexPrev,
     // This cannot handle the genesis block and early blocks in general.
     assert(pindexPrev);
     if (pindexPrev->nHeight<4) {
-        return 0x1a04b500; //should be about right for two s9
+        return params.nBootstrapBits;
     }
     arith_uint256 nextTarget=ComputeExpTarget(pindexPrev , params);
     if(! IsEMAEnabled(params, pindexPrev)) {

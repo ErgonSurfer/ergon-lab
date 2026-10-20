@@ -70,6 +70,7 @@ FUZZ_SUITE = \
 BITCOIN_TESTS =\
   test/scriptnum10.h \
   test/activation_tests.cpp \
+  test/ergon_testnet_tests.cpp \
   test/addrman_tests.cpp \
   test/allocator_tests.cpp \
   test/amount_tests.cpp \

@@ -10,6 +10,18 @@ on:
       - "src/CMakeLists.txt"
       - "src/init.cpp"
       - "src/chain.*"
+      - "src/chainparams*"
+      - "src/consensus/params.h"
+      - "src/pow.*"
+      - "src/util/system.*"
+      - "src/rpc/blockchain.cpp"
+      - "src/bitcoind.cpp"
+      - "src/test/ergon_testnet_tests.cpp"
+      - "tools/testnet/**"
+      - "contrib/testnet/**"
+      - "docs/engineering/testnet/**"
+      - "tools/engineering/check_ergon_testnet*.py"
+      - "docs/engineering/changes/ergon-change-0067.json"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
       - "src/validation*"
@@ -55,6 +67,18 @@ on:
       - "src/CMakeLists.txt"
       - "src/init.cpp"
       - "src/chain.*"
+      - "src/chainparams*"
+      - "src/consensus/params.h"
+      - "src/pow.*"
+      - "src/util/system.*"
+      - "src/rpc/blockchain.cpp"
+      - "src/bitcoind.cpp"
+      - "src/test/ergon_testnet_tests.cpp"
+      - "tools/testnet/**"
+      - "contrib/testnet/**"
+      - "docs/engineering/testnet/**"
+      - "tools/engineering/check_ergon_testnet*.py"
+      - "docs/engineering/changes/ergon-change-0067.json"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
       - "src/validation*"
@@ -122,8 +146,10 @@ jobs:
 
       - name: Validate current successor and all exact historical source contracts
         run: |
-          python3 -B tools/engineering/check_chronik_continuous_service.py historical
-          python3 -B tools/engineering/check_chronik_continuous_service_self_test.py
+          python3 -B tools/engineering/check_ergon_testnet.py historical
+          python3 -B tools/engineering/check_ergon_testnet_self_test.py
+          python3 -B tools/testnet/self_test.py
+          python3 -B tools/testnet/smoke_self_test.py
           python3 -B tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py
           python3 -B tests/compatibility/upstream-chronik/deployment_service_self_test.py
           python3 -B tests/community-plugins/test_protocols.py --upstream-source .
@@ -218,6 +244,33 @@ jobs:
 
       - name: Build standalone daemon and native boundary fixtures
         run: cmake --build "$RUNNER_TEMP/ergon-upstream-build" --target bitcoind test_bitcoin -j2
+
+      - name: Native independent-network and mainnet monetary parity vectors
+        run: |
+          "$RUNNER_TEMP/ergon-upstream-build/src/test/test_bitcoin" \
+            --run_test=ergon_testnet_tests --report_level=detailed --color_output=no
+
+      - name: Native Chronik development identity and foreign-chain refusal
+        if: matrix.profile != 'compiled-out'
+        run: |
+          "$RUNNER_TEMP/ergon-upstream-build/src/test/test_bitcoin" \
+            --run_test=ergon_testnet_chronik_tests --report_level=detailed --color_output=no
+
+      - name: Five real development blocks through loopback P2P and restart
+        if: matrix.profile == 'compiled-out' || matrix.profile == 'regtest' || matrix.profile == 'regtest-plugins'
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-development-smoke"
+          if [ "$PROFILE" = compiled-out ]; then
+            python3 -B tools/testnet/run_smoke.py \
+              --daemon "$RUNNER_TEMP/ergon-upstream-build/src/bitcoind" \
+              --work-parent "$RUNNER_TEMP/ergon-development-smoke"
+          else
+            python3 -B tools/testnet/run_smoke.py \
+              --daemon "$RUNNER_TEMP/ergon-upstream-build/src/bitcoind" \
+              --work-parent "$RUNNER_TEMP/ergon-development-smoke" --chronik
+          fi
 
       - name: Build and exercise bounded multi-identifier plugin metadata
         if: matrix.profile == 'plugins' || matrix.profile == 'regtest-plugins'

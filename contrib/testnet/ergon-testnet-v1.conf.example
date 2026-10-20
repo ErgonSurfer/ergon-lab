@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT
+# Candidate example only. Start with -ergontestnet and a NEW explicit -datadir.
+# Do not reuse mainnet config, cookies, wallets, blocks, chainstate or indexes.
+# No miner, faucet, bridge, plugins or production deployment is auto-enabled.
+server=1
+upnp=0
+discover=0
+dbcache=128
+prune=0
+
+[ergon-testnet-v1]
+port=42137
+rpcport=42136
+rpcbind=127.0.0.1
+rpcallowip=127.0.0.1
+chronikupstreamservice=1
+chronikupstreamservicenetwork=ergon-testnet-v1
+chronikupstreamservicegenesis=00000066119ff801d756659ca11217fe21c0b5f66779eaf9fbc87a8945aa8b4c
+chronikupstreamserviceport=42138
+# Add reviewed bootstrap peers with addnode=HOST:42137. No connect-only cage.

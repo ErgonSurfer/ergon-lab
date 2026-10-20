@@ -223,10 +223,69 @@ public:
     }
 };
 
+// Independent development network, not an alias for inherited test/test4,
+// regtest or mainnet. Preserve mainnet cadence, decay and value calibration.
+// The easier bootstrap/pow limit is explicit; it does not guarantee positive
+// subsidy at low work, CPU exclusivity, or mainnet-equivalent miner economics.
+class CErgonTestNetParams : public CMainParams {
+public:
+    CErgonTestNetParams() {
+        strNetworkID = CBaseChainParams::ERGON_TESTNET;
+        // Inherit the mainnet 600-second target, 144-block decay interval and
+        // 7,100,000,000,000 calibration. Do not tune issuance for a stress case.
+        consensus.powLimit = uint256S("000000ffff000000000000000000000000000000000000000000000000000000");
+        consensus.nBootstrapBits = 0x1e00ffff;
+        consensus.fPowAllowMinDifficultyBlocks = false;
+        consensus.fPowNoRetargeting = false;
+        consensus.emaDAATime = 0;
+        consensus.axionActivationTime = 0;
+        consensus.tachyonActivationTime = 0;
+        consensus.asertAnchorParams = nullopt;
+        consensus.nMinimumChainWork = uint256();
+        consensus.defaultAssumeValid = BlockHash();
+        // Genesis has no predecessor; BIP34/CSV start at its first child.
+        consensus.BIP34Height = 1;
+        consensus.BIP34Hash = BlockHash();
+        consensus.CSVHeight = 1;
+
+        diskMagic = {{0x97, 0xb3, 0x11, 0x45}};
+        netMagic = {{0x4f, 0x57, 0x54, 0x9d}};
+        nDefaultPort = 42137;
+        nPruneAfterHeight = 1000;
+        m_assumed_blockchain_size = 0;
+        m_assumed_chain_state_size = 0;
+        vSeeds.clear();
+        vFixedSeeds.clear();
+        // Bootstrap peers are configured explicitly at deployment. Do not
+        // inherit BCH/mainnet seeds or impose friend-only peer restrictions.
+        cashaddrPrefix = "ergontest";
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<uint8_t>(1, 65);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<uint8_t>(1, 122);
+        base58Prefixes[SECRET_KEY] = std::vector<uint8_t>(1, 239);
+        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCF};
+        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
+        const char *tag = "Ergon development testnet v1 - 2026-10-20 - no mainnet value";
+        const std::string domain = "ergon-testnet-v1";
+        const CScript output = CScript() << OP_RETURN
+            << std::vector<uint8_t>(domain.begin(), domain.end());
+        genesis = CreateGenesisBlock(tag, output, 1792454400, 17122540,
+                                     0x1e00ffff, 1, Amount::zero());
+        consensus.hashGenesisBlock = genesis.GetHash();
+        assert(consensus.hashGenesisBlock == BlockHash::fromHex(
+            "00000066119ff801d756659ca11217fe21c0b5f66779eaf9fbc87a8945aa8b4c"));
+        assert(genesis.hashMerkleRoot == uint256S(
+            "1fa3815a171bf259ad9b7f63347dd3d807d299bd3752b7b752e4f1b39676e639"));
+        checkpointData = {{{0, genesis.GetHash()}}};
+        chainTxData = ChainTxData{1792454400, 0, 0.};
+        fDefaultConsistencyChecks = false;
+        fRequireStandard = true;
+        m_is_test_chain = true;
+    }
+};
+
 /**
  * Testnet (v3)
  */
-
 class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
@@ -733,6 +792,10 @@ const CChainParams &Params() {
 std::unique_ptr<CChainParams> CreateChainParams(const std::string &chain) {
     if (chain == CBaseChainParams::MAIN) {
         return std::make_unique<CMainParams>();
+    }
+
+    if (chain == CBaseChainParams::ERGON_TESTNET) {
+        return std::make_unique<CErgonTestNetParams>();
     }
 
     if (chain == CBaseChainParams::TESTNET) {

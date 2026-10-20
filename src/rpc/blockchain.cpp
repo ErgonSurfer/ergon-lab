@@ -1322,6 +1322,8 @@ UniValue getblockchaininfo(const Config &config,
             "{\n"
             "  \"chain\": \"xxxx\",              (string) current network name "
             "as defined in BIP70 (main, test, regtest)\n"
+            "  \"currency\": {\"ticker\": \"tXRG\", \"decimals\": 8}, (object) "
+            "display identity, only present on ergon-testnet-v1; numeric amount encoding is unchanged\n"
             "  \"blocks\": xxxxxx,             (numeric) the current number of "
             "blocks processed in the server\n"
             "  \"headers\": xxxxxx,            (numeric) the current number of "
@@ -1364,6 +1366,12 @@ UniValue getblockchaininfo(const Config &config,
     obj.reserve(fPruneMode ? automatic_pruning ? 15 : 14 : 12);
 
     obj.emplace_back("chain", config.GetChainParams().NetworkIDString());
+    if (config.GetChainParams().NetworkIDString() == CBaseChainParams::ERGON_TESTNET) {
+        UniValue::Object currency;
+        currency.emplace_back("ticker", "tXRG");
+        currency.emplace_back("decimals", 8);
+        obj.emplace_back("currency", std::move(currency));
+    }
     obj.emplace_back("blocks", ::ChainActive().Height());
     obj.emplace_back("headers", pindexBestHeader ? pindexBestHeader->nHeight : -1);
     obj.emplace_back("bestblockhash", tip->GetBlockHash().GetHex());

@@ -18,6 +18,16 @@ on:
       - "tools/engineering/check_chronik_upstream_link.py"
       - "docs/engineering/chronik/upstream-*.json"
       - "src/chain.*"
+      - "src/chainparams*"
+      - "src/consensus/params.h"
+      - "src/pow.*"
+      - "src/util/system.*"
+      - "src/rpc/blockchain.cpp"
+      - "src/bitcoind.cpp"
+      - "tools/testnet/**"
+      - "docs/engineering/testnet/**"
+      - "tools/engineering/check_ergon_testnet*.py"
+      - "docs/engineering/changes/ergon-change-0067.json"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
       - "src/validation*"
@@ -39,6 +49,16 @@ on:
       - "tools/engineering/check_chronik_upstream_link.py"
       - "docs/engineering/chronik/upstream-*.json"
       - "src/chain.*"
+      - "src/chainparams*"
+      - "src/consensus/params.h"
+      - "src/pow.*"
+      - "src/util/system.*"
+      - "src/rpc/blockchain.cpp"
+      - "src/bitcoind.cpp"
+      - "tools/testnet/**"
+      - "docs/engineering/testnet/**"
+      - "tools/engineering/check_ergon_testnet*.py"
+      - "docs/engineering/changes/ergon-change-0067.json"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
       - "src/validation*"
@@ -66,7 +86,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate the donor and workspace inventory
-        run: python3 -B tools/engineering/check_chronik_continuous_service.py check
+        run: python3 -B tools/engineering/check_ergon_testnet.py check
 
       - name: Install native build prerequisites
         run: |

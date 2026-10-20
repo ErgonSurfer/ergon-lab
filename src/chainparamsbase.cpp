@@ -16,6 +16,7 @@ const std::string CBaseChainParams::TESTNET = "test";
 const std::string CBaseChainParams::TESTNET4 = "test4";
 const std::string CBaseChainParams::SCALENET = "scale";
 const std::string CBaseChainParams::REGTEST = "regtest";
+const std::string CBaseChainParams::ERGON_TESTNET = "ergon-testnet-v1";
 
 void SetupChainParamsBaseOptions() {
     gArgs.AddArg("-regtest",
@@ -29,6 +30,8 @@ void SetupChainParamsBaseOptions() {
                  OptionsCategory::CHAINPARAMS);
     gArgs.AddArg("-scalenet", "Use the scaling test chain", false,
                  OptionsCategory::CHAINPARAMS);
+    gArgs.AddArg("-ergontestnet", "Use the independent experimental Ergon development testnet v1 (no mainnet value)",
+                 false, OptionsCategory::CHAINPARAMS);
 }
 
 static std::unique_ptr<CBaseChainParams> globalChainBaseParams;
@@ -42,6 +45,10 @@ std::unique_ptr<CBaseChainParams>
 CreateBaseChainParams(const std::string &chain) {
     if (chain == CBaseChainParams::MAIN) {
         return std::make_unique<CBaseChainParams>("", 2136);
+    }
+
+    if (chain == CBaseChainParams::ERGON_TESTNET) {
+        return std::make_unique<CBaseChainParams>("ergon-testnet-v1", 42136);
     }
 
     if (chain == CBaseChainParams::TESTNET) {

@@ -91,6 +91,7 @@ add_boost_unit_tests_to_suite(bitcoin test_bitcoin
 
 	TESTS
 		activation_tests.cpp
+		ergon_testnet_tests.cpp
 		addrman_tests.cpp
 		allocator_tests.cpp
 		amount_tests.cpp

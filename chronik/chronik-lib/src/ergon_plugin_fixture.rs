@@ -251,6 +251,10 @@ fn load_operator_plugins_for_network(root: &str, expected: &str, network: &str) 
         let net = match network {
             "main" => bitcoinsuite_core::net::Net::Mainnet,
             "regtest" => bitcoinsuite_core::net::Net::Regtest,
+            // Upstream's [test] section is a configuration selector only.
+            // Native admission, index roots and commitments remain bound to
+            // ergon-testnet-v1 and its exact genesis, never to a BCH chain.
+            "ergon-testnet-v1" => bitcoinsuite_core::net::Net::Testnet,
             _ => bail!("Unsupported historical plugin network"),
         };
         let bundle = OperatorBundle::admit_network(

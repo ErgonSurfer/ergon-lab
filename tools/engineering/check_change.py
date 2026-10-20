@@ -48,6 +48,7 @@ SIGNATURE_POLICY = {
 STAGES = {
     "legacy-compatibility",
     "optional-indexing",
+    "testnet-preparation",
     "testnet-activation",
     "mainnet-readiness",
     "research",
@@ -98,6 +99,7 @@ BUILD_ROLES = {
         "testnet-activation-enabled",
         "mainnet-control",
     ),
+    "testnet-preparation": ("compiled-out", "development-indexing", "mainnet-control"),
     "mainnet-readiness": (),
     "research": (),
 }
@@ -123,6 +125,10 @@ REQUIRED_SCENARIOS = {
         "activation-reorg",
         "mixed-peer-testnet",
         "mainnet-parameters-unchanged",
+    ),
+    "testnet-preparation": (
+        "independent-genesis", "network-selection", "mainnet-monetary-rule-parity",
+        "hashrate-arrival", "hashrate-departure", "mainnet-parameters-unchanged",
     ),
     "mainnet-readiness": (),
     "research": (),
@@ -162,6 +168,8 @@ BOUNDARIES = {
 }
 CONTINUOUS_BOUNDARIES = dict(BOUNDARIES,
     chronik_enabled_scope="explicit-native-network-genesis-bound-main-or-regtest")
+TESTNET_BOUNDARIES = dict(BOUNDARIES,
+    chronik_enabled_scope="explicit-native-network-genesis-bound-main-regtest-or-ergon-testnet-v1")
 TOP_LEVEL_KEYS = {
     "$comment",
     "$schema",
@@ -428,7 +436,7 @@ def validate_prerequisites(value: Any, path: str, stage: str) -> None:
         digest(record["evidence_sha256"], item_path + ".evidence_sha256")
         require(record["delivery_state"] == "verified", item_path + ".delivery_state", "must be verified")
         require(record["knowledge_status"] == "Reproduced", item_path + ".knowledge_status", "must be Reproduced")
-    if stage == "optional-indexing":
+    if stage in ("optional-indexing", "testnet-preparation"):
         require(seen_stages == {"legacy-compatibility"}, path, "optional indexing requires reproduced legacy compatibility evidence")
     elif stage == "testnet-activation":
         require(seen_stages == {"legacy-compatibility", "optional-indexing"}, path, "testnet activation requires reproduced legacy and indexing evidence")
@@ -575,7 +583,8 @@ def validate(value: Any, source: str = "change") -> dict[str, Any]:
     else:
         require(surfaces["consensus"] is True, source + ".surfaces.consensus", "activation must declare consensus reachability")
     require(record["boundaries"] == BOUNDARIES or
-            (stage == "optional-indexing" and record["boundaries"] == CONTINUOUS_BOUNDARIES),
+            (stage == "optional-indexing" and record["boundaries"] == CONTINUOUS_BOUNDARIES) or
+            (stage == "testnet-preparation" and record["boundaries"] == TESTNET_BOUNDARIES),
             source + ".boundaries", "must match the unchanged standalone authority boundary and explicit profile")
     validate_verification(record["verification"], source + ".verification", stage)
     validate_evidence(record["evidence"], source + ".evidence", status)
@@ -621,7 +630,7 @@ def check(root: Path) -> None:
     properties = schema["properties"]
     require(properties["schema_version"].get("const") == "1.1", str(SCHEMA_PATH) + ".properties.schema_version", "must match validator version 1.1")
     require(properties["change_id"].get("type") == "string", str(SCHEMA_PATH) + ".properties.change_id", "must type change IDs as strings")
-    require(properties["boundaries"] == {"oneOf": [{"const": BOUNDARIES}, {"const": CONTINUOUS_BOUNDARIES}]},
+    require(properties["boundaries"] == {"oneOf": [{"const": BOUNDARIES}, {"const": CONTINUOUS_BOUNDARIES}, {"const": TESTNET_BOUNDARIES}]},
             str(SCHEMA_PATH) + ".properties.boundaries", "must preserve exact authority and both explicit profile descriptions")
     require("allOf" not in schema, str(SCHEMA_PATH) + ".allOf", "must not pin a per-change inventory digest")
     definitions = obj(schema.get("$defs"), str(SCHEMA_PATH) + ".$defs")
@@ -683,6 +692,7 @@ def sample(stage: str = "legacy-compatibility", status: str = "draft") -> dict[s
     prerequisites_by_stage = {
         "legacy-compatibility": (),
         "optional-indexing": ("legacy-compatibility",),
+        "testnet-preparation": ("legacy-compatibility",),
         "testnet-activation": ("legacy-compatibility", "optional-indexing"),
         "mainnet-readiness": ("testnet-activation",),
         "research": (),
@@ -747,7 +757,7 @@ def sample(stage: str = "legacy-compatibility", status: str = "draft") -> dict[s
             }
         ],
         "surfaces": {
-            name: name == "tests" or (name == "consensus" and stage == "testnet-activation")
+            name: name == "tests" or (name == "consensus" and stage in ("testnet-activation", "testnet-preparation"))
             for name in sorted(SURFACES)
         },
         "boundaries": copy.deepcopy(BOUNDARIES),
@@ -858,6 +868,16 @@ def self_test() -> None:
             "testnet consensus hidden",
             sample("testnet-activation"),
             lambda item: item["surfaces"].update({"consensus": False}),
+        ),
+        (
+            "testnet preparation consensus hidden",
+            sample("testnet-preparation"),
+            lambda item: item["surfaces"].update({"consensus": False}),
+        ),
+        (
+            "testnet preparation promoted to activation without indexing evidence",
+            sample("testnet-preparation"),
+            lambda item: item.update({"stage": "testnet-activation"}),
         ),
         (
             "research production reachability",

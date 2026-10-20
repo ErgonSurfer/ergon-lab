@@ -113,7 +113,19 @@ static bool AppInit(int argc, char *argv[]) {
                     gArgs.GetArg("-datadir", "").c_str());
             return false;
         }
-        if (!gArgs.ReadConfigFiles(error)) {
+        bool configRead;
+        try {
+            configRead = gArgs.ReadConfigFiles(error);
+        } catch (const std::exception &e) {
+            // New-network selection conflicts can be detected while reading
+            // configuration, before BaseParams exists. Refuse them normally;
+            // do not enter Shutdown's network-dependent path before init.
+            // Preserve inherited exception handling for every older profile.
+            if (!gArgs.GetBoolArg("-ergontestnet", false)) throw;
+            fprintf(stderr, "Error: %s\n", e.what());
+            return false;
+        }
+        if (!configRead) {
             fprintf(stderr, "Error reading configuration file: %s\n",
                     error.c_str());
             return false;

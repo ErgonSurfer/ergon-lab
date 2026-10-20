@@ -1,0 +1,62 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "schema": "ergon-development-network/v1",
+  "license": "MIT",
+  "network": "ergon-testnet-v1",
+  "status": "candidate-not-deployed",
+  "knowledge_status": "Open Question",
+  "asset": {"name": "Ergon Testnet", "ticker": "tXRG", "decimals": 8},
+  "genesis": {
+    "hash": "00000066119ff801d756659ca11217fe21c0b5f66779eaf9fbc87a8945aa8b4c",
+    "merkle_root": "1fa3815a171bf259ad9b7f63347dd3d807d299bd3752b7b752e4f1b39676e639",
+    "timestamp": 1792454400,
+    "nonce": 17122540,
+    "bits": "1e00ffff",
+    "reward_base_units": 0
+  },
+  "identity": {
+    "selection_flag": "-ergontestnet",
+    "datadir_suffix": "ergon-testnet-v1",
+    "cashaddr_prefix": "ergontest",
+    "p2p_magic": "4f57549d",
+    "disk_magic": "97b31145",
+    "p2p_port": 42137,
+    "rpc_port": 42136,
+    "chronik_example_port": 42138,
+    "builtin_seeds": []
+  },
+  "consensus": {
+    "pow": "sha256d",
+    "daa": "existing-ergon-ema",
+    "bootstrap_bits": "1e00ffff",
+    "pow_limit_hex": "000000ffff000000000000000000000000000000000000000000000000000000",
+    "target_spacing_seconds": 600,
+    "decay_interval_blocks": 144,
+    "value_calibration": 7100000000000,
+    "ema_activation_time": 0,
+    "reward_model": "existing-proportional-integer-without-floor-or-cap",
+    "coinbase_maturity_blocks": 100,
+    "cashtokens_activation": "not-implemented"
+  },
+  "fidelity": {
+    "priority": "mainnet-rule-fidelity-before-daa-experiments",
+    "same_as_mainnet": ["sha256d", "ema-algorithm", "target-spacing", "decay-interval", "value-calibration", "integer-reward-rounding"],
+    "explicit_differences": ["independent-network-identity-and-genesis", "easier-bootstrap-and-pow-limit", "current-rules-from-new-chain-origin", "no-inherited-seeds-checkpoints-assumevalid-or-chainwork"],
+    "low_work_subsidy_may_be_zero": true,
+    "extreme_scenarios_define_consensus": false,
+    "daa_evolution": "future-separate-experiment-not-approved-by-this-profile"
+  },
+  "operation": {
+    "automatic_mining": false,
+    "cpu_exclusive": false,
+    "external_peers_allowed": true,
+    "application_or_friendship_required": false,
+    "mainnet_fallback": false,
+    "mainnet_bridge": false,
+    "public_rpc": false,
+    "chronik_bind": "loopback-only",
+    "wallet_index_and_datadir_reuse": false,
+    "universal_transaction_replay_protection": false,
+    "silent_reset_or_difficulty_override": false
+  }
+}

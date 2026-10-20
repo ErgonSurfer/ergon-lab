@@ -38,8 +38,10 @@ public:
                           const std::string &expected_genesis)
         :m_network(std::move(expected_network)),m_genesis(CheckedGenesis(expected_genesis)) {
         // regtest is retained solely for the synthetic historical-profile
-        // oracle. This does not admit new testnet rules or an activation path.
-        if((m_network!="main" && m_network!="regtest") || !Matches(config))
+        // oracle. The dedicated development network has its own native
+        // parameters; inherited BCH test profiles remain inadmissible.
+        if((m_network!="main" && m_network!="regtest" &&
+            m_network!=CBaseChainParams::ERGON_TESTNET) || !Matches(config))
             throw std::runtime_error("Historical native network/genesis mismatch");
     }
     bool Matches(const Config &config) const {
