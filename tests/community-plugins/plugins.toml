@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Synthetic local-regtest fixture only, never an operator configuration.
+[regtest.plugin.moom_alp_token_index]
+class = "MoomAlpTokenIndexPlugin"
+[regtest.plugin.moom_nft_index]
+class = "MoomNftIndexPlugin"
+[regtest.plugin.moom_alp_exch_market]
+class = "MoomAlpExchMarketPlugin"
+[regtest.plugin.moom_reward_claim_index]
+class = "MoomRewardClaimIndexPlugin"

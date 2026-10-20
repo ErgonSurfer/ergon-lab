@@ -164,6 +164,8 @@ PLUGIN_ADAPTER_INPUTS = (
     "chronik/chronik-db/src/mem/mempool.rs",
     "tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py",
     "src/test/main.cpp",
+    "chronik/chronik-lib/src/ergon_operator_bundle.rs",
+    "chronik/chronik-lib/src/ergon_plugin_access.rs",
 )
 PLUGIN_ENABLED_INPUTS = (
     "chronik/chronik-plugin-impl/src/module.rs",
@@ -433,6 +435,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
         for row in layer["files"]:
             if row["path"] in merged:
                 require(row["before"] == merged[row["path"]]["after"], "multi-lokad projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
+    external_manifest = source / "docs/engineering/chronik/upstream-external-plugins-v1.json"
+    if external_manifest.exists():
+        from check_chronik_external_plugins import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(external_manifest))
+        require(layer["schema"] == "ergon-upstream-external-plugins/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES), "external plugin projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "external plugin projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
     for row in rows:

@@ -339,6 +339,11 @@ def validate(root: Path) -> HistoricalView:
         for path in sorted(MULTI_SOURCES):
             if path.startswith("chronik/") and path not in view.rows:
                 view.rows[path] = {"before": multi_before(root, path)}
+    from check_chronik_external_plugins import SOURCES as EXTERNAL_SOURCES, additional_paths as external_paths, before_identity as external_before
+    if external_paths(root):
+        for path in sorted(EXTERNAL_SOURCES):
+            if path.startswith("chronik/") and path not in view.rows:
+                view.rows[path] = {"before": external_before(root, path)}
     return view
 
 def main():

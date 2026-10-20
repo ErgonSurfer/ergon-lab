@@ -37,3 +37,11 @@ mod ergon_http_tests;
 // SPDX-License-Identifier: MIT — public synthetic plugin fixture, no daemon API.
 #[cfg(feature = "ergon-archival-probe")]
 mod ergon_plugin_fixture;
+
+// SPDX-License-Identifier: MIT — content-bound trusted operator inputs.
+#[cfg(feature = "ergon-archival-probe")]
+mod ergon_operator_bundle;
+
+// SPDX-License-Identifier: MIT — immutable, owner-derived HTTP capability.
+#[cfg(feature = "ergon-archival-probe")]
+mod ergon_plugin_access;

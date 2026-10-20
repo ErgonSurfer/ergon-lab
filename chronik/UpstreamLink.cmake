@@ -90,6 +90,8 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         chronik/chronik-db/src/mem/mempool.rs
         tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py
         src/test/main.cpp)
+    list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_operator_bundle.rs
+        chronik/chronik-lib/src/ergon_plugin_access.rs)
     list(APPEND _identity_inputs CMakeLists.txt src/init.cpp
         chronik/chronik-cpp/ergon_regtest_service.h
         chronik/chronik-cpp/ergon_regtest_service.cpp)

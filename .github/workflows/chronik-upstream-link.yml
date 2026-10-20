@@ -38,8 +38,11 @@ on:
       - "docs/engineering/changes/ergon-change-0062.json"
       - "docs/engineering/changes/ergon-change-0063.json"
       - "docs/engineering/changes/ergon-change-0064.json"
+      - "docs/engineering/changes/ergon-change-0065.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
+      - "tests/community-plugins/**"
+      - "plugins/**"
   push:
     branches: [main]
     paths:
@@ -77,8 +80,11 @@ on:
       - "docs/engineering/changes/ergon-change-0062.json"
       - "docs/engineering/changes/ergon-change-0063.json"
       - "docs/engineering/changes/ergon-change-0064.json"
+      - "docs/engineering/changes/ergon-change-0065.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
+      - "tests/community-plugins/**"
+      - "plugins/**"
   workflow_dispatch:
 
 permissions:
@@ -162,6 +168,12 @@ jobs:
           python3 -B tools/engineering/check_chronik_multi_lokad.py check
           python3 -B tools/engineering/check_chronik_multi_lokad_self_test.py
           python3 -B tests/compatibility/upstream-chronik/multi_lokad_component_self_test.py
+          python3 -B tools/engineering/check_chronik_external_plugins.py check
+          python3 -B tools/engineering/check_chronik_external_plugins_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py
+          python3 -B tests/community-plugins/test_protocols.py --upstream-source .
+          python3 -B tests/community-plugins/component_self_test.py --upstream-source .
+          python3 -B tests/community-plugins/service_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -253,6 +265,37 @@ jobs:
             --target-dir "$RUNNER_TEMP/ergon-upstream-target" \
             --cargo-artifacts "$RUNNER_TEMP/ergon-multi-lokad-artifacts.jsonl" \
             --work-parent "$RUNNER_TEMP/ergon-multi-lokad-work"
+
+      - name: Build and exercise the contributed plugins and trusted input contracts
+        if: matrix.profile == 'plugins' || matrix.profile == 'regtest-plugins'
+        env:
+          CARGO_HOME: ${{ runner.temp }}/ergon-upstream-cargo-home
+          CARGO_TARGET_DIR: ${{ runner.temp }}/ergon-upstream-target
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_INCREMENTAL: "0"
+          PYO3_PYTHON: /usr/bin/python3.12
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          cargo test --manifest-path chronik/Cargo.toml --package chronik-plugin-impl \
+            --example ergon-community-plugins --no-run --message-format=json --locked --offline -j2 \
+            > "$RUNNER_TEMP/ergon-community-artifacts.jsonl"
+          cargo build --manifest-path chronik/Cargo.toml --package chronik-plugin-impl \
+            --example ergon-community-plugins --locked --offline -j2
+          mkdir "$RUNNER_TEMP/ergon-community-component-work"
+          python3 -B tests/community-plugins/component.py \
+            --source-root "$GITHUB_WORKSPACE" --target-dir "$RUNNER_TEMP/ergon-upstream-target" \
+            --cargo-artifacts "$RUNNER_TEMP/ergon-community-artifacts.jsonl" \
+            --work-parent "$RUNNER_TEMP/ergon-community-component-work"
+
+      - name: Actual contributed plugins through isolated native regtest service
+        if: matrix.profile == 'regtest-plugins'
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-community-service-work"
+          python3 -B tests/community-plugins/service.py \
+            --source-root "$GITHUB_WORKSPACE" --build-root "$RUNNER_TEMP/ergon-upstream-build" \
+            --example "$RUNNER_TEMP/ergon-upstream-target/debug/examples/ergon-community-plugins" \
+            --work-parent "$RUNNER_TEMP/ergon-community-service-work" \
+            --report "$RUNNER_TEMP/ergon-community-service.json" --repetitions 1
 
       - name: Repeat exact profile-bound component cases in fresh processes
         if: matrix.profile != 'compiled-out'

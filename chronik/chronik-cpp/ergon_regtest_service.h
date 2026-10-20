@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 class Config;
 namespace ergon_regtest {
 struct ServiceStatus {
@@ -19,7 +20,8 @@ class OwnedService {
   public:
     // Deterministic native fixture latch, never a daemon option.
     explicit OwnedService(const Config &config, std::function<void()> before_open = {},
-                          bool public_plugin = false);
+                          bool public_plugin = false,
+                          std::string operator_root = {}, std::string operator_binding = {});
     ~OwnedService();
     OwnedService(const OwnedService &) = delete;
     OwnedService &operator=(const OwnedService &) = delete;

@@ -11,7 +11,8 @@ class Contract(unittest.TestCase):
     root = Path(__file__).resolve().parents[2]
 
     def test_exact_layer_and_legacy_loader_semantics(self):
-        self.assertEqual(gate.validate(self.root), gate.CHANGED)
+        from check_chronik_external_plugins import additional_paths
+        self.assertEqual(gate.validate(self.root), gate.CHANGED | additional_paths(self.root))
 
     def test_metadata_limits_and_loader_construction_are_not_relaxed(self):
         before = gate.git(self.root, "show", gate.PARENT + ":" + gate.LOADER).decode()

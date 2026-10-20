@@ -43,6 +43,22 @@ Publication is denied if content contains, reveals, or depends on:
 Sanitizing a private-derived artifact in place does not make it public. Rebuild
 the artifact from reviewed public inputs. Uncertainty means `blocked`.
 
+### Finite maintainer-contributed plugin release
+
+The maintainer's 2026-10-20 publication instruction permits only the four
+standalone protocol plugins `plugins/moom_alp_token_index.py`,
+`plugins/moom_nft_index.py`, `plugins/moom_alp_exch_market.py` and
+`plugins/moom_reward_claim_index.py`, with exact reviewed postimages bound by
+`docs/engineering/chronik/upstream-external-plugins-v1.json` and
+`ERGON-CHANGE-0065`. They are explicitly contributed under MIT, not relabeled
+as donor bytes. Original module/class and wire identifiers remain for client
+compatibility and provenance. Their protocol documentation and synthetic public
+tests are reviewed with that finite contribution. This permits no other host
+product source, architecture, configuration, endpoint, operator data, private
+history, corpus or report, and creates no automatic future export exception.
+Unclear third-party rights remain blocked. The exact-SHA, signature, review,
+evidence and activation rules below remain unchanged.
+
 ## 3. Engineering change evidence
 
 Before technical bytes are accepted, a machine-readable record must bind the

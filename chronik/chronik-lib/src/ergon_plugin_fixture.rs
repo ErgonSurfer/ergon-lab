@@ -2,6 +2,7 @@
 // Copyright (c) 2026 The Ergon developers
 //! Owned public synthetic plugin fixture over the unchanged upstream engine.
 //! One interpreter context per fresh process, shared across DB reopen/worker.
+use crate::ergon_operator_bundle::OperatorBundle;
 use abc_rust_error::{bail, Result};
 use bitcoinsuite_core::hash::{Hashed, Sha256};
 use chronik_plugin::context::PluginContext;
@@ -22,9 +23,17 @@ pub struct PluginFixture {
     root: PathBuf,
     config: Vec<u8>,
     pub(crate) binding: String,
+    operator_bundle: Option<OperatorBundle>,
 }
 impl PluginFixture {
     pub(crate) fn check(&self) -> Result<()> {
+        #[cfg(feature = "plugins")]
+        if let Some(bundle) = &self.operator_bundle {
+            return bundle.check(
+                env!("CHRONIK_ERGON_PYTHON_VERSION"),
+                env!("CHRONIK_ERGON_PYTHON_ID"),
+            );
+        }
         if fs::canonicalize(&self.root)? != self.root {
             bail!("Plugin fixture root alias changed");
         }
@@ -44,6 +53,9 @@ impl PluginFixture {
         }
         Ok(())
     }
+    pub(crate) fn is_operator(&self) -> bool {
+        self.operator_bundle.is_some()
+    }
     pub fn loaded(&self) -> u32 {
         self.context.plugins().len() as u32
     }
@@ -59,7 +71,10 @@ pub fn load_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>> {
 
 pub(crate) fn binding_for_mode(mode: u8) -> Result<String> {
     #[cfg(not(feature = "plugins"))]
-    { let _ = mode; bail!("Upstream plugin implementation is not enabled"); }
+    {
+        let _ = mode;
+        bail!("Upstream plugin implementation is not enabled");
+    }
     #[cfg(feature = "plugins")]
     {
         let config = config_for_mode(mode)?;
@@ -92,14 +107,7 @@ fn plugin_fixture(root: &str, mode: u8, reopen: bool) -> Result<Box<PluginFixtur
     }
     #[cfg(feature = "plugins")]
     {
-        use bitcoinsuite_core::net::Net;
-        use chronik_plugin::params::PluginParams;
-        use pyo3::{
-            types::{PyAnyMethods, PyModule},
-            Python,
-        };
         use std::io::Write;
-        static INITIALIZED: AtomicBool = AtomicBool::new(false);
         let root = PathBuf::from(root);
         if !root.is_absolute()
             || fs::canonicalize(&root)? != root
@@ -111,20 +119,24 @@ fn plugin_fixture(root: &str, mode: u8, reopen: bool) -> Result<Box<PluginFixtur
         let binding = binding_for_mode(mode)?;
         let provisional = PluginFixture {
             context: Arc::new(PluginContext::default()),
-            root: root.clone(), config: config.clone(), binding: binding.clone(),
+            root: root.clone(),
+            config: config.clone(),
+            binding: binding.clone(),
+            operator_bundle: None,
         };
         // Validate existing bytes BEFORE interpreter initialization/import.
-        if reopen { provisional.check()?; }
-        if INITIALIZED.swap(true, Ordering::SeqCst) {
-            bail!("Reuse the owned plugin fixture; interpreter setup is process-once");
+        if reopen {
+            provisional.check()?;
         }
-        if unsafe { pyo3::ffi::Py_IsInitialized() } != 0 {
-            bail!("Plugin fixture requires ownership of initial interpreter setup");
-        }
-        for (name, bytes) in if reopen { Vec::new() } else { vec![
-            ("ergon_public_probe.py", SOURCE.as_bytes()),
-            ("plugins.toml", config.as_slice()),
-        ] } {
+        claim_interpreter()?;
+        for (name, bytes) in if reopen {
+            Vec::new()
+        } else {
+            vec![
+                ("ergon_public_probe.py", SOURCE.as_bytes()),
+                ("plugins.toml", config.as_slice()),
+            ]
+        } {
             let mut file = fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -132,41 +144,140 @@ fn plugin_fixture(root: &str, mode: u8, reopen: bool) -> Result<Box<PluginFixtur
             file.write_all(bytes)?;
             file.sync_all()?;
         }
-        // No Python code/import precedes upstream registration. Suppress
-        // generated caches at native CPython configuration, before first init.
-        unsafe {
-            pyo3::ffi::Py_DontWriteBytecodeFlag = 1;
-            pyo3::ffi::Py_IgnoreEnvironmentFlag = 1;
-            pyo3::ffi::Py_NoUserSiteDirectory = 1;
-            pyo3::ffi::Py_NoSiteFlag = 1;
-            pyo3::ffi::Py_IsolatedFlag = 1;
-        }
-        let context = Arc::new(PluginContext::setup(PluginParams {
-            net: Net::Regtest,
-            plugins_dir: root.clone(),
-            plugins_conf: root.join("plugins.toml"),
-        })?);
+        let context = setup_context(&root)?;
         if context.plugins().len() != 1 || context.plugins()[0].module_name != "ergon_public_probe"
         {
             bail!("Actual upstream plugin was not loaded");
-        }
-        let python: String = Python::with_gil(|py| -> pyo3::PyResult<String> {
-            PyModule::import(py, "platform")?
-                .getattr("python_version")?
-                .call0()?
-                .extract()
-        })?;
-        if python != env!("CHRONIK_ERGON_PYTHON_VERSION") {
-            bail!("Plugin interpreter differs from configured profile");
         }
         let fixture = Box::new(PluginFixture {
             context,
             root,
             config,
             binding,
+            operator_bundle: None,
         });
         fixture.check()?;
         Ok(fixture)
+    }
+}
+
+// Shared by both entry points; failed interpreter ownership is not retried.
+#[cfg(feature = "plugins")]
+fn claim_interpreter() -> Result<()> {
+    static INITIALIZED: AtomicBool = AtomicBool::new(false);
+    if INITIALIZED.swap(true, Ordering::SeqCst) {
+        bail!("Reuse the owned plugin fixture; interpreter setup is process-once");
+    }
+    if unsafe { pyo3::ffi::Py_IsInitialized() } != 0 {
+        bail!("Plugin fixture requires ownership of initial interpreter setup");
+    }
+    Ok(())
+}
+
+#[cfg(feature = "plugins")]
+fn setup_context(root: &std::path::Path) -> Result<Arc<PluginContext>> {
+    use bitcoinsuite_core::net::Net;
+    use chronik_plugin::params::PluginParams;
+    use pyo3::{
+        types::{PyAnyMethods, PyModule},
+        Python,
+    };
+    // No Python code/import precedes upstream registration. Suppress
+    // generated caches at native CPython configuration, before first init.
+    unsafe {
+        pyo3::ffi::Py_DontWriteBytecodeFlag = 1;
+        pyo3::ffi::Py_IgnoreEnvironmentFlag = 1;
+        pyo3::ffi::Py_NoUserSiteDirectory = 1;
+        pyo3::ffi::Py_NoSiteFlag = 1;
+        pyo3::ffi::Py_IsolatedFlag = 1;
+    }
+    let context = Arc::new(PluginContext::setup(PluginParams {
+        net: Net::Regtest,
+        plugins_dir: root.to_path_buf(),
+        plugins_conf: root.join("plugins.toml"),
+    })?);
+    let python: String = Python::with_gil(|py| -> pyo3::PyResult<String> {
+        PyModule::import(py, "platform")?
+            .getattr("python_version")?
+            .call0()?
+            .extract()
+    })?;
+    if python != env!("CHRONIK_ERGON_PYTHON_VERSION") {
+        bail!("Plugin interpreter differs from configured profile");
+    }
+    Ok(context)
+}
+
+/// Offline inspection only; caller must explicitly approve this commitment.
+pub fn operator_bundle_binding(root: &str) -> Result<String> {
+    #[cfg(not(feature = "plugins"))]
+    {
+        let _ = root;
+        bail!("Upstream plugin implementation is not enabled");
+    }
+    #[cfg(feature = "plugins")]
+    Ok(OperatorBundle::inspect(
+        std::path::Path::new(root),
+        env!("CHRONIK_ERGON_PYTHON_VERSION"),
+        env!("CHRONIK_ERGON_PYTHON_ID"),
+    )?
+    .binding)
+}
+
+/// Trusted Python code, never a sandbox. Regtest only, no index adoption/wipe.
+/// The legacy CXX type name is retained to preserve the synthetic fixture ABI.
+pub fn load_operator_plugins(root: &str, expected: &str) -> Result<Box<PluginFixture>> {
+    #[cfg(not(feature = "plugins"))]
+    {
+        let _ = (root, expected);
+        bail!("Upstream plugin implementation is not enabled");
+    }
+    #[cfg(feature = "plugins")]
+    {
+        use pyo3::{
+            types::{PyAnyMethods, PyModule},
+            Python,
+        };
+        let bundle = OperatorBundle::admit(
+            std::path::Path::new(root),
+            expected,
+            env!("CHRONIK_ERGON_PYTHON_VERSION"),
+            env!("CHRONIK_ERGON_PYTHON_ID"),
+        )?;
+        claim_interpreter()?;
+        let context = setup_context(bundle.root())?;
+        let names: Vec<_> = context
+            .plugins()
+            .iter()
+            .map(|p| p.module_name.clone())
+            .collect();
+        if names != bundle.modules() {
+            bail!("Configured plugins differ from complete operator source inventory");
+        }
+        // Do not silently accept a cached/standard-library module in place of
+        // an inventoried source. All helpers must be embedded upstream or stdlib.
+        Python::with_gil(|py| -> Result<()> {
+            for name in &names {
+                let file: String = PyModule::import(py, name.as_str())?
+                    .getattr("__file__")?
+                    .extract()?;
+                if std::path::Path::new(&file) != bundle.root().join(format!("{name}.py")) {
+                    bail!("Loaded operator module origin mismatch");
+                }
+            }
+            Ok(())
+        })?;
+        bundle.check(
+            env!("CHRONIK_ERGON_PYTHON_VERSION"),
+            env!("CHRONIK_ERGON_PYTHON_ID"),
+        )?;
+        Ok(Box::new(PluginFixture {
+            context,
+            root: bundle.root().to_path_buf(),
+            config: Vec::new(),
+            binding: bundle.binding.clone(),
+            operator_bundle: Some(bundle),
+        }))
     }
 }
 

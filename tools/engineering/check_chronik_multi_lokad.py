@@ -70,6 +70,8 @@ PLUGIN_IDENTITY_BLOCK = '''    "chronik/chronik-plugin-impl/src/module.rs",
 
 
 def normalize_runner(text):
+    from check_chronik_external_plugins import normalize_runner as normalize_external
+    text = normalize_external(text)
     if 'multi_lokad_manifest = source / ' not in text:
         return text
     require(text.count(PROJECTION_BLOCK) == 1, "multi-lokad projection protocol drift")
@@ -83,19 +85,21 @@ def before_identity(root, path):
 
 
 def additional_paths(root):
-    return CHANGED if (root / MANIFEST).exists() else frozenset()
+    from check_chronik_external_plugins import additional_paths as external_paths
+    return (CHANGED if (root / MANIFEST).exists() else frozenset()) | external_paths(root)
 
 
 def successor_identity(root, path, previous):
-    if not (root / MANIFEST).exists():
-        return previous
-    rows = [r for r in load_json(root / MANIFEST)["files"] if r["path"] == path]
-    if not rows:
-        return previous
-    require(path in MANIFEST_FILES and len(rows) == 1 and
-            rows[0]["before"] == before_identity(root, path) and
-            previous in (rows[0]["before"], rows[0]["after"]), "multi-lokad successor preimage drift")
-    return rows[0]["after"]
+    result = previous
+    if (root / MANIFEST).exists():
+        rows = [r for r in load_json(root / MANIFEST)["files"] if r["path"] == path]
+        if rows:
+            require(path in MANIFEST_FILES and len(rows) == 1 and
+                    rows[0]["before"] == before_identity(root, path) and
+                    previous in (rows[0]["before"], rows[0]["after"]), "multi-lokad successor preimage drift")
+            result = rows[0]["after"]
+    from check_chronik_external_plugins import successor_identity as external_successor
+    return external_successor(root, path, result)
 
 
 def validate_loader(before, after):
@@ -124,6 +128,10 @@ def validate_loader(before, after):
 
 def validate(root):
     root = root.resolve(strict=True)
+    from check_chronik_external_plugins import additional_paths as external_paths, validate as validate_external, normalize_cargo, normalize_cmake
+    extra = external_paths(root)
+    if extra:
+        validate_external(root)
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == TREE and
             git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"", "multi-lokad parent drift")
     manifest = load_json(root / MANIFEST)
@@ -136,14 +144,14 @@ def validate(root):
     for row in manifest["files"]:
         require(set(row) == {"path", "before", "after", "provenance", "reachability"} and
                 row["before"] == before_identity(root, row["path"]) and
-                row["after"] == current_identity(root, row["path"]) and row["after"] != row["before"] and
+                successor_identity(root, row["path"], row["after"]) == current_identity(root, row["path"]) and row["after"] != row["before"] and
                 row["after"]["mode"] == "100644" and
                 row["provenance"] == ("A1/MIT" if row["before"] is None else "PUBLIC+A1/MIT") and
                 row["reachability"] == ("optional-plugin-build-or-synthetic-test" if row["path"] in SOURCES else "test-or-policy-only"),
                 "multi-lokad pre/postimage or provenance drift")
     changed = {p.decode() for p in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if p}
     changed |= {p.decode() for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if p}
-    require(changed == CHANGED, "unexpected multi-lokad path")
+    require(changed == CHANGED | extra, "unexpected multi-lokad path")
     validate_loader(git(root, "show", PARENT + ":" + LOADER).decode(), (root / LOADER).read_text())
     runner_path = "tests/compatibility/upstream-chronik/run_repetitions.py"
     runner = (root / runner_path).read_text()
@@ -152,6 +160,8 @@ def validate(root):
             "multi-lokad changed inherited runner selection/deadline/environment/failure/cleanup law")
     cargo_before = tomllib.loads(git(root, "show", PARENT + ":" + CARGO).decode())
     cargo_after = tomllib.loads((root / CARGO).read_text())
+    if extra:
+        cargo_after = normalize_cargo(cargo_after)
     require(cargo_after.pop("example") == [{"name": "ergon-public-multi-lokad",
         "path": "../../tests/compatibility/upstream-chronik/multi_lokad_probe.rs"}] and
         cargo_after == cargo_before, "multi-lokad changed crate/dependency boundary")
@@ -160,10 +170,12 @@ def validate(root):
         "chronik/chronik-plugin-impl/src/context.rs", "chronik/chronik-plugin-impl/src/etoken.rs",
         "chronik/chronik-plugin-impl/src/etoken.py", "chronik/chronik-indexer/src/indexer.rs",
         "chronik/chronik-cpp/ergon_node_access.h", "chronik/chronik-lib/src/ergon_plugin_fixture.rs"):
-        require(current_identity(root, path) == before_identity(root, path), "multi-lokad changed frozen engine/native input")
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)), "multi-lokad changed frozen engine/native input")
     for path in (LOADER, API, CARGO):
         require(b"Copyright (c) 2024 The Bitcoin developers" in (root / path).read_bytes()[:250], "upstream notice lost")
     cmake = (root / "chronik/UpstreamLink.cmake").read_text()
+    if extra:
+        cmake = normalize_cmake(cmake)
     before_cmake = git(root, "show", PARENT + ":chronik/UpstreamLink.cmake").decode()
     anchor = '        list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs\n'
     require(cmake == before_cmake.replace(anchor, anchor +
@@ -178,8 +190,8 @@ def validate(root):
     for row in record["files"]:
         normalize = lambda v: None if v is None else {("git_blob_sha1" if k == "git_blob" else k): x for k, x in v.items()}
         require(normalize(row["before"]) == before_identity(root, row["path"]) and
-                normalize(row["after"]) == current_identity(root, row["path"]), "multi-lokad record identity drift")
-    return CHANGED
+                successor_identity(root, row["path"], normalize(row["after"])) == current_identity(root, row["path"]), "multi-lokad record identity drift")
+    return CHANGED | extra
 
 
 if __name__ == "__main__":

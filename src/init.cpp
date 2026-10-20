@@ -450,6 +450,14 @@ void SetupServerArgs() {
                  "Load only the built-in public synthetic Chronik plugin; "
                  "requires -chronikupstreamregtest (default: 0; not arbitrary plugin admission)",
                  false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamregtestpluginbundle=<dir>",
+                 "Load trusted operator Python plugins from a dedicated canonical directory; "
+                 "requires unpruned local regtest service and explicit content binding (default: OFF; not a sandbox)",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamregtestpluginbinding=<sha256>",
+                 "Expected approved source/config/interpreter binding for the operator plugin bundle; "
+                 "never adopts or wipes an existing incompatible index",
+                 false, OptionsCategory::OPTIONS);
 #endif
 #ifdef ENABLE_CHRONIK_OBSERVER
     gArgs.AddArg("-chronikobserver",
@@ -1676,6 +1684,16 @@ bool AppInitParameterInteraction(Config &config) {
     // Step 2: parameter interactions
 
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+    const auto operator_bundle = gArgs.GetArg("-chronikupstreamregtestpluginbundle", "");
+    const auto operator_binding = gArgs.GetArg("-chronikupstreamregtestpluginbinding", "");
+    if (!operator_bundle.empty() || !operator_binding.empty()) {
+        if (operator_bundle.empty() || operator_binding.size() != 64 ||
+            operator_binding.find_first_not_of("0123456789abcdef") != std::string::npos ||
+            !gArgs.GetBoolArg("-chronikupstreamregtest", false) ||
+            gArgs.GetBoolArg("-chronikupstreamregtestplugins", false)) {
+            return InitError("Operator plugins require a bundle, lowercase SHA-256 binding and regtest service, without the synthetic fixture");
+        }
+    }
     if (gArgs.GetBoolArg("-chronikupstreamregtestplugins", false) &&
         !gArgs.GetBoolArg("-chronikupstreamregtest", false)) {
         return InitError("-chronikupstreamregtestplugins requires -chronikupstreamregtest");

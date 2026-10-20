@@ -23,13 +23,16 @@ struct OwnedService::Impl {
     const Config &config;
     const std::function<void()> before_open;
     const bool public_plugin;
+    const std::string operator_root, operator_binding;
     std::atomic<bool> cancel{false}, failed{false}, joined{false};
     std::atomic<uint16_t> port{0};
     std::mutex mutex, stop_mutex;
     std::condition_variable cv;
     std::thread thread;
-    Impl(const Config &value, std::function<void()> hook, bool plugin)
+    Impl(const Config &value, std::function<void()> hook, bool plugin,
+         std::string root, std::string binding)
         : config(value), before_open(std::move(hook)), public_plugin(plugin),
+          operator_root(std::move(root)), operator_binding(std::move(binding)),
           thread([this] { Run(); }) {}
     bool Cancelled() const { return cancel.load() || ShutdownRequested(); }
     void Pause() {
@@ -49,11 +52,20 @@ struct OwnedService::Impl {
             fs::create_directory(root);
             if (fs::canonical(root) != root || fs::is_symlink(root))
                 throw std::runtime_error("Redirected regtest service root");
-            // Exactly one upstream context, on this startup thread. The fixed
-            // two-file fixture is checked BEFORE import on reopen. Never load
-            // arbitrary plugin paths, modes, or adopt incompatible index roots.
+            // One upstream context, owned until worker/HTTP join. Synthetic
+            // fixture and explicitly bound trusted bundle are mutually exclusive.
+            // No mode silently adopts or rebuilds an incompatible index.
             std::unique_ptr<rust::Box<ergon_archival::PluginFixture>> plugins;
-            if (public_plugin) {
+            if (public_plugin && !operator_root.empty())
+                throw std::runtime_error("Conflicting plugin input modes");
+            if (!operator_root.empty()) {
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+                plugins = std::make_unique<rust::Box<ergon_archival::PluginFixture>>(
+                    ergon_archival::load_operator_plugins(operator_root, operator_binding));
+#else
+                throw std::runtime_error("Service plugin profile is not enabled");
+#endif
+            } else if (public_plugin) {
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
                 const auto inputs = GetDataDir() / "chronik-upstream-regtest-plugin-inputs";
                 const bool created = fs::create_directory(inputs);
@@ -80,7 +92,7 @@ struct OwnedService::Impl {
             if (listening && !Cancelled()) {
                 port.store(listening);
                 LogPrintf("Chronik upstream regtest listening=127.0.0.1:%u plugins=%u\n",
-                          listening, public_plugin ? 1 : 0);
+                          listening, plugins ? (**plugins).loaded() : 0);
                 while (!Cancelled() && !worker.Status().failed)
                     Pause();
             }
@@ -113,8 +125,9 @@ struct OwnedService::Impl {
         joined.store(true);
     }
 };
-OwnedService::OwnedService(const Config &config, std::function<void()> hook, bool plugin)
-    : impl(std::make_unique<Impl>(config, std::move(hook), plugin)) {}
+OwnedService::OwnedService(const Config &config, std::function<void()> hook, bool plugin,
+                           std::string root, std::string binding)
+    : impl(std::make_unique<Impl>(config, std::move(hook), plugin, std::move(root), std::move(binding))) {}
 OwnedService::~OwnedService() { Stop(); }
 ServiceStatus OwnedService::Status() const {
     return {impl->failed.load(), impl->cancel.load(), impl->joined.load(), impl->port.load()};
@@ -125,10 +138,13 @@ void Start(const Config &config) noexcept {
     if (!gArgs.GetBoolArg("-chronikupstreamregtest", false)) return;
     try {
         bool plugin = false;
+        std::string root, binding;
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
         plugin = gArgs.GetBoolArg("-chronikupstreamregtestplugins", false);
+        root = gArgs.GetArg("-chronikupstreamregtestpluginbundle", "");
+        binding = gArgs.GetArg("-chronikupstreamregtestpluginbinding", "");
 #endif
-        if (!service) service = std::make_unique<OwnedService>(config, std::function<void()>{}, plugin);
+        if (!service) service = std::make_unique<OwnedService>(config, std::function<void()>{}, plugin, root, binding);
     } catch (...) {
         LogPrintf("Chronik upstream regtest unavailable node_continues=1\n");
     }

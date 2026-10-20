@@ -7,7 +7,7 @@
 
 use crate::ergon_plugin_fixture::{
     binding_for_mode, http_plugin_group_matches, http_plugin_tx_matches, load_plugin_fixture,
-    make_plugin_fixture, PluginFixture,
+    make_plugin_fixture, load_operator_plugins, operator_bundle_binding, PluginFixture,
 };
 use crate::ergon_service::{Binding, RequestGate, ResponseLatch};
 use abc_rust_error::{bail, Report, Result};
@@ -137,6 +137,8 @@ mod ffi {
         fn make_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>>;
         fn load_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>>;
         fn loaded(self: &PluginFixture) -> u32;
+        fn load_operator_plugins(root: &str, expected: &str) -> Result<Box<PluginFixture>>;
+        fn operator_bundle_binding(root: &str) -> Result<String>;
         fn open_archival_with_plugins(
             root: &str,
             node: &ErgonNodeAccess,
@@ -700,6 +702,10 @@ fn open_archival_impl(
     let mut expected = identity(node.bridge.get_genesis_hash().data);
     if let Some(plugins) = plugins {
         expected = plugin_identity(node.bridge.get_genesis_hash().data, &plugins.binding)?;
+        if plugins.is_operator() {
+            // Separate identity namespace; never adopt a synthetic-fixture DB.
+            expected = String::from_utf8(expected)?.replace("plugin_fixture_sha256", "operator_bundle_sha256").into_bytes();
+        }
     }
     let id_path = root.join("ergon-identity.json");
     if id_path.exists() {
@@ -987,7 +993,12 @@ impl ArchivalProbe {
         let gate = self.request_gate.clone();
         let node = self.node.clone();
         let latch = self.response_latch.clone();
-        let plugins = self.plugins.is_some();
+        let plugins = match &self.plugins {
+            None => crate::ergon_plugin_access::PluginAccess::Disabled,
+            Some(owner) if owner.is_operator() => crate::ergon_plugin_access::PluginAccess::Operator(
+                Arc::new(owner.context.plugins().iter().map(|p| p.module_name.clone()).collect())),
+            Some(_) => crate::ergon_plugin_access::PluginAccess::Synthetic,
+        };
         let task = handle.spawn(async move {
             server
                 .serve_with_router(|router| {

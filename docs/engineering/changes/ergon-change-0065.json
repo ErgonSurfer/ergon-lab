@@ -1,0 +1,1105 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0065",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0065.json",
+  "purpose": {
+    "summary": "Admit explicitly reviewed trusted plugin bundles and bounded upstream group cursors;contribute four protocol plugins with public documentation and actual-upstream tests.",
+    "scope": [
+      "One signed direct child of accepted public385aba7/tree6d93d8b integrated by PR69;exact38paths and no incoming evidence.",
+      "Reuse upstream PluginContext,dispatch,ALP/SLP engines,plugin writers,HTTP handlers,database schema and version checks;no replacement token or indexing engine.",
+      "Dedicated canonical flat bundle,1..32modules,1MiB source/64KiB config/4MiB total,UTF8 without NUL;reject aliases,extra files,caches and group/world-writable files on supported Unix.",
+      "Explicit previously approved lowercase SHA256 commits complete names/raw source/config/configured interpreter via length framing;pre/post-import checks and exact module origins/inventory;not an adversarial filesystem snapshot or Python sandbox.",
+      "Existing process-once interpreter and shared owner remain alive through joined worker/HTTP shutdown;no finalization,reinitialization,retry or incompatible index adoption/wipe.",
+      "Only loaded module names receive immutable HTTP capabilities;canonical bounded group hex and upstream prefix/start pagination are admitted only in the trusted group-enumeration scope;existing response generation/size/header and disabled-route guards remain.",
+      "Maintainer explicitly contributes exactly plugins/moom_alp_token_index.py,moom_nft_index.py,moom_alp_exch_market.py,moom_reward_claim_index.py under MIT,with original identifiers for provenance/client compatibility and no unrelated application source/history/configuration.",
+      "Retain both ALP and SLP NFT candidates;market0.2.1/claims0.1.1 narrowly reject formerly exceptional malformed script/non-byte carriers;document fixed-width fields,endianness,atoms and non-authoritative heuristics.",
+      "Bind both new generic modules in CMake and the runner in identical order;regress complete ordered adapter identities for both plugin and non-plugin profiles;retain prior loader inputs and witness.",
+      "Existing Cargo dependency/lock tuples remain unchanged;one test-only example compiles28exact actual source-module unit cases and exercises4real-upstream plugins plus4upstream-built token templates.",
+      "Public service fixture requires6zero-value native transactions,exact ALP/SLP plugin maps/groups/history/UTXOs,joined process reopen,new separate upstream reconstruction,and drift/version-index refusals while native mining continues.",
+      "New fixture has one CI repetition and12synthetic oracle tests;all inherited scenarios,assertions,repetitions,execution budgets,standalone profiles and seven CI jobs are preserved."
+    ],
+    "exclusions": [
+      "No unrelated private application/product source,architecture,history,operator configuration,identity,wallet,endpoint,datadir,traffic,report,binary,cache or host metadata.",
+      "No consensus,activation,network identity,mainnet/testnet admission,native validation/mempool authority,token algorithm or default-ON change.",
+      "No deployment,cutover,release,desktop integration,dependency-alert suppression or automatic evidence promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "385aba7f8939b2327fa3083bc8fa7a2c26f4e152",
+      "tree": "6d93d8ba3899121a4db71ce3dd56b7379b97817c"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "c57b521ffada9d1dd517563d121b9dc75a68e62e76b1860840fe20dc6cd88089",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "Only the four explicitly maintainer-contributed modules;no unrelated private source/history or operator material."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 19759,
+        "git_blob": "1f511acdc2b23e7fe2c4371f7b2a904ee8bfd3f0",
+        "sha256": "60c388e41f5f7d442b031624875871d8e40f59e5e660c7fdd09c700996042671"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22361,
+        "git_blob": "0930f3f87ad6d361e8d4a42ac106a4e853103b33",
+        "sha256": "97e844712f18298b800782965d36367a6d460a0d71a2662df24cdcc091ee9739"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "PUBLICATION_POLICY.md",
+      "action": "modify",
+      "role": "documentation",
+      "before": {
+        "mode": "100644",
+        "bytes": 12364,
+        "git_blob": "87aa774d83d23efa97cfd5d594ae050afe5b1f76",
+        "sha256": "0bed0261a0511385471bb193bdef480ba539063a99a1a8f4e0bdb9859dcc7736"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13360,
+        "git_blob": "4191422cc5157b06af969f4e4d77aa8b5fe1edc5",
+        "sha256": "6cc6001841f9a126c02a219e2381b7b790ca875765b20cc048f6b5cd627d381e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 10103,
+        "git_blob": "fbe338376ea61eb8ebf40540b0d4009f346f63dc",
+        "sha256": "c7af26d53d3ca6e8fbfdac84b17396d3176a43c2618e452d89b947cd4b4150df"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10241,
+        "git_blob": "03ec0ee5abcf9fba46a72544c54a10e2ec4a15a4",
+        "sha256": "356decbb3263bc73285ebe23daf29cba037a6e670d53ae3b774e282250a41a7d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_regtest_service.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 6326,
+        "git_blob": "ef03f70da3e2d809799bff2230b289e33b7bf470",
+        "sha256": "09c319915d064f143546264cce1406b09e7013fd996b72bdb362e4e281864256"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 7322,
+        "git_blob": "933f2e07f06720609314ca18923a7225e975e383",
+        "sha256": "dac657672329f3093b85240264eb370969db0f08889ef4386a92785fc270090a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_regtest_service.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1109,
+        "git_blob": "45f4cacca1f09a43aea568315e869625ebc5bf9f",
+        "sha256": "b4ef06fbf24bdf80e8a8f0f0f7e0db8b5961842a8370cd9eda3edbd5775f5eef"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1220,
+        "git_blob": "bb723545d2e363dc4ab1c02a1cc231fad0db5a81",
+        "sha256": "08b4eb0a673b29febf4f8df3c9d0e1afffded2ffb891864135c8be9a4ebf4244"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 68918,
+        "git_blob": "3388aeadc9c72f9853347661e41d2f3fc6e0685a",
+        "sha256": "922ac80093728d9f034c72bd44527a9e1638d391f11c8a5ed6f7c6fd7e3a9a91"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 69733,
+        "git_blob": "f23f10782149bf5d41ebaa96dd7d1d2be651572a",
+        "sha256": "ef680422ca184e9e2d6ca78f52ed3afd025ce16666a8e7c359170ffb377f39d3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_operator_bundle.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 12534,
+        "git_blob": "ca60a136a6d43adb32ca88899d6b823cdad111ee",
+        "sha256": "4dc27c3e2300ec992529460a40860b77edc19f2d2c38b5164454dd7f9b5cc2c8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_plugin_access.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9205,
+        "git_blob": "7b7cee23375589dc3698cebb40c83d0f2f408606",
+        "sha256": "3d75cfadc5b27b365bdc8d67998a863ba694f42898dbb88d3357582dd78b289a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 8484,
+        "git_blob": "2536cf7769041eb29b00ec291119380c73408c49",
+        "sha256": "88c1c566b2a862918232265d0e6f518437b16a4c5327f7e907f93518d3757163"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11907,
+        "git_blob": "63cd8d4dcda71728effe8c139c586daf45b12d4f",
+        "sha256": "75857a5865f87b0549fb31ab41eeee21801598a50f723479ab314d0205d3ddd5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_service.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 9906,
+        "git_blob": "61f86f7e21a51b3846efe3fba3c0027932716ac2",
+        "sha256": "3e47a15e7f3fea32e1dc59cde3ff602596264f0818d516f133153808c4df1cd6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9285,
+        "git_blob": "09024064647f4274a6119ae0f340911e6ace7212",
+        "sha256": "9b1b49a7d57bdf24e040fd0d785a6ec055a7d7a25cc84c53fb3e30955cf78e9f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-lib/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1417,
+        "git_blob": "9fa23843f6af163c66dbe0e7cf27784d185498ec",
+        "sha256": "69e65abd3e551e530629987d47b1039dcfd28531ea1b9559f973a9a56a53e0fb"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1706,
+        "git_blob": "1b81421c4338e8888312401a96d178c79352a0fc",
+        "sha256": "ed9959e2359bd147b9b33c87c64eef00c3c3bad742c8e545e2f0aae3f4e33abf"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 1200,
+        "git_blob": "84188c9d4fe4d225a9ffae6373f6e639e69ddae7",
+        "sha256": "8daba19cb9d3d883d6d6bb90849a7d763e8fcad0e1ff18c02416aab70e4903e2"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1380,
+        "git_blob": "1bbf55be60665a3baacf96d42f839ecf8d980c4e",
+        "sha256": "84908911cf7d241e75b0cf94e40735edb19d6936e72c8a420485f3cce6f81c65"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-external-plugins-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 19417,
+        "git_blob": "687fea8a52d05c3681e942bfc9b99fc9895d8578",
+        "sha256": "9ad06e6426003be177cd30bf164cbbc8ef36509ef55ed9686b8ad1d3ba7377ae"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-external-plugins.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7034,
+        "git_blob": "baee630105bda3eea53d80c7c65a9be0e79a1358",
+        "sha256": "5c7fff6fe7dbb421db456f61746a64804e040e3d330dc74533b3ad2e98188d46"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "plugins/PROTOCOLS.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9277,
+        "git_blob": "8724afa7e08d9c4acc1d054af7859d6f8125755b",
+        "sha256": "f3dbda3ec13424ea8f5048c6534397543c090864956b298b4e8130d554c73eb6"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "plugins/README.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4294,
+        "git_blob": "023c6482caf76fd16c946dd8d4e6c0ad9d2819e9",
+        "sha256": "3b082b2161f28171542852d0901b9f6e58e3344ae2362433d764f9def3c516d3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "plugins/moom_alp_exch_market.py",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5728,
+        "git_blob": "4657a62bca5a50c21f2b9074aa836fdc8d41ef60",
+        "sha256": "edf60dd9f7d3e71e3fae8c66a00ad885b1c014c2b91c4970e78764ba7a89012f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "MAINTAINER-CONTRIBUTION",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "plugins/moom_alp_token_index.py",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2361,
+        "git_blob": "a22f129dc6abcc631007c5610f02fe023d3332f3",
+        "sha256": "59d1693fbb9a048415bba647f57683edfec7d6bd93cdc636826bbffd2fb7b266"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "MAINTAINER-CONTRIBUTION",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "plugins/moom_nft_index.py",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3119,
+        "git_blob": "d59c043f20767a883c25df88f652c735ddd56f44",
+        "sha256": "2f6992fbaf19875da05135fca0fef49d0187b6ec3b496d24013f58c7aab3e5f8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "MAINTAINER-CONTRIBUTION",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "plugins/moom_reward_claim_index.py",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3652,
+        "git_blob": "4a3797a0bd25a917f76ac566744064715fd4948f",
+        "sha256": "beec0eb5c20fd196d093a9b7012b522751b989628af05f07a880a7660324b3ac"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "MAINTAINER-CONTRIBUTION",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 119817,
+        "git_blob": "52495e474839c240601302a46a0c5d0b1389ddb3",
+        "sha256": "06faa5fbe7845207d71d2ee75b9fbef59b6e426afdddb346d13eaa0cb8c2a786"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 121149,
+        "git_blob": "6ec51199766c364c1dbf1d18152b7395314ad38a",
+        "sha256": "1b7ab55e0e162fea306a433062d3c9c64fd39fea31f45799602cfb0fef687fc0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Explicit unpruned local-regtest plugin/service opt-in only;trusted Python discovery/projection,no native or token-validation authority.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/component.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5429,
+        "git_blob": "e04a74063adb00492cb0a1e34470ecce23b1e4c1",
+        "sha256": "243b3ed4cafc54d5d8dbd80fdfe0ad705c4ba781cba8c752bef4969f2d8d35eb"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/component_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3311,
+        "git_blob": "b726fa4d5451b59ddf34490b198108454a7b90d7",
+        "sha256": "00e9b31a801ef78c0147bc816da0b0f68bfe5dcb9ca6a30bce03f3304e211d14"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/plugins.toml",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 387,
+        "git_blob": "00c74a5fed68155dd6857ca62d9772c825493568",
+        "sha256": "ae25b7c655dcc01b04da6b069962582f3f0665eb08996d5d6a66a6c248368386"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/service.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 20057,
+        "git_blob": "7c449f6cae950bea1251720e88494c0eb06d99bc",
+        "sha256": "58363f90f0c9f0ab50b15c5fac6cd84fc244c1fb6167ea2074cf7f26d0abde2f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/service_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11902,
+        "git_blob": "f350fdbab786dde616a1f026d8b47a1ee7b93cff",
+        "sha256": "45d9b466ae1af6e988a3039eb73636d3d3c99eb166cce92721e6c7bb08122e9f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/test_protocols.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 13887,
+        "git_blob": "a9b1443ff25c657df8728778423542c5754acca1",
+        "sha256": "39b430e2340f1d66b3d6d7d4dd5f75b9c83ad269634c96ae245a367eb2984c74"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/community-plugins/upstream_probe.rs",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9073,
+        "git_blob": "2435b58a7a08bd25801bb9e39f3916c3aa661a64",
+        "sha256": "8e7154f0157da9acdec3c95015f40dbc0069acd5196665f77c92eb7498955051"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/OPERATOR_BUNDLE.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5431,
+        "git_blob": "375bc2e4655f92af689e9f12975b9a943505ac57",
+        "sha256": "fe6d5dca7be1f19e556cc5d596e65c1cfc923cbf315d871f96bf9cde09891444"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/operator_bundle_binding.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3149,
+        "git_blob": "e964c7aa3ac9fc1167f15dfd97fa0bbfebbd065f",
+        "sha256": "12380bcdc0588ca22659b04b3b37fb4246071b04e3c66a49339b1ff52f155205"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3914,
+        "git_blob": "34beac5e7f3c55ba812b9465f9c6c188dbdf715a",
+        "sha256": "7d4510f7222fb301976a252b3ade12f4db534c3674dc727bc57cd522e16059ac"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 44019,
+        "git_blob": "1374d5b45b5db19bf5b4f1207e42810f79690bb7",
+        "sha256": "6f455ec59d85c35f2a0f259dd324d92bbea2c9447dfd96008f8e505da23e6910"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 44987,
+        "git_blob": "4ed96ef5cfe40df83cece66e5fd2ff0d74fc1e72",
+        "sha256": "5e3c343af610ebe55556e155e436539556c81967414830e69ce3acbeea01e12c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_external_plugins.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 13731,
+        "git_blob": "cc0117d1f2f837567807242cea4db13d12d619c0",
+        "sha256": "bcfe66c5f2149ead9c918cbdd0a39738b7a9898408812e5d7312242b7b8e092c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_external_plugins_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 5221,
+        "git_blob": "896b6d4f6cef0d8e17833007918e9cde8863f7df",
+        "sha256": "bdcb8b4e6546a57c04219bad2091c4ab11721afa3fae5c0ad82dd03980f7c22e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_multi_lokad.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11648,
+        "git_blob": "6988b09eb1d4d3ad938bb9f69aaa56f16a917f19",
+        "sha256": "5408eab902e20ca5f22e560136823f21b2697180fb90574dca3a7a072d0209e6"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12493,
+        "git_blob": "e9e9a0e564502bbff8bf5fb361993b089d529b65",
+        "sha256": "86acba6a22a92b67dfac9b5b13e73d26f353716fd9c187b93842a35e8ec10b67"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_multi_lokad_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 4885,
+        "git_blob": "ae02a26254ec40b780615648376292e8257d0fe9",
+        "sha256": "d15a80d9dbbc5486c8d09277dea892705cf2005d1098d1a12459639a627f1f6c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4983,
+        "git_blob": "5a225f41ddc22fe855729eac8f6de18c78bee9c5",
+        "sha256": "cfb302ec95c8db071bbb974f8b9951e32e71865462c8cd25009bb45a219a5ada"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_upstream_link.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 22811,
+        "git_blob": "35231190cf5a12ee0cc74322b86ddd7751ceb186",
+        "sha256": "a3015ae1a710f3db88a97d5b691e36e2d3b4f6c4e777b5e938a9c0770b02f251"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 23177,
+        "git_blob": "1aadcac92553bce90140244cbcdb28e29a7cc44e",
+        "sha256": "094c7b5636aef906457ef91d84e2908120b9348a3679e40c3cb73a8b8c8fcac0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build input,public test,provenance or documentation only;no default enablement.",
+      "test_reachability": "Real upstream28input/query units,4plugins,ALP/SLP templates,native regtest HTTP/reopen/reconstruction/refusals,and all inherited public CI controls;no operator/mainnet witness."
+    }
+  ],
+  "surfaces": {
+    "build_release": true,
+    "consensus": false,
+    "data_research": false,
+    "documentation_cockpit": true,
+    "indexing_chronik": true,
+    "p2p": false,
+    "rpc_api": true,
+    "storage_datadir": true,
+    "tests": true,
+    "ui": false,
+    "validation_mempool": false,
+    "wallet": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the exact public compiled-out profile with unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds without Chronik linkage and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build the exact public compiled-in-disabled profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds with runtime Chronik disabled by default and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the exact public regtest-plugins profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The daemon and native fixture build; inherited profiles retain their existing boundaries."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run check_chronik_external_plugins.py and its selftests;11offline bundle tests;41upstream-Python APItests;4component and12service-oracle selftests.Build the existing locked example ergon-community-plugins offline in both plugin profiles;execute component.py for exact28cases,4plugins and4templates.Run service.py --repetitions1 in regtest-plugins with isolated native datadir and the exact public bundle.Retain every inherited matrix and seven jobs.",
+        "expected_results": [
+          "Exact28unit names pass with0failed/ignored/measured;unambiguous Cargo artifact,exact single actual-upstream dispatch marker and empty stderr;all4templates bound.",
+          "Both ALP and SLP GENESIS/SEND plus SELL/claim carriers have exact output/input maps,groups,cursor continuity,history and derived UTXOs under native accepted data.",
+          "Three positive joined daemon stops including confirmed reopen and distinct fresh upstream index reconstruction;two unavailable-service stops after drift/version binding refusal;native mining continues and original index remains retained.",
+          "No unknown module/group/query acceptance,overwrite,skip,timeout,nonzero exit,unreviewed source drift or incomplete cleanup can create a passing report.",
+          "All inherited native/token/plugin/default-OFF and compiled-out profiles retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Wrong source,build,bundle,version,interpreter,paths,types,units,counts,case names or projections;authority/default change;nonzero exit,skip,timeout,stale output or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the unchanged inherited index-restart-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the unchanged inherited index-full-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the unchanged inherited index-chainstate-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the unchanged inherited index-pruned-datadir-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected acceptance, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the unchanged inherited index-deep-reorg-fail-closed controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected authority, stale publication, changed count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Trusted Python code,not a sandbox;pre/post file checks are not an adversarial atomic filesystem snapshot.",
+    "Plugins are discovery/projection helpers,not token validity,supply uniqueness,exchange settlement,claim authenticity or payout authority;locking scripts are not wallet/person counts.",
+    "The pure Python API tests manually construct token attachments and do not prove token validity;the actual-upstream and native service tests are separate obligations.",
+    "The fixture computes only reviewed public synthetic input commitments;actual operator input approval is separate and never calculate-and-adopt during startup.",
+    "The new source/version bytes require a new approved bundle and separate index qualification;old private observations are not reused as evidence.",
+    "Rust dependencies are locked;native/system packages,CPython and runner image are not fully locked;no reproducible-build claim.",
+    "All new component children retain60seconds;native startup/stop uses inherited bounded rules;one new daemon repetition does not reduce inherited repetitions or seven-job coverage.",
+    "No public CI result,independent reproduction,production/mainnet readiness,financial transaction,deployment or cutover is claimed by this source record."
+  ],
+  "counterevidence": [
+    "The original contributed market/claim parser raised exceptions on valid script opcodes in required data positions and on truncated scripts.The narrow patches reject those carriers,retain valid projections and increment versions;the former errors are not silently reclassified as valid output.",
+    "Prior metadata candidates PR67/68 failed strict logging/build-binding controls before PR69 passed all seven exact-head checks;those failed commits and CI remain preserved.New CMake/runner full-identity regression prevents either new generic module being omitted from the runner binding.",
+    "Two historical local normal-matrix capture/query attempts exceeded60seconds at repetition2;cause remains unknown and no complete passing local normal matrix is claimed.The maintainer permits reviewed source integration while retaining the anomaly and strict tests;target-server recurrence,data-integrity contradiction or unsafe shutdown blocks operational readiness.",
+    "Earlier startup/stop-reopen timeouts and upstream dependency alerts remain open.No private observation or report is an incoming public evidence input."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

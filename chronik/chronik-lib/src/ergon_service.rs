@@ -14,7 +14,6 @@ use axum::{
 use chronik_http::error::ReportError;
 use chronik_indexer::indexer::Node;
 use std::{
-    collections::BTreeSet,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
@@ -204,14 +203,14 @@ struct Admission {
     gate: RequestGate,
     node: Arc<Node>,
     latch: ResponseLatch,
-    plugins: bool,
+    plugins: crate::ergon_plugin_access::PluginAccess,
 }
 pub(crate) fn wrap(
     router: Router,
     gate: RequestGate,
     node: Arc<Node>,
     latch: ResponseLatch,
-    plugins: bool,
+    plugins: crate::ergon_plugin_access::PluginAccess,
 ) -> Router {
     router.layer(middleware::from_fn_with_state(
         Admission {
@@ -230,7 +229,7 @@ fn error(message: &'static str) -> Response {
         .insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
     response
 }
-fn supported(request: &Request, plugins: bool) -> bool {
+fn supported(request: &Request, plugins: &crate::ergon_plugin_access::PluginAccess) -> bool {
     if request.method() != Method::GET || request.uri().path().contains('%') {
         return false;
     }
@@ -251,43 +250,21 @@ fn supported(request: &Request, plugins: bool) -> bool {
             !id.is_empty()
         }
         ["lokad-id", id, "confirmed-txs" | "history" | "unconfirmed-txs"] => !id.is_empty(),
-        ["plugin", "ergon_public_probe", "groups"] => plugins,
-        ["plugin", "ergon_public_probe", group, "utxos" | "confirmed-txs" | "history" | "unconfirmed-txs"] => {
-            plugins && *group == "7075626c6963"
+        ["plugin", name, "groups"] => plugins.allows(name, None),
+        ["plugin", name, group, "utxos" | "confirmed-txs" | "history" | "unconfirmed-txs"] => {
+            plugins.allows(name, Some(group))
         }
         _ => false,
     }
 }
-fn supported_query(request: &Request) -> bool {
-    let Some(query) = request.uri().query() else {
-        return true;
-    };
-    let mut names = BTreeSet::new();
-    for pair in query.split('&') {
-        let Some((key, value)) = pair.split_once('=') else {
-            return false;
-        };
-        if !names.insert(key)
-            || !matches!(key, "page" | "page_size")
-            || value.is_empty()
-            || !value.bytes().all(|b| b.is_ascii_digit())
-        {
-            return false;
-        }
-        let Ok(value) = value.parse::<u32>() else {
-            return false;
-        };
-        if (key == "page" && value > 1000) || (key == "page_size" && (value == 0 || value > 200)) {
-            return false;
-        }
-    }
-    true
-}
 async fn admit(State(state): State<Admission>, request: Request, next: Next) -> Response {
-    if !supported(&request, state.plugins) {
+    if !supported(&request, &state.plugins) {
         return error("501: Capability not enabled for this Ergon observer profile");
     }
-    if !supported_query(&request) {
+    if !state
+        .plugins
+        .allows_query(request.uri().path(), request.uri().query())
+    {
         return error("400: Query parameter not enabled for this Ergon observer profile");
     }
     let Some(permit) = state.gate.permit() else {

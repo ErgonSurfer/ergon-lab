@@ -48,3 +48,8 @@ tempdir = "0.3"
 [[example]]
 name = "ergon-public-multi-lokad"
 path = "../../tests/compatibility/upstream-chronik/multi_lokad_probe.rs"
+
+# Public contributed-plugin witness and exact source-module unit tests only.
+[[example]]
+name = "ergon-community-plugins"
+path = "../../tests/community-plugins/upstream_probe.rs"
