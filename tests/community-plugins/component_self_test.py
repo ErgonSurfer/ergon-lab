@@ -15,12 +15,12 @@ class Contract(unittest.TestCase):
 
     def valid(self):
         return ("\n".join("test " + name + " ... ok" for name in sorted(self.component.UNIT_NAMES)) +
-                "\ntest result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n", "")
+                "\ntest result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n", "")
 
     def test_all_units_required(self):
         self.component.unit_result(self.valid())
         raw = self.valid()[0]
-        for bad in (raw + raw, raw.replace("28 passed", "27 passed"),
+        for bad in (raw + raw, raw.replace("29 passed", "28 passed"),
                     raw.replace(sorted(self.component.UNIT_NAMES)[0], "unexpected_case"),
                     raw.replace("0 ignored", "1 ignored"), raw.split("test result:")[0]):
             with self.assertRaises(ValueError): self.component.unit_result((bad, ""))

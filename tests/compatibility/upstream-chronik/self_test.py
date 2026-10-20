@@ -207,7 +207,8 @@ class Contract(unittest.TestCase):
             version = "3.12.9"
             embedding = runner.digest((version + "\n" + runner.digest(executable.read_bytes()) + "\n" +
                 runner.digest(library.read_bytes()) + "\n").encode())
-            adapter = "ergon-archival-adapter/v1\n" + "".join(p + ":" + runner.digest((source / p).read_bytes()) + "\n"
+            adapter = ("ergon-archival-adapter/v1\n" +
+                "historical-shadow-build:OFF\nhistorical-client-service-build:OFF\n") + "".join(p + ":" + runner.digest((source / p).read_bytes()) + "\n"
                 for p in runner.ADAPTER_INPUTS + runner.PLUGIN_ADAPTER_INPUTS + runner.SERVICE_ADAPTER_INPUTS + runner.PLUGIN_ENABLED_INPUTS)
             adapter += "python-profile:" + embedding + "\n"
             ninja = ("CHRONIK_ERGON_PYTHON_VERSION=" + version + " CHRONIK_ERGON_PYTHON_ID=" + embedding +

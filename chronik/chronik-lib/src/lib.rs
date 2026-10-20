@@ -45,3 +45,7 @@ mod ergon_operator_bundle;
 // SPDX-License-Identifier: MIT — immutable, owner-derived HTTP capability.
 #[cfg(feature = "ergon-archival-probe")]
 mod ergon_plugin_access;
+
+// SPDX-License-Identifier: MIT — native receipt versus indexed-readiness contract.
+#[cfg(feature = "ergon-archival-probe")]
+mod ergon_submission;

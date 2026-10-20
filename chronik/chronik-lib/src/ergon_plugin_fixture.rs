@@ -176,7 +176,10 @@ fn claim_interpreter() -> Result<()> {
 
 #[cfg(feature = "plugins")]
 fn setup_context(root: &std::path::Path) -> Result<Arc<PluginContext>> {
-    use bitcoinsuite_core::net::Net;
+    setup_context_for_network(root, bitcoinsuite_core::net::Net::Regtest)
+}
+#[cfg(feature = "plugins")]
+fn setup_context_for_network(root: &std::path::Path, net: bitcoinsuite_core::net::Net) -> Result<Arc<PluginContext>> {
     use chronik_plugin::params::PluginParams;
     use pyo3::{
         types::{PyAnyMethods, PyModule},
@@ -192,7 +195,7 @@ fn setup_context(root: &std::path::Path) -> Result<Arc<PluginContext>> {
         pyo3::ffi::Py_IsolatedFlag = 1;
     }
     let context = Arc::new(PluginContext::setup(PluginParams {
-        net: Net::Regtest,
+        net,
         plugins_dir: root.to_path_buf(),
         plugins_conf: root.join("plugins.toml"),
     })?);
@@ -227,9 +230,16 @@ pub fn operator_bundle_binding(root: &str) -> Result<String> {
 /// Trusted Python code, never a sandbox. Regtest only, no index adoption/wipe.
 /// The legacy CXX type name is retained to preserve the synthetic fixture ABI.
 pub fn load_operator_plugins(root: &str, expected: &str) -> Result<Box<PluginFixture>> {
+    load_operator_plugins_for_network(root, expected, "regtest")
+}
+/// Separate historical admission; immutable network is checked before import.
+pub fn load_historical_operator_plugins(root: &str, expected: &str, network: &str) -> Result<Box<PluginFixture>> {
+    load_operator_plugins_for_network(root, expected, network)
+}
+fn load_operator_plugins_for_network(root: &str, expected: &str, network: &str) -> Result<Box<PluginFixture>> {
     #[cfg(not(feature = "plugins"))]
     {
-        let _ = (root, expected);
+        let _ = (root, expected, network);
         bail!("Upstream plugin implementation is not enabled");
     }
     #[cfg(feature = "plugins")]
@@ -238,14 +248,20 @@ pub fn load_operator_plugins(root: &str, expected: &str) -> Result<Box<PluginFix
             types::{PyAnyMethods, PyModule},
             Python,
         };
-        let bundle = OperatorBundle::admit(
+        let net = match network {
+            "main" => bitcoinsuite_core::net::Net::Mainnet,
+            "regtest" => bitcoinsuite_core::net::Net::Regtest,
+            _ => bail!("Unsupported historical plugin network"),
+        };
+        let bundle = OperatorBundle::admit_network(
             std::path::Path::new(root),
             expected,
             env!("CHRONIK_ERGON_PYTHON_VERSION"),
             env!("CHRONIK_ERGON_PYTHON_ID"),
+            network,
         )?;
         claim_interpreter()?;
-        let context = setup_context(bundle.root())?;
+        let context = setup_context_for_network(bundle.root(), net)?;
         let names: Vec<_> = context
             .plugins()
             .iter()
