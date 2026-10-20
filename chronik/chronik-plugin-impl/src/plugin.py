@@ -24,7 +24,12 @@ class Plugin(ABC):
         pass
 
     @abstractmethod
-    def lokad_id(self) -> bytes:
+    def lokad_id(self) -> Union[bytes, list[bytes]]:
+        """Return one four-byte identifier or 1..32 unique four-byte IDs.
+
+        Historical bytes returns keep their original meaning. A list registers
+        one plugin for several protocols; a matching tx still runs it once.
+        """
         pass
 
     @abstractmethod

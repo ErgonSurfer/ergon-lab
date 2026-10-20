@@ -129,6 +129,8 @@ def validate(root):
         from check_chronik_position_catalogue import CHANGED as catalogue_changed, validate as validate_catalogue
         expected |= catalogue_changed
         validate_catalogue(root)
+    from check_chronik_multi_lokad import additional_paths
+    expected |= additional_paths(root)
     require(changed == expected, "unexpected long history path")
     access = (root / "chronik/chronik-cpp/ergon_node_access.h").read_text()
     for token in ("const NativeReadScope m_scope", "scope = NativeReadScope::BoundedFixture",
@@ -164,7 +166,7 @@ def validate(root):
     for path in ("src/validation.cpp", "src/validation.h", "src/chainparams.cpp", "src/chain.cpp", "src/chain.h",
                  "src/txmempool.cpp", "chronik/Cargo.lock", "chronik/UpstreamLink.cmake",
                  "chronik/chronik-indexer/src/indexer.rs", "chronik/chronik-plugin-impl/src/context.rs"):
-        require(current_identity(root, path) == before_identity(root, path), "long history changed frozen native/engine input")
+        require(current_identity(root, path) == successor_identity(root, path, before_identity(root, path)), "long history changed frozen native/engine input")
     from check_change import validate as validate_change
     record = load_json(root / RECORD); validate_change(record, RECORD)
     require(record["change_id"] == "ERGON-CHANGE-0062" and

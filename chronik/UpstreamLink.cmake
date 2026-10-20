@@ -95,6 +95,8 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         chronik/chronik-cpp/ergon_regtest_service.cpp)
     if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
         list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs
+            chronik/chronik-plugin-impl/src/plugin.rs
+            chronik/chronik-plugin-impl/src/plugin.py
             chronik/chronik-plugin-impl/python/upstream/script.py
             chronik/chronik-plugin-impl/python/upstream/slp.py)
     endif()
