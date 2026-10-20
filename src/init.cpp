@@ -60,6 +60,9 @@
 
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
 #include <chronik-cpp/ergon_regtest_service.h>
+#if defined(ENABLE_CHRONIK_UPSTREAM_SHADOW) || defined(ENABLE_CHRONIK_UPSTREAM_SERVICE)
+#include <chronik-cpp/ergon_node_access.h>
+#endif
 #endif
 
 #ifdef ENABLE_CHRONIK_OBSERVER
@@ -255,6 +258,12 @@ void Shutdown(InitInterfaces &interfaces) {
     // The callback queue must still be serviced while Stop drains it. Joining
     // after threadGroup.join_all would deadlock SyncWithValidationInterfaceQueue.
     ergon_regtest::Stop();
+#ifdef ENABLE_CHRONIK_UPSTREAM_SHADOW
+    ergon_shadow::Stop();
+#endif
+#ifdef ENABLE_CHRONIK_UPSTREAM_SERVICE
+    ergon_continuous::Stop();
+#endif
 #endif
 
     // After everything has been shut down, but before things get flushed, stop
@@ -439,10 +448,56 @@ void SetupServerArgs() {
                  "replaced by block hash)",
                  false, OptionsCategory::OPTIONS);
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+    gArgs.AddArg("-chronikupstreamregtestclients",
+                 "Enable bounded native broadcast and upstream WebSockets on the "
+                 "local regtest service only (default: 0; not a public server)",
+                 false, OptionsCategory::OPTIONS);
     gArgs.AddArg("-chronikupstreamregtest",
                  "Enable experimental bounded Chronik upstream service on "
                  "local regtest only (unpruned, archival history, bounded live capture, plugins default OFF; "
                  "default: 0; ephemeral loopback HTTP port logged at startup)",
+                 false, OptionsCategory::OPTIONS);
+#endif
+#ifdef ENABLE_CHRONIK_UPSTREAM_SERVICE
+    gArgs.AddArg("-chronikupstreamservice",
+                 "Enable the separately bound continuous Chronik client service (default: 0; unpruned; loopback only)",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamservicenetwork=<main|regtest>",
+                 "Required expected native network for the continuous service",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamservicegenesis=<hex>",
+                 "Required expected native genesis, 64 lowercase display-order hex characters",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamserviceport=<port>",
+                 "Loopback HTTP port, canonical decimal 0..65535 (default: 0, ephemeral); never binds a public interface",
+                 false, OptionsCategory::OPTIONS);
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+    gArgs.AddArg("-chronikupstreamservicepluginbundle=<path>",
+                 "Explicit trusted plugin bundle for the continuous service (default: disabled)",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamservicepluginbinding=<hex>",
+                 "Exact interpreter/network-bound SHA-256 of the trusted plugin bundle",
+                 false, OptionsCategory::OPTIONS);
+#endif
+#endif
+#ifdef ENABLE_CHRONIK_UPSTREAM_SHADOW
+    gArgs.AddArg("-chronikupstreamshadow",
+                 "Enable a separate historical read-only Chronik shadow index "
+                 "(default: 0; unpruned; ephemeral loopback HTTP only; trusted plugins separately bound; no broadcast or WebSockets)",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamshadownetwork=<main|regtest>",
+                 "Explicit expected native network for the shadow index; required with the shadow flag",
+                 false, OptionsCategory::OPTIONS);
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+    gArgs.AddArg("-chronikupstreamshadowpluginbundle=<path>",
+                 "Explicit trusted plugin bundle for a separate read-only historical index (default: disabled)",
+                 false, OptionsCategory::OPTIONS);
+    gArgs.AddArg("-chronikupstreamshadowpluginbinding=<hex>",
+                 "Exact interpreter-bound SHA-256 of the trusted historical plugin bundle",
+                 false, OptionsCategory::OPTIONS);
+#endif
+    gArgs.AddArg("-chronikupstreamshadowgenesis=<hex>",
+                 "Explicit expected native genesis, 64 lowercase display-order hex characters; never adopt an incompatible index",
                  false, OptionsCategory::OPTIONS);
 #endif
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
@@ -1683,6 +1738,94 @@ bool AppInitParameterInteraction(Config &config) {
     const CChainParams &chainparams = config.GetChainParams();
     // Step 2: parameter interactions
 
+#ifdef ENABLE_CHRONIK_UPSTREAM_SERVICE
+    const bool continuous=gArgs.GetBoolArg("-chronikupstreamservice",false);
+    if(gArgs.GetArgs("-chronikupstreamservice").size()>1)
+        return InitError("Continuous service requires one explicit profile");
+    for(const auto &key:{"-chronikupstreamservicenetwork","-chronikupstreamservicegenesis",
+                         "-chronikupstreamserviceport","-chronikupstreamservicepluginbundle",
+                         "-chronikupstreamservicepluginbinding"}) {
+        if(gArgs.IsArgSet(key) && (!continuous || gArgs.GetArgs(key).size()!=1))
+            return InitError("Continuous service arguments require one enabled profile");
+    }
+    if(continuous) {
+        if(gArgs.GetArgs("-chronikupstreamservicenetwork").size()!=1 ||
+           gArgs.GetArgs("-chronikupstreamservicegenesis").size()!=1 ||
+           gArgs.GetArg("-prune",0)!=0 ||
+           gArgs.GetBoolArg("-chronikupstreamshadow",false) ||
+           gArgs.GetBoolArg("-chronikupstreamregtest",false) ||
+           gArgs.GetBoolArg("-chronikupstreamregtestclients",false) ||
+           gArgs.GetBoolArg("-chronikupstreamregtestplugins",false) ||
+           gArgs.IsArgSet("-chronikupstreamregtestpluginbundle") ||
+           gArgs.IsArgSet("-chronikupstreamregtestpluginbinding"))
+            return InitError("Continuous service requires explicit network/genesis, unpruned storage and no other service profile");
+        const auto port=gArgs.GetArg("-chronikupstreamserviceport","0");
+        uint32_t numeric=0;
+        if(port.empty() || port.size()>5 || (port.size()>1 && port[0]=='0') ||
+           port.find_first_not_of("0123456789")!=std::string::npos)
+            return InitError("Continuous loopback port requires canonical decimal 0..65535");
+        for(char c:port) numeric=numeric*10+(c-'0');
+        if(numeric>65535) return InitError("Continuous loopback port exceeds 65535");
+        try {
+            chronik_bridge::HistoricalReadBinding expected(config,
+                gArgs.GetArg("-chronikupstreamservicenetwork",""),
+                gArgs.GetArg("-chronikupstreamservicegenesis",""));
+        } catch(...) {
+            return InitError("Continuous expected network/genesis does not match native parameters");
+        }
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+        if(gArgs.IsArgSet("-chronikupstreamservicepluginbundle") ||
+           gArgs.IsArgSet("-chronikupstreamservicepluginbinding")) {
+            const auto bundle=gArgs.GetArg("-chronikupstreamservicepluginbundle","");
+            const auto binding=gArgs.GetArg("-chronikupstreamservicepluginbinding","");
+            if(bundle.empty() || binding.size()!=64 ||
+               binding.find_first_not_of("0123456789abcdef")!=std::string::npos)
+                return InitError("Continuous plugins require an explicit bundle and lowercase SHA-256 binding");
+        }
+#endif
+    }
+#endif
+
+#ifdef ENABLE_CHRONIK_UPSTREAM_SHADOW
+    const bool shadow=gArgs.GetBoolArg("-chronikupstreamshadow",false);
+#ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
+    const auto shadow_bundle = gArgs.GetArg("-chronikupstreamshadowpluginbundle", "");
+    const auto shadow_binding = gArgs.GetArg("-chronikupstreamshadowpluginbinding", "");
+    if(gArgs.IsArgSet("-chronikupstreamshadowpluginbundle") ||
+       gArgs.IsArgSet("-chronikupstreamshadowpluginbinding")) {
+        if(!shadow || gArgs.GetArgs("-chronikupstreamshadowpluginbundle").size()!=1 ||
+           gArgs.GetArgs("-chronikupstreamshadowpluginbinding").size()!=1 ||
+           shadow_bundle.empty() || shadow_binding.size()!=64 ||
+           shadow_binding.find_first_not_of("0123456789abcdef")!=std::string::npos)
+            return InitError("Historical plugins require one shadow profile, explicit bundle and lowercase SHA-256 binding");
+    }
+#endif
+    if(gArgs.GetArgs("-chronikupstreamshadow").size()>1 ||
+       ((!shadow) && (gArgs.IsArgSet("-chronikupstreamshadownetwork") ||
+                      gArgs.IsArgSet("-chronikupstreamshadowgenesis")))) {
+        return InitError("Shadow identity requires exactly one enabled shadow profile");
+    }
+    if(shadow) {
+        if(gArgs.GetArgs("-chronikupstreamshadownetwork").size()!=1 ||
+           gArgs.GetArgs("-chronikupstreamshadowgenesis").size()!=1 ||
+           gArgs.GetArg("-prune",0)!=0 ||
+           gArgs.GetBoolArg("-chronikupstreamregtest",false) ||
+           gArgs.GetBoolArg("-chronikupstreamregtestclients",false) ||
+           gArgs.GetBoolArg("-chronikupstreamregtestplugins",false) ||
+           gArgs.IsArgSet("-chronikupstreamregtestpluginbundle") ||
+           gArgs.IsArgSet("-chronikupstreamregtestpluginbinding")) {
+            return InitError("Shadow requires explicit network/genesis, unpruned storage and no regtest/client/plugin profile");
+        }
+        try {
+            chronik_bridge::HistoricalReadBinding expected(config,
+                gArgs.GetArg("-chronikupstreamshadownetwork",""),
+                gArgs.GetArg("-chronikupstreamshadowgenesis",""));
+        } catch(...) {
+            return InitError("Shadow expected network/genesis does not match native parameters");
+        }
+    }
+#endif
+
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS
     const auto operator_bundle = gArgs.GetArg("-chronikupstreamregtestpluginbundle", "");
     const auto operator_binding = gArgs.GetArg("-chronikupstreamregtestpluginbinding", "");
@@ -1701,6 +1844,10 @@ bool AppInitParameterInteraction(Config &config) {
 #endif
 
 #ifdef ENABLE_CHRONIK_UPSTREAM_REGTEST
+    if (gArgs.GetBoolArg("-chronikupstreamregtestclients", false) &&
+        !gArgs.GetBoolArg("-chronikupstreamregtest", false)) {
+        return InitError("Chronik client capabilities require the local regtest service");
+    }
     if (gArgs.GetBoolArg("-chronikupstreamregtest", false) &&
         (chainparams.NetworkIDString() != CBaseChainParams::REGTEST ||
          gArgs.GetArg("-prune", 0) != 0)) {
@@ -2769,6 +2916,12 @@ bool AppInitMain(Config &config, RPCServer &rpcServer,
         // Native peer/RPC startup must not wait for optional index DB work.
         ergon_regtest::Start(config);
     }
+#ifdef ENABLE_CHRONIK_UPSTREAM_SHADOW
+    if(gArgs.GetBoolArg("-chronikupstreamshadow",false)) ergon_shadow::Start(config);
+#endif
+#ifdef ENABLE_CHRONIK_UPSTREAM_SERVICE
+    if(gArgs.GetBoolArg("-chronikupstreamservice",false)) ergon_continuous::Start(config);
+#endif
 #endif
 
     //// Ensure g_best_block (used by mining RPC) is initialized

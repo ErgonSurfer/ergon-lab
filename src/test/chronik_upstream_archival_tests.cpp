@@ -44,20 +44,8 @@
 #include <version.h>
 
 namespace {
-// Stable, flushed progress names: no clocks, paths or normalization. A killed
-// process leaves the exact last started case visible, unlike buffered XML.
-// This translation unit is compiled only in the archival fixture profile.
-struct FixtureProgress : boost::unit_test::global_configuration {
-    void test_unit_start(const boost::unit_test::test_unit &unit) override {
-        if (unit.p_type == boost::unit_test::TUT_CASE)
-            std::cerr << "Fixture start: " << unit.full_name() << std::endl;
-    }
-    void test_unit_finish(const boost::unit_test::test_unit &unit,
-                          unsigned long) override {
-        if (unit.p_type == boost::unit_test::TUT_CASE)
-            std::cerr << "Fixture done: " << unit.full_name() << std::endl;
-    }
-} fixture_progress;
+// The one profile-independent progress observer lives in test/main.cpp.
+// Case bodies and the exact flushed marker grammar remain unchanged.
 template <typename Hash> std::array<uint8_t, 32> Bytes(const Hash &hash) {
     std::array<uint8_t, 32> out;
     std::copy_n(hash.begin(), out.size(), out.begin());

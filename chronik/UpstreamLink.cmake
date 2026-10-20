@@ -34,6 +34,35 @@ endif()
 set(_upstream_env
     "CARGO_TARGET_DIR=${CHRONIK_UPSTREAM_TARGET_DIR}"
     "CARGO_PROFILE_DEV_DEBUG=0" "CARGO_INCREMENTAL=0")
+# aws-lc-sys 0.32.3's cc builder omits GNU-stack notes on ML-KEM asm.
+# Set the assembler contract at object creation; do not mask it at final link.
+# Preserve explicit caller flags in the dependency's documented precedence.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+        CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+    # cc-rs caches its compiler in aws-lc's option probes, before the
+    # crate-specific CFLAGS are installed. Seed the native compiler as well.
+    set(_upstream_native_cflags "$ENV{CFLAGS}")
+    foreach(_key IN ITEMS CFLAGS_x86_64-unknown-linux-gnu
+            CFLAGS_x86_64_unknown_linux_gnu)
+        if(DEFINED ENV{${_key}})
+            set(_upstream_native_cflags "$ENV{${_key}}")
+        endif()
+    endforeach()
+    string(APPEND _upstream_native_cflags " -Wa,--noexecstack")
+    list(APPEND _upstream_env
+        "CFLAGS_x86_64_unknown_linux_gnu=${_upstream_native_cflags}")
+    set(_upstream_aws_lc_cflags "$ENV{CFLAGS}")
+    foreach(_key IN ITEMS CFLAGS_x86_64-unknown-linux-gnu
+            CFLAGS_x86_64_unknown_linux_gnu AWS_LC_SYS_CFLAGS
+            AWS_LC_SYS_CFLAGS_x86_64_unknown_linux_gnu)
+        if(DEFINED ENV{${_key}})
+            set(_upstream_aws_lc_cflags "$ENV{${_key}}")
+        endif()
+    endforeach()
+    string(APPEND _upstream_aws_lc_cflags " -Wa,--noexecstack")
+    list(APPEND _upstream_env
+        "AWS_LC_SYS_CFLAGS_x86_64_unknown_linux_gnu=${_upstream_aws_lc_cflags}")
+endif()
 if(APPLE)
     list(APPEND _upstream_env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 endif()
@@ -74,10 +103,19 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         chronik/chronik-cpp/ergon_archival_probe.h
         chronik/chronik-cpp/ergon_archival_worker.cpp
         chronik/chronik-cpp/ergon_archival_worker.h
+        chronik/chronik-cpp/ergon_journal_replay.cpp
+        chronik/chronik-cpp/ergon_journal_replay.h
+        src/validation.cpp src/validationinterface.cpp src/validationinterface.h
+        src/validation_event_journal.h
+        chronik/chronik-lib/src/ergon_submission.rs chronik/chronik-http/src/ws.rs
+        chronik/chronik-indexer/src/subs.rs
         chronik/chronik-cpp/ergon_node_access.h
         chronik/chronik-lib/Cargo.toml
         chronik/chronik-lib/build.rs
-        chronik/chronik-lib/src/ergon_archival.rs)
+        chronik/chronik-lib/src/ergon_archival.rs
+        chronik/chronik-lib/src/ergon_operator_bundle.rs
+        chronik/chronik-lib/src/ergon_plugin_access.rs
+        chronik/UpstreamLink.cmake)
     list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_runtime.rs
         chronik/chronik-lib/src/bridge.rs chronik/chronik-lib/src/lib.rs
         chronik/chronik-lib/src/ergon_service.rs chronik/chronik-http/src/server.rs)
@@ -90,19 +128,26 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         chronik/chronik-db/src/mem/mempool.rs
         tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py
         src/test/main.cpp)
-    list(APPEND _identity_inputs chronik/chronik-lib/src/ergon_operator_bundle.rs
-        chronik/chronik-lib/src/ergon_plugin_access.rs)
     list(APPEND _identity_inputs CMakeLists.txt src/init.cpp
         chronik/chronik-cpp/ergon_regtest_service.h
         chronik/chronik-cpp/ergon_regtest_service.cpp)
     if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS)
         list(APPEND _identity_inputs chronik/chronik-plugin-impl/src/module.rs
-            chronik/chronik-plugin-impl/src/plugin.rs
+            chronik/chronik-plugin-impl/src/context.rs
+            chronik/chronik-plugin-impl/src/lib.rs
+            chronik/chronik-plugin-impl/src/etoken.py
+            chronik/chronik-plugin-impl/src/etoken.rs
             chronik/chronik-plugin-impl/src/plugin.py
+            chronik/chronik-plugin-impl/src/plugin.rs
+            chronik/chronik-plugin-impl/src/tx.py
+            chronik/chronik-plugin-impl/src/tx.rs
+            chronik/chronik-plugin-impl/src/util.rs
             chronik/chronik-plugin-impl/python/upstream/script.py
             chronik/chronik-plugin-impl/python/upstream/slp.py)
     endif()
     set(_identity "ergon-archival-adapter/v1\n")
+    string(APPEND _identity "historical-shadow-build:${BUILD_CHRONIK_UPSTREAM_SHADOW}\n")
+    string(APPEND _identity "historical-client-service-build:${BUILD_CHRONIK_UPSTREAM_SERVICE}\n")
     foreach(_input IN LISTS _identity_inputs)
         file(SHA256 "${CMAKE_SOURCE_DIR}/${_input}" _digest)
         string(APPEND _identity "${_input}:${_digest}\n")
@@ -119,7 +164,8 @@ if(BUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS)
         "${CHRONIK_UPSTREAM_TARGET_DIR}/cxxbridge/chronik_lib/src/ergon_archival.rs.cc")
     list(APPEND _upstream_probe_sources
         "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_archival_probe.cpp"
-        "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_archival_worker.cpp")
+        "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_archival_worker.cpp"
+        "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_journal_replay.cpp")
 endif()
 add_custom_target(chronik_upstream_rust_build
     COMMAND "${CMAKE_COMMAND}" -E env ${_upstream_env}
@@ -169,9 +215,23 @@ if(BUILD_CHRONIK_UPSTREAM_REGTEST)
         "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_regtest_service.cpp")
     target_include_directories(server PRIVATE "${CMAKE_SOURCE_DIR}/chronik")
     target_compile_definitions(server PRIVATE ENABLE_CHRONIK_UPSTREAM_REGTEST=1)
+    if(BUILD_CHRONIK_UPSTREAM_SHADOW)
+        set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/init.cpp" TARGET_DIRECTORY server
+            APPEND PROPERTY COMPILE_DEFINITIONS ENABLE_CHRONIK_UPSTREAM_SHADOW=1)
+        set_property(SOURCE "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_regtest_service.cpp"
+            TARGET_DIRECTORY chronik_upstream_native
+            APPEND PROPERTY COMPILE_DEFINITIONS ENABLE_CHRONIK_UPSTREAM_SHADOW=1)
+    endif()
     if(BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS)
         target_compile_definitions(server PRIVATE ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS=1)
         target_compile_definitions(chronik_upstream_native PRIVATE ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS=1)
+    endif()
+    if(BUILD_CHRONIK_UPSTREAM_SERVICE)
+        set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/init.cpp" TARGET_DIRECTORY server
+            APPEND PROPERTY COMPILE_DEFINITIONS ENABLE_CHRONIK_UPSTREAM_SERVICE=1)
+        set_property(SOURCE "${CMAKE_SOURCE_DIR}/chronik/chronik-cpp/ergon_regtest_service.cpp"
+            TARGET_DIRECTORY chronik_upstream_native
+            APPEND PROPERTY COMPILE_DEFINITIONS ENABLE_CHRONIK_UPSTREAM_SERVICE=1)
     endif()
     target_include_directories(bitcoind PRIVATE
         "${CMAKE_SOURCE_DIR}/chronik" "${CHRONIK_UPSTREAM_TARGET_DIR}/cxxbridge")
@@ -187,8 +247,18 @@ if(TARGET test_bitcoin)
     if(BUILD_CHRONIK_UPSTREAM_REGTEST)
         target_sources(test_bitcoin PRIVATE
             "${CMAKE_SOURCE_DIR}/src/test/chronik_upstream_regtest_tests.cpp")
+        if(BUILD_CHRONIK_UPSTREAM_SHADOW)
+            set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/test/chronik_upstream_regtest_tests.cpp"
+                TARGET_DIRECTORY test_bitcoin
+                APPEND PROPERTY COMPILE_DEFINITIONS ENABLE_CHRONIK_UPSTREAM_SHADOW=1)
+        endif()
         if(BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS)
             target_compile_definitions(test_bitcoin PRIVATE ENABLE_CHRONIK_UPSTREAM_REGTEST_PLUGINS=1)
+        endif()
+        if(BUILD_CHRONIK_UPSTREAM_SERVICE)
+            set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/test/chronik_upstream_regtest_tests.cpp"
+                TARGET_DIRECTORY test_bitcoin
+                APPEND PROPERTY COMPILE_DEFINITIONS ENABLE_CHRONIK_UPSTREAM_SERVICE=1)
         endif()
     endif()
     target_include_directories(test_bitcoin PRIVATE
