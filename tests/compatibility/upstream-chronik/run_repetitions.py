@@ -144,38 +144,76 @@ READ_INPUTS = frozenset({
     "tests/compatibility/upstream-chronik/self_test.py",
 })
 ADAPTER_INPUTS = (
-    "chronik/Cargo.lock", "chronik/chronik-bridge/src/ffi.rs",
-    "chronik/chronik-cpp/chronik_bridge.cpp", "chronik/chronik-cpp/chronik_bridge.h",
-    "chronik/chronik-cpp/ergon_position_reader.cpp", "chronik/chronik-cpp/ergon_position_reader.h",
-    "chronik/chronik-cpp/ergon_archival_probe.cpp", "chronik/chronik-cpp/ergon_archival_probe.h",
-    "chronik/chronik-cpp/ergon_archival_worker.cpp", "chronik/chronik-cpp/ergon_archival_worker.h",
-    "chronik/chronik-cpp/ergon_node_access.h", "chronik/chronik-lib/Cargo.toml",
-    "chronik/chronik-lib/build.rs", "chronik/chronik-lib/src/ergon_archival.rs",
-    "chronik/chronik-lib/src/ergon_runtime.rs", "chronik/chronik-lib/src/bridge.rs",
-    "chronik/chronik-lib/src/lib.rs", "chronik/chronik-lib/src/ergon_service.rs",
-    "chronik/chronik-http/src/server.rs", "src/chain.h", "src/chain.cpp",
-    "src/txmempool.h", "src/txmempool.cpp", "src/util/source_generation.h",
+    "chronik/Cargo.lock",
+    "chronik/chronik-bridge/src/ffi.rs",
+    "chronik/chronik-cpp/chronik_bridge.cpp",
+    "chronik/chronik-cpp/chronik_bridge.h",
+    "chronik/chronik-cpp/ergon_position_reader.cpp",
+    "chronik/chronik-cpp/ergon_position_reader.h",
+    "chronik/chronik-cpp/ergon_archival_probe.cpp",
+    "chronik/chronik-cpp/ergon_archival_probe.h",
+    "chronik/chronik-cpp/ergon_archival_worker.cpp",
+    "chronik/chronik-cpp/ergon_archival_worker.h",
+    "chronik/chronik-cpp/ergon_journal_replay.cpp",
+    "chronik/chronik-cpp/ergon_journal_replay.h",
+    "src/validation.cpp",
+    "src/validationinterface.cpp",
+    "src/validationinterface.h",
+    "src/validation_event_journal.h",
+    "chronik/chronik-lib/src/ergon_submission.rs",
+    "chronik/chronik-http/src/ws.rs",
+    "chronik/chronik-indexer/src/subs.rs",
+    "chronik/chronik-cpp/ergon_node_access.h",
+    "chronik/chronik-lib/Cargo.toml",
+    "chronik/chronik-lib/build.rs",
+    "chronik/chronik-lib/src/ergon_archival.rs",
+    "chronik/chronik-lib/src/ergon_operator_bundle.rs",
+    "chronik/chronik-lib/src/ergon_plugin_access.rs",
+    "chronik/UpstreamLink.cmake",
+    "chronik/chronik-lib/src/ergon_runtime.rs",
+    "chronik/chronik-lib/src/bridge.rs",
+    "chronik/chronik-lib/src/lib.rs",
+    "chronik/chronik-lib/src/ergon_service.rs",
+    "chronik/chronik-http/src/server.rs",
+    "src/chain.h",
+    "src/chain.cpp",
+    "src/txmempool.h",
+    "src/txmempool.cpp",
+    "src/util/source_generation.h",
     "chronik/chronik-lib/src/ergon_http_tests.rs",
-    "src/coins.h", "src/coins.cpp", "src/dbwrapper.h", "src/dbwrapper.cpp",
-    "src/txdb.h", "src/txdb.cpp",
-)
-PLUGIN_ADAPTER_INPUTS = (
+    "src/coins.h",
+    "src/coins.cpp",
+    "src/dbwrapper.h",
+    "src/dbwrapper.cpp",
+    "src/txdb.h",
+    "src/txdb.cpp",
     "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
     "chronik/chronik-db/src/mem/mempool.rs",
     "tests/compatibility/upstream-chronik/plugins/ergon_public_probe.py",
     "src/test/main.cpp",
-    "chronik/chronik-lib/src/ergon_operator_bundle.rs",
-    "chronik/chronik-lib/src/ergon_plugin_access.rs",
+    "CMakeLists.txt",
+    "src/init.cpp",
+    "chronik/chronik-cpp/ergon_regtest_service.h",
+    "chronik/chronik-cpp/ergon_regtest_service.cpp",
+)
+PLUGIN_ADAPTER_INPUTS = (
 )
 PLUGIN_ENABLED_INPUTS = (
     "chronik/chronik-plugin-impl/src/module.rs",
-    "chronik/chronik-plugin-impl/src/plugin.rs",
+    "chronik/chronik-plugin-impl/src/context.rs",
+    "chronik/chronik-plugin-impl/src/lib.rs",
+    "chronik/chronik-plugin-impl/src/etoken.py",
+    "chronik/chronik-plugin-impl/src/etoken.rs",
     "chronik/chronik-plugin-impl/src/plugin.py",
+    "chronik/chronik-plugin-impl/src/plugin.rs",
+    "chronik/chronik-plugin-impl/src/tx.py",
+    "chronik/chronik-plugin-impl/src/tx.rs",
+    "chronik/chronik-plugin-impl/src/util.rs",
     "chronik/chronik-plugin-impl/python/upstream/script.py",
     "chronik/chronik-plugin-impl/python/upstream/slp.py",
 )
-SERVICE_ADAPTER_INPUTS = ("CMakeLists.txt", "src/init.cpp",
-    "chronik/chronik-cpp/ergon_regtest_service.h", "chronik/chronik-cpp/ergon_regtest_service.cpp")
+SERVICE_ADAPTER_INPUTS = (
+)
 
 def plugin_inputs():
     # The public runner and source gate share one exact finite inventory.
@@ -450,6 +488,21 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "external plugin projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    continuous_manifest = source / "docs/engineering/chronik/upstream-continuous-service-v1.json"
+    if continuous_manifest.exists():
+        from check_chronik_continuous_service import PARENT, TREE, FILES, CONTRACT, before_identity
+        layer = json.loads(regular(continuous_manifest))
+        require(layer["schema"] == "ergon-upstream-continuous-service/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                layer["contract"] == CONTRACT and
+                [r["path"] for r in layer["files"]] == sorted(FILES), "continuous projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            require(row["before"] == before_identity(source, row["path"]), "continuous parent preimage drift")
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "continuous projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")
@@ -481,6 +534,10 @@ def bind_build(source, build, profile, manifest):
             "regtest service plugin profile mismatch")
     if profile in ("regtest", "regtest-plugins"):
         require(cache.get("BUILD_BITCOIN_QT") == "OFF", "regtest service excludes Qt")
+    shadow = cache.get("BUILD_CHRONIK_UPSTREAM_SHADOW", "OFF")
+    continuous = cache.get("BUILD_CHRONIK_UPSTREAM_SERVICE", "OFF")
+    require(shadow == continuous == ("ON" if profile in ("regtest", "regtest-plugins") else "OFF"),
+            "continuous/shadow build profile mismatch")
     expected_link = "OFF" if profile == "compiled-out" else "ON"
     require(cache.get("BUILD_CHRONIK_UPSTREAM_LINK", "OFF") == expected_link, "link profile mismatch")
     plugins = profile in ("plugins", "upstream-plugins-dormant", "regtest-plugins")
@@ -508,7 +565,9 @@ def bind_build(source, build, profile, manifest):
         else:
             require("--features plugins" not in ninja and "CHRONIK_ERGON_PYTHON_ID=" not in ninja,
                     "disabled profile linked plugin feature")
-        adapter = "ergon-archival-adapter/v1\n" + "".join(
+        adapter = ("ergon-archival-adapter/v1\n" +
+            "historical-shadow-build:" + shadow + "\n" +
+            "historical-client-service-build:" + continuous + "\n") + "".join(
             path + ":" + digest(regular(source / path)) + "\n" for path in inputs) + suffix
         adapter_id = digest(adapter.encode())
         require("CHRONIK_ERGON_ADAPTER_ID=" + adapter_id in regular(build / "build.ninja").decode(),

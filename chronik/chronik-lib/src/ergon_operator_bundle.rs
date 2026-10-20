@@ -25,11 +25,21 @@ pub(crate) struct OperatorBundle {
     root: PathBuf,
     files: BTreeMap<String, Vec<u8>>,
     pub(crate) binding: String,
+    network: String,
 }
 
 impl OperatorBundle {
     /// Pure file inspection. Never initializes Python or executes a plugin.
     pub(crate) fn inspect(root: &Path, python_version: &str, python_id: &str) -> Result<Self> {
+        Self::inspect_network(root, python_version, python_id, "regtest")
+    }
+    pub(crate) fn inspect_network(root: &Path, python_version: &str, python_id: &str,
+                                 network: &str) -> Result<Self> {
+        let domain: &[u8] = match network {
+            "regtest" => DOMAIN,
+            "main" => b"ergon-trusted-operator-plugin-bundle/main/v1\n",
+            _ => bail!("Unsupported trusted plugin network"),
+        };
         if !root.is_absolute()
             || fs::canonicalize(root)? != root
             || !fs::symlink_metadata(root)?.file_type().is_dir()
@@ -89,11 +99,16 @@ impl OperatorBundle {
         if !files.contains_key("plugins.toml") || files.len() < 2 {
             bail!("Operator bundle requires config and at least one module");
         }
-        let binding = commitment(&files, python_version, python_id);
+        let binding = if network == "regtest" {
+            commitment(&files, python_version, python_id)
+        } else {
+            commitment_domain(&files, python_version, python_id, domain)
+        };
         Ok(Self {
             root: root.to_path_buf(),
             files,
             binding,
+            network: network.to_owned(),
         })
     }
 
@@ -103,6 +118,11 @@ impl OperatorBundle {
         python_version: &str,
         python_id: &str,
     ) -> Result<Self> {
+        Self::admit_network(root, expected, python_version, python_id, "regtest")
+    }
+    pub(crate) fn admit_network(
+        root: &Path, expected: &str, python_version: &str, python_id: &str, network: &str,
+    ) -> Result<Self> {
         if expected.len() != 64
             || !expected
                 .bytes()
@@ -110,7 +130,7 @@ impl OperatorBundle {
         {
             bail!("Expected operator binding must be lowercase SHA-256");
         }
-        let bundle = Self::inspect(root, python_version, python_id)?;
+        let bundle = Self::inspect_network(root, python_version, python_id, network)?;
         if bundle.binding != expected {
             bail!("Operator plugin bundle binding mismatch; no import");
         }
@@ -127,7 +147,7 @@ impl OperatorBundle {
             .collect()
     }
     pub(crate) fn check(&self, python_version: &str, python_id: &str) -> Result<()> {
-        let now = Self::inspect(&self.root, python_version, python_id)?;
+        let now = Self::inspect_network(&self.root, python_version, python_id, &self.network)?;
         if now.files != self.files || now.binding != self.binding {
             bail!("Operator plugin bundle input drift");
         }
@@ -174,13 +194,17 @@ fn same_file(a: &fs::Metadata, b: &fs::Metadata) -> bool {
 }
 
 fn commitment(files: &BTreeMap<String, Vec<u8>>, python_version: &str, python_id: &str) -> String {
+    commitment_domain(files, python_version, python_id, DOMAIN)
+}
+fn commitment_domain(files: &BTreeMap<String, Vec<u8>>, python_version: &str,
+                     python_id: &str, domain: &[u8]) -> String {
     // Length framing avoids ambiguity; names sorted by BTreeMap. No local path
     // enters the identity. Loader behavior is part of the versioned domain.
     fn field(out: &mut Vec<u8>, bytes: &[u8]) {
         out.extend_from_slice(&(bytes.len() as u64).to_le_bytes());
         out.extend_from_slice(bytes);
     }
-    let mut identity = DOMAIN.to_vec();
+    let mut identity = domain.to_vec();
     field(&mut identity, python_version.as_bytes());
     field(&mut identity, python_id.as_bytes());
     identity.extend_from_slice(&(files.len() as u64).to_le_bytes());
@@ -240,6 +264,18 @@ mod tests {
         let sealed = r.inspect().unwrap();
         r.put("public_probe.py", b"# changed\n");
         assert!(sealed.check("3.12.0", "public-test-interpreter").is_err());
+    }
+    #[test]
+    fn native_network_separates_plugin_binding_without_changing_regtest() {
+        let r = Root::good();
+        let old = r.inspect().unwrap();
+        let regtest = OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "regtest").unwrap();
+        let main = OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "main").unwrap();
+        assert_eq!(old.binding, regtest.binding);
+        assert_ne!(main.binding, regtest.binding);
+        assert!(main.check("3.12.0", "public-test-interpreter").is_ok());
+        assert!(OperatorBundle::admit_network(&r.0, &regtest.binding, "3.12.0", "public-test-interpreter", "main").is_err());
+        assert!(OperatorBundle::inspect_network(&r.0, "3.12.0", "public-test-interpreter", "test").is_err());
     }
     #[test]
     fn changed_config_refused() {

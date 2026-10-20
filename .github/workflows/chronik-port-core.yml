@@ -20,6 +20,8 @@ on:
       - "src/chain.*"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
+      - "src/validation*"
+      - "tools/engineering/check_chronik_continuous_service.py"
   push:
     branches:
       - main
@@ -39,6 +41,8 @@ on:
       - "src/chain.*"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
+      - "src/validation*"
+      - "tools/engineering/check_chronik_continuous_service.py"
   workflow_dispatch:
 
 permissions:
@@ -62,7 +66,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate the donor and workspace inventory
-        run: python3 -B tools/engineering/check_chronik_port_core.py check
+        run: python3 -B tools/engineering/check_chronik_continuous_service.py check
 
       - name: Install native build prerequisites
         run: |

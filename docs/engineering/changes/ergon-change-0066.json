@@ -1,0 +1,1709 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0066",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0066.json",
+  "purpose": {
+    "summary": "Integrate the complete continuous native Ergon/Chronik service, historical client profile and Linux hardening in one source/CI milestone.",
+    "scope": [
+      "Exact signed direct-child successor of public f11d867/tree3d59994, with no incoming reports, binaries, operator configuration or private history.",
+      "Optional synchronous native journal owns acceptance inputs and immutable block storage metadata;128-event/64MiB service budget includes in-flight leases;failure quarantines only the index.",
+      "Atomic live anchoring,ordered upstream writers,source-fenced publication and mempool comparison;DB work and payload destruction outside native validation locks;no coalesced replay after the live cut.",
+      "Explicit default-OFF network/genesis-bound main or synthetic-regtest client service,separate read-only shadow profile and index namespaces;loopback only,no pruning,testnet,implicit adoption,wipe or migration.",
+      "Existing upstream token/burn verification,HTTP handlers,WS subscriptions,indexer,plugin engine and database;bounded16tx submissions,skip-token/high-fee bypass refused,native absolute fee ceiling retained.",
+      "Distinguish accepted/indexed200 from accepted/pending202;WS continuity loss and shutdown close sessions;joined HTTP/Tokio/native users and healthy-stop versus real-corruption distinction.",
+      "Historical trusted-plugin commitments have a network-separated domain;the four contributed plugin modules and their protocols are unchanged.",
+      "Linux x86_64 assembler noexecstack inputs preserve caller flag precedence;test resulting ELF GNU_STACK rather than mask final linker warnings.",
+      "One current-source exact manifest freezes every other parent input;rerun all58predecessor source commands on the exact accepted parent;actual inherited runtime tests always execute the current binary.",
+      "Preserve all inherited scenarios,case bodies,prebound assertion counts,repetitions,60second component deadlines and five Linux profiles.Add three-repeat current native groups,synthetic historical clients/reconstruction,and compiled-out journal controls.",
+      "CMake/runner full ordered source identities and both profile switches agree;no Rust registry/lock change.One additional actual bundle network-domain unit gives29input/query cases.",
+      "Engineering schema gains only an exact explicit network/genesis-bound optional-indexing scope description;all authority/default/mainnet-parameter prohibitions and old records remain unchanged."
+    ],
+    "exclusions": [
+      "No consensus,activation,reward,DAA,network identity,testnet rule,wallet,desktop,release or dependency-alert suppression.",
+      "No unrelated application source/history,operator identity,endpoint,configuration,datadir,traffic,secret,raw report,build output or binary.",
+      "CI and this source record authorize no deployment,cutover or automatic proof promotion;operational qualification and reversible switching remain separate."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "f11d867dd622a9c7a13a98736a6ff5296e555d07",
+      "tree": "3d59994e7f9d692f655de733558004128f08b774"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "497323c4219cf1f8ae42c64018f55a096dd3ff41d2ff69e8bbca1395ae03b14a",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "No incoming private source/history,operator configuration,reports,binaries or unrelated application material;four previously contributed public plugin modules unchanged."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-port-core.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 5713,
+        "sha256": "d1104f54d2c829f3380bf2f5bd5fc235baa4f6f5b827b1b01703ead02ca3311e",
+        "git_blob": "c94bea5bec3014c119eea4844f239a440be0cf97"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5902,
+        "sha256": "b66c599378608258c4f51c06279d63d0e60783022678d0e2096de084e72322e8",
+        "git_blob": "6d187bcec3243954ebb5aef4ea0abaf5375e4295"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 22361,
+        "sha256": "97e844712f18298b800782965d36367a6d460a0d71a2662df24cdcc091ee9739",
+        "git_blob": "0930f3f87ad6d361e8d4a42ac106a4e853103b33"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20668,
+        "sha256": "7f0cbf37f44e4fabe2cc68a8b8d64560b0de9e697ef3a17d68ca01c489736419",
+        "git_blob": "967793718139c37d80424411d46313436141363e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "CMakeLists.txt",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 5406,
+        "sha256": "404a63bc4f6d0a091a2358133bbd25bad295b2241bc1aa7d80bb2e4511d9e1b1",
+        "git_blob": "324de778d23044dc848784c9898329c090aad06c"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6061,
+        "sha256": "e8d36428e48472f253e179f874f3cb7d948872b01aea63c5100a805c9d48a873",
+        "git_blob": "6853367d51bf2dd8d51167c608a340dcf9f7e933"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 10241,
+        "sha256": "356decbb3263bc73285ebe23daf29cba037a6e670d53ae3b774e282250a41a7d",
+        "git_blob": "03ec0ee5abcf9fba46a72544c54a10e2ec4a15a4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14159,
+        "sha256": "4336bc756342a36e2889033d83c67d7295ea27ba58118ce33fc107a46cbffd83",
+        "git_blob": "b934e07de85927176609ae2d48dae44437db3f01"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/chronik_bridge.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 32235,
+        "sha256": "4c078f2594a1f47b49a512246de482c38e235e1df07a375c73b5d482dd28e4e9",
+        "git_blob": "3a6cc7a4324ad10c9c5f2d9b5ec72595458db868"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 35541,
+        "sha256": "553ac7d97fa854934919c515547cbde46e23d2cd1a8424896479f1b968405d16",
+        "git_blob": "2bb3c8b6b66b7b14aced41a6e458242477b940d7"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 27266,
+        "sha256": "71bd9a034daf61a965dec50b93cb2beafb4814f578eb2485d5cb82a1d14c7de7",
+        "git_blob": "c6bd4b6b520203a69e62824774c43dec1137f2ab"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 28342,
+        "sha256": "e83ca51d7124aef2c9a16893b79028fad0dfb8da774e9ab4a833f9e0d8d09091",
+        "git_blob": "f0a638320a290185572af430ea6b9e7a36f81896"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_probe.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3458,
+        "sha256": "60881e15430bde52d08cb69261b86f67dbef4d7db6132722471c53e8f48a312c",
+        "git_blob": "b2a990a7a3c8f2302688d9221f95a47018b48555"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4291,
+        "sha256": "4f7fc83496f43d7fe3d202623e72edc19a472a6494a84ae7f8e454e4495031ed",
+        "git_blob": "7d44c08cd5aa6ef1f16844cc6680decb3eefff91"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 16658,
+        "sha256": "a938d79d4ed57d94afb8f294479c8f8e70258fabeeaa8c9527d9892757a71e37",
+        "git_blob": "138eb926283c03b3a36900e7a70aab478c0bc758"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21892,
+        "sha256": "c74e02364442649e643f4d8b4609c3694a5c38d056908052204468ddd2178cea",
+        "git_blob": "c2ea87d3c448b1d453f8ca87c78e01d5e9c1faff"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_archival_worker.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3988,
+        "sha256": "6a8965006cdf7c64c522f31f5ab98b93752986bac6c18d9fba58d4a057f04490",
+        "git_blob": "e4772959619fe366158915523fc5f748b73e10ed"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4429,
+        "sha256": "c76f18d951574ff3ce651d5112756c9899872bf92acb537200bd53ca3f5daa3a",
+        "git_blob": "d3b37a3ff227eb1191be066e0943c7d7ee25865e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_journal_replay.cpp",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 10105,
+        "sha256": "84685a81dbf89d0176943d566e448d78934424c5e4db9f8f09e45d5c46a701ec",
+        "git_blob": "4990e4e7f346feeeb2dd09b34fe93fd5d2c13de8"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_journal_replay.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 1659,
+        "sha256": "5835774475db5f021310b06f3691c69a86cd511dd23260f5c6c3065864557621",
+        "git_blob": "302c20337b3556ec72a3ead1fedde9b0d3666014"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_node_access.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 2375,
+        "sha256": "9a55754affdc405d1bb8b7cbef21c6c5c83df15e157a6382b00fb4b48a30344c",
+        "git_blob": "f625b123d3f6d61879e92ed45f2a7b21fba5b24a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6055,
+        "sha256": "6a49371ad5a4089c657d2c09b03acee019d6eb8b778ebf04bbe7463eacf9a16f",
+        "git_blob": "826dd6fd97cf868b500edb7febb18147b449457a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_regtest_service.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 7322,
+        "sha256": "dac657672329f3093b85240264eb370969db0f08889ef4386a92785fc270090a",
+        "git_blob": "933f2e07f06720609314ca18923a7225e975e383"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13056,
+        "sha256": "9af6520880b90d4962f690009b02664dbc4633c30fbd455943da704b998ea19d",
+        "git_blob": "938170f428f1759fb69ace6587ffcbe33f6ce0cc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-cpp/ergon_regtest_service.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1220,
+        "sha256": "08b4eb0a673b29febf4f8df3c9d0e1afffded2ffb891864135c8be9a4ebf4244",
+        "git_blob": "bb723545d2e363dc4ab1c02a1cc231fad0db5a81"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2350,
+        "sha256": "117a79d5af7b68d77af5fd1412a21f66b61d0b81cb90ba09140bc8a3a154c9e3",
+        "git_blob": "9aa405ab7ef0b4fe449dab7f85863eda34609a3c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-http/src/ws.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 22906,
+        "sha256": "23b6c6d53bc663ec4b7c35d710bde031aa34abf6c8add296778c62c0c76a723d",
+        "git_blob": "65be63e8af6059305a144580ee7ee9af2256b3e7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 26040,
+        "sha256": "ab152413e0fcac792b704540274d92dd92e8afa311e7b9dfe99ed0c847400d1a",
+        "git_blob": "32bd34129d907b9fd679455c8b2e5dff7fb918d4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-indexer/src/subs.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 5984,
+        "sha256": "7cc058be4b83d9a4f4c2de3656af3820b7b9e3fb6f5e75c3fdae23e66882f8f2",
+        "git_blob": "bdf6dfed9b6ba97aff53f5505bc8e5eb98976b16"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6035,
+        "sha256": "dc4d56cbb60aeb1b8c6998501702ceefcfbb09a1a6f36131c19f0b117a688570",
+        "git_blob": "7fc7ec7f0ee3803065cb27aa13107478a3ac0f51"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_archival.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 69733,
+        "sha256": "ef680422ca184e9e2d6ca78f52ed3afd025ce16666a8e7c359170ffb377f39d3",
+        "git_blob": "f23f10782149bf5d41ebaa96dd7d1d2be651572a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 86906,
+        "sha256": "c462733f8b88cdd15a45755b778a48b015c0789183571b017658e246897e2b77",
+        "git_blob": "322be2534f7320cb9ff81d8d658b144be0bf4f36"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_operator_bundle.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 12534,
+        "sha256": "4dc27c3e2300ec992529460a40860b77edc19f2d2c38b5164454dd7f9b5cc2c8",
+        "git_blob": "ca60a136a6d43adb32ca88899d6b823cdad111ee"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14479,
+        "sha256": "8b000f04d0fa2bdc09695a1e88a33fb75c91cb9f45a8ea1827c18cd330d90032",
+        "git_blob": "c9d6b4cdccf29d33f6b088663cba89b30e5f1d8a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_plugin_fixture.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 11907,
+        "sha256": "75857a5865f87b0549fb31ab41eeee21801598a50f723479ab314d0205d3ddd5",
+        "git_blob": "63cd8d4dcda71728effe8c139c586daf45b12d4f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12805,
+        "sha256": "a3a36bf57f77505f21bbade3ef8d4ff998ef595cdee73efc98ac7114985083e9",
+        "git_blob": "07dcec533879f5b3c52acc68e476f84e28c13d11"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_service.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 9285,
+        "sha256": "9b1b49a7d57bdf24e040fd0d785a6ec055a7d7a25cc84c53fb3e30955cf78e9f",
+        "git_blob": "09024064647f4274a6119ae0f340911e6ace7212"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 18061,
+        "sha256": "257dc806a2f60260c87e90022ac65bde44ca71bc7a521be31c28ecce277202ba",
+        "git_blob": "faade13572b56eea9f3c83120fe463e56285fdc9"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-lib/src/ergon_submission.rs",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3861,
+        "sha256": "5ffe65ac944657d316a1402c2fb4a8990c7d936bf13867bc76d157502151ccc0",
+        "git_blob": "f56d4448b212c7df13e0bc53b49e0ea015efa47d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "chronik/chronik-lib/src/lib.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 1706,
+        "sha256": "ed9959e2359bd147b9b33c87c64eef00c3c3bad742c8e545e2f0aae3f4e33abf",
+        "git_blob": "1b81421c4338e8888312401a96d178c79352a0fc"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1856,
+        "sha256": "1ab787f6dd865c275722fad9212f83b97cb75164014150efb99e95ee5c78cb0e",
+        "git_blob": "489eff81e8e968d6c945bb0caa1d1dc95e3591f3"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-continuous-service-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 35567,
+        "sha256": "abeb1fd4315cf506ec169ec27eac601088a49c5d2041af755853ccb9c67ca21a",
+        "git_blob": "bb43198a3c59c136d82dc1d311b3ddc42efe2c35"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-continuous-service.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8509,
+        "sha256": "66418ad6306fd22c4b985657a4c7597cc251118d01555cd71145858139197e8d",
+        "git_blob": "d8efb6ce57f230f7d325d58d9e12325ddf756311"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "docs/engineering/schemas/change-evidence.schema.json",
+      "action": "modify",
+      "role": "provenance",
+      "before": {
+        "mode": "100644",
+        "bytes": 15393,
+        "sha256": "71bded55ba5d31a390f8ecf6f58ff995fcac278a9cfcc01ab8624786aaa8c853",
+        "git_blob": "db1a443d1d74de350fe3bb16fedae4cab71cacca"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16152,
+        "sha256": "2bb0c43340b3b7dbdfce9841f6bd83c70371c423071c0f1b323b45b1a3e0bceb",
+        "git_blob": "1b900e30af1f22547921e433e6483760bc82b71d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/init.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 121149,
+        "sha256": "1b7ab55e0e162fea306a433062d3c9c64fd39fea31f45799602cfb0fef687fc0",
+        "git_blob": "6ec51199766c364c1dbf1d18152b7395314ad38a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 130008,
+        "sha256": "268213344284a77ca0ba7f61ebe7865b3f010859b45690dd2267d8daf2756395",
+        "git_blob": "327c1b57c9086e36d783bacde9da98a6a50d7127"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/test/chronik_upstream_archival_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 187062,
+        "sha256": "83a0fe33749a424ec4f75e53bdd22a78056dccc32f6d5a03ba21aa5ead6c4e03",
+        "git_blob": "e7ec7fe84adc9151ba963c2d6df3f64372a7f169"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 186418,
+        "sha256": "d318d6de5c23c01e6906123b4d459e9b68e87e5a8b262a311508c5c4ba382bf8",
+        "git_blob": "ddb9fc1d7387eb748fb632fe0e8fea245363a836"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/test/chronik_upstream_regtest_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12207,
+        "sha256": "a361b6b252fcfb77be3410032690f60ee8381622495ca0dea411092aa01d319e",
+        "git_blob": "716ec1699bb01b7ea7fa5e32275b29075933da39"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 47442,
+        "sha256": "3cbc7b9353a6c74bbf6fbe4ff65e69549eee325fe95e20eebd1a8fa759983269",
+        "git_blob": "83a58a49ff3be614f2b85ecea046f85ea2e0c6cc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/test/main.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 1488,
+        "sha256": "8f5bd86b129d907eaa1ab88cf21dafd28d881401525592de756a465d3dc5aecd",
+        "git_blob": "c9eaa03af13a8d5c996bb1e758970dcd2769e164"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 2365,
+        "sha256": "c6acc32d0a2f0c70aa6a6dc752702fb8973a2f11043a3046b12ca36cdc956ed6",
+        "git_blob": "8fe03761c7726cb17c7b2876a1cc8789737624dc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/test/validation_tests.cpp",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3662,
+        "sha256": "6ff081116758053501e5b25404c76e017614cff266607f74c05b91a5c968e9da",
+        "git_blob": "1be7bf1d7b7fa2f3401141c32b6542b57468194f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 15016,
+        "sha256": "2007638c881760731b981db6abbad44c4f378be49bd496ba4b0c1a06c9e7f10d",
+        "git_blob": "ad58a314d37e45c1525ef412c7b5a910a0e8ee80"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/validation.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 230991,
+        "sha256": "267c256ee8d34c6ad0252d5f0f4304ae340e3e3f9e1d249aa46ea553bc172c72",
+        "git_blob": "dce8693ffe3b085bb28cf2c92d8d37c3db4d4d23"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 231350,
+        "sha256": "40246abd2ef2de196c72cfcbf9d6e28ee07b829bd8ce26ca7f0c27575b8ea70f",
+        "git_blob": "8f22529faaec9e93d99f651272a181a8b237bc11"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/validation_event_journal.h",
+      "action": "add",
+      "role": "production",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 8762,
+        "sha256": "256ffc1f864af06c3e3c38322b338bceb30679644675a65238970edec6b208af",
+        "git_blob": "eea2b3a0b8a0fbad6ec29c2f56faed1b838bdc13"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/validationinterface.cpp",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 9582,
+        "sha256": "27386cea4d7ca484b8d2191b22c4cc6303bd7c5b5165d532ed03bdb62ea312ca",
+        "git_blob": "f68e5d0397c0c2b5577d62d4e271945a4bbb05f0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11623,
+        "sha256": "a506009cc3c228349d0b9390c75b97ed0b0cfdabf2a50a03feb317df7d9cb8c2",
+        "git_blob": "55f810651ab8d4bf5161d509421b970702bae9bd"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "src/validationinterface.h",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 8757,
+        "sha256": "80bd4b9b0f8331c436948276979084444b365341877632a5da749090724b9297",
+        "git_blob": "521b58b8d05097926e6787cdeb93c43c3e329be1"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 9521,
+        "sha256": "781031fe4c388616b5f576ac72e103b06e9293a34a3dec8a3f5c95291ded9e37",
+        "git_blob": "881bf9d8f766171f010823fa54d78c68a4835f4a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional explicit native-network/genesis service or inert-by-default observer hook;no native validation authority.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/community-plugins/component.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 5429,
+        "sha256": "243b3ed4cafc54d5d8dbd80fdfe0ad705c4ba781cba8c752bef4969f2d8d35eb",
+        "git_blob": "e04a74063adb00492cb0a1e34470ecce23b1e4c1"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5507,
+        "sha256": "28e77abaf41eb76f8fb6977ac91c8d5a0a5d31dd0c219a593e1c84a55262faa4",
+        "git_blob": "e4e3b6bf32eb40cfadc9f3ff981fc2d5cb2c119d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/community-plugins/component_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3311,
+        "sha256": "00e9b31a801ef78c0147bc816da0b0f68bfe5dcb9ca6a30bce03f3304e211d14",
+        "git_blob": "b726fa4d5451b59ddf34490b198108454a7b90d7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3311,
+        "sha256": "09375537582cfe5886fc9ee976e2292995e8fac2d1a9bbbc0710a76264957e27",
+        "git_blob": "79a63a9f5f01367ea51fe1b0511e54fde1149a35"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/community-plugins/service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 20057,
+        "sha256": "58363f90f0c9f0ab50b15c5fac6cd84fc244c1fb6167ea2074cf7f26d0abde2f",
+        "git_blob": "7c449f6cae950bea1251720e88494c0eb06d99bc"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20059,
+        "sha256": "7a76dbff2b5f26a6c0da116dd211b770a7ba0221c4c39d8dc6a2da01a117a439",
+        "git_blob": "e7dcc480969c09a8582dcbcefe71f65717a71a1b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/alp_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 22403,
+        "sha256": "fe168a4dd2268bd7f9fbf77149b2949e0acfdfec9b0cf402672de34fd31f1df1",
+        "git_blob": "c1e46b28b8fb47f7363634df93e7229a6c6085ef"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22410,
+        "sha256": "f4184b7ece6e59f51dcc4885ac3e4684fdcc2aacdd58ddb246cc63a7f628f9d6",
+        "git_blob": "756ae73e8ee6cd21019c5924d8d0da920d0eea15"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/catchup_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10126,
+        "sha256": "92c6c76e672071a518e48aa96ee28f88e5202c3d563cfc74d6d3fabe1f5dbc12",
+        "git_blob": "3b46656498269f69ed009a200f050e544e98a924"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10174,
+        "sha256": "da2ee6dc45cdbc187ae8fe43d546096502bef040ab37a520c727f8fcd5de3c8b",
+        "git_blob": "1ea9640cf7590bc153effb5298d846ac72a5bf79"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12899,
+        "sha256": "a614bb62004bd01547d745a914ff53d2368d4a929409b6d512247458ae635fdc",
+        "git_blob": "3cdd0dc3cd287478735e28676d228822adbbaffc"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12947,
+        "sha256": "a7e0d1e124b11fbc41adc5bc1f09a69bcbdb4aff38ed15454c7710c4278c75c9",
+        "git_blob": "d95b53f86948c2f5e7f5fec6c99702ccb42c65ee"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 14929,
+        "sha256": "98725c7a1d46fe135722bca53b12cf352e8cb8785cd8beec97c7ba8570363e67",
+        "git_blob": "cb689744c3d85a39f44eb2abdf261d2b1a045384"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14993,
+        "sha256": "6b748cf146ffd539cea89bc6f6e8944730dbf2ae984f34fecd7721ebaad591fa",
+        "git_blob": "c1527962388ffa62291c56124f24a34fe42bdccb"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/deployment_service.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 7864,
+        "sha256": "be3d78f704e7f1472884ecdc81930a812ebfd72f7f2d3ae8cf249eb851b832a7",
+        "git_blob": "63fd707f22bd6ee21367ae74a3a16ff2a99d3287"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/deployment_service_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4151,
+        "sha256": "6cebac52e5ca89c2d4e1b4df7186e373bac9d238a628bfe64fb80b4916080f96",
+        "git_blob": "551e18eb0268296aa8ff192824c941589d215978"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/historical_client_service.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 16012,
+        "sha256": "ab4e5b944e2cf188115b2dc40127bedbb604fc8464daa913f3f834783c10bbeb",
+        "git_blob": "8ad3178b691708c086d91e509c186b0c368231dc"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/historical_shadow_service.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11557,
+        "sha256": "f6d23097a4ba63cdc06e1f25bd9fce9c773cee690182c1659d4e5bb6a7c339a4",
+        "git_blob": "8b703d45aa8f5ef30cc4a760703dac4e5694ec0c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/long_history_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 4468,
+        "sha256": "cce94ec9e0f816caea8ddbe66c94da72324e4bc23e6adc5610d3e564caece0fc",
+        "git_blob": "c5c3a438f1a2ed2ab6ab8d080a9c62968f45fca3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4474,
+        "sha256": "a240be4e0036ad3a50e4af54f8b413f4ce8debe8ec3a3f9e910feb95d468e36f",
+        "git_blob": "7ad61ddce7e15148187900f454ba62e0d4f65674"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/multi_lokad_component.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3881,
+        "sha256": "966d4763730b6bdc9b737b97372f6384bf0f47bbc60aa014649c6d3e5ceb8b2a",
+        "git_blob": "26b7e2e05029303f8a2f5158eacf15b4b7613409"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3888,
+        "sha256": "174b181c0da0e2857b0d5951f1df455ccd55c83a02804ae53cebe260f9e09e39",
+        "git_blob": "15398e59ba782466a5b995efb6d2d6e45bf437e5"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/operator_bundle_binding.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3149,
+        "sha256": "12380bcdc0588ca22659b04b3b37fb4246071b04e3c66a49339b1ff52f155205",
+        "git_blob": "e964c7aa3ac9fc1167f15dfd97fa0bbfebbd065f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3390,
+        "sha256": "b5638c22f732bc86bafe528000566d14631f4c78147d57396e729b21b5719f8f",
+        "git_blob": "eb64440b66b0198775d17fd3f6b48ebf22113b81"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 3914,
+        "sha256": "7d4510f7222fb301976a252b3ade12f4db534c3674dc727bc57cd522e16059ac",
+        "git_blob": "34beac5e7f3c55ba812b9465f9c6c188dbdf715a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4290,
+        "sha256": "ebc90b201e1d383b94d499516a7aad7974ad6c388df94547c2443bb723030883",
+        "git_blob": "13443ae2f0ed9025106a2172edb7af47e26f4b35"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_alp_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12898,
+        "sha256": "b8d0a02c8613fd488defd6c0bf62b0061d416d2928c994579aa362bcc12a60b4",
+        "git_blob": "26d7d0e0a1a31d354c743822b84967c02bfea7d0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12946,
+        "sha256": "7dfc4c93d74e63c85e58ddb96398fdf671a4d2cd1785acd98a99258dc73b7511",
+        "git_blob": "3c2137e9bb5b3ee1376e9e46fedc012a0585c6d4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_restart.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 6872,
+        "sha256": "1db03acc7d27688279e10b2c93396e27fe7878a56d1616884aed89e5dbac4c2f",
+        "git_blob": "acfbb91c275a3a1dc159088820deb18e6bc53b17"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6876,
+        "sha256": "cb4cbdafdb595636511a476da011e059e36987c6dbbc57db3eb4e95b7a811471",
+        "git_blob": "df10e975f377e63864e944c1d0332e9c5997dca9"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 13779,
+        "sha256": "60256917b3bdc2158390cffc5985955ec7594fc79c579ee3b35d7299981c54a3",
+        "git_blob": "2b1cadca1ec55a8a6349c5b82763a92898664086"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13782,
+        "sha256": "0c7309f72de1cbe13e35f1e69a1096f10d2fe40a54db5f9061a5412fc877b16f",
+        "git_blob": "ecc794acd8d4da4010e577f2cdc3a3d7b152a820"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/regtest_service.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 21245,
+        "sha256": "78678b3299a3fe10371eb201952b744e8511bcd97482186cf8efc2f94a6e9f4c",
+        "git_blob": "f109113f7b4587d3dbd12ea9b38406d4c55eec8d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21248,
+        "sha256": "681e8b7e3f6c43d28b7c67ff528d6472a504616fe30b9d675b6847def40dc2a6",
+        "git_blob": "dd5c8ced4477ddea6ea3fa492fcaaa7c82110800"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 44987,
+        "sha256": "5e3c343af610ebe55556e155e436539556c81967414830e69ce3acbeea01e12c",
+        "git_blob": "4ed96ef5cfe40df83cece66e5fd2ff0d74fc1e72"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 47246,
+        "sha256": "cd93fa9cc13a2f8496f2cfb8fa825b191610c9eb9133fab9a79154654fd15d93",
+        "git_blob": "b393728f8974fe8ddda284dd229324c60b0eb56c"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 21877,
+        "sha256": "60b27e91795da83cb5559908bd075840c2fd5c1618702c7e6ee6696bd8f5b680",
+        "git_blob": "990bdccb9ecafcd14c2301642161b2de208897c3"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21966,
+        "sha256": "56e2f868e42642e3e97482bc7fbbf27d8dca4d3362b62afe7bb6e545a3725213",
+        "git_blob": "d583b82e86eea6be6f3ed9a5b7cce5a503f4358d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/startup_metadata.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 5246,
+        "sha256": "1b0821b32e095a358b3a617ac9812293098455f891022d5d83c09fd2694cab33",
+        "git_blob": "4b3f7cb75d6bcc56d93b767ce4923cc3ff9ca99a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5294,
+        "sha256": "c98bb7aff7e7038c35537ef1b847134305a78ee8383a9edaa69d7087f9a30d9a",
+        "git_blob": "6af1d5e943d698efd68729af07b713fb20cb7c31"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tools/engineering/check_change.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100755",
+        "bytes": 45050,
+        "sha256": "ceb39c0eb25ac5bdd45c3a8269e6a5a50530e7dacbf9e0463169bdbbb8b8a92e",
+        "git_blob": "daffd0c47631124ce634d869c3200a2af2dae051"
+      },
+      "after": {
+        "mode": "100755",
+        "bytes": 45552,
+        "sha256": "68421dea23fa0693ed65362f885338dfa37abd734cf6e33851451490ed81a1e7",
+        "git_blob": "a539891d18d86cd3c575446507c324f5767b6f2b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tools/engineering/check_chronik_continuous_service.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11719,
+        "sha256": "587eba5a642eaacd4870a40b636d43e44525efb091b9bd9ad0600ceabb30caac",
+        "git_blob": "c10bdf3a730a5a08f0954bd17cdcadcbaa4f0ad9"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    },
+    {
+      "path": "tools/engineering/check_chronik_continuous_service_self_test.py",
+      "action": "add",
+      "role": "harness",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 9181,
+        "sha256": "10b4f7a553bcd044d251cb9820bf37be24609f92c48963b7e4b5cad7f746edd0",
+        "git_blob": "85b24654515ebb9d7fb44477e1509f9a184bb4d0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build,source provenance,public synthetic test or documentation only;no automatic deployment.",
+      "test_reachability": "Existing exact native/token/plugin controls plus current continuous journal,historical clients,reconstruction,reopen,refusal,stack and standalone controls."
+    }
+  ],
+  "surfaces": {
+    "build_release": true,
+    "consensus": false,
+    "data_research": false,
+    "documentation_cockpit": true,
+    "indexing_chronik": true,
+    "p2p": false,
+    "rpc_api": true,
+    "storage_datadir": true,
+    "tests": true,
+    "ui": false,
+    "validation_mempool": true,
+    "wallet": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "explicit-native-network-genesis-bound-main-or-regtest",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Use the exact current .github/workflows/chronik-upstream-link.yml profile;regtest profiles additionally compile the explicit historical/shadow service switches,all defaults remain OFF."
+        ],
+        "expected_results": [
+          "Fresh current-source daemon/native fixture and all applicable inherited/new profile controls pass;no binary-to-source or deployment claim without its separate build record."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Use the exact current .github/workflows/chronik-upstream-link.yml profile;regtest profiles additionally compile the explicit historical/shadow service switches,all defaults remain OFF."
+        ],
+        "expected_results": [
+          "Fresh current-source daemon/native fixture and all applicable inherited/new profile controls pass;no binary-to-source or deployment claim without its separate build record."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Use the exact current .github/workflows/chronik-upstream-link.yml profile;regtest profiles additionally compile the explicit historical/shadow service switches,all defaults remain OFF."
+        ],
+        "expected_results": [
+          "Fresh current-source daemon/native fixture and all applicable inherited/new profile controls pass;no binary-to-source or deployment claim without its separate build record."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Run check_chronik_continuous_service.py historical and selftests,all current offline wire/plugin controls,and all inherited five-profile Linux builds/runners.Run deployment_service.py for three-repeat exact native groups,ELF GNU_STACK,synthetic historical clients and read-only reconstruction.Keep all existing daemon/plugin/ALP/standalone scenarios unchanged.",
+        "expected_results": [
+          "All58historical source commands pass on the exact accepted public parent;every current changed byte/preimage/path and source record matches the new finite manifest;all other parent paths frozen.",
+          "Full ordered CMake/runner identities and compile profiles agree;all inherited case/assertion/repetition/deadline/environment/cleanup contracts unchanged.",
+          "Additional native groups have exact selected identities,one unambiguous positive passing assertion summary and three identical fresh-process signatures;new assertion counts recorded as observations.",
+          "Synthetic ALP lifecycle,unintended burn refusal,indexed200 receipts,WS confirmation/disconnect/reaccept,same-port identity reopen and nonempty native mempool persistence are checked without mainnet submission.Pending202 waiting/receipt logic has separate Rust unit coverage;the daemon fixture does not force202.",
+          "Historical read-only5000block reconstruction,same identity/lease reopens,pruning/network/profile refusals,compiled-out journal controls and exact RW/non-executable ELF stack pass.",
+          "Actual four-plugin component has29exact source/query units and unchanged ALP+SLP/projection/template behavior;no incoming operator fixture."
+        ],
+        "failure_conditions": [
+          "Wrong source,build,bundle,version,interpreter,paths,types,units,counts,case names or projections;authority/default change;nonzero exit,skip,timeout,stale output or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the unchanged inherited index-restart-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the unchanged inherited index-full-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the unchanged inherited index-chainstate-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the unchanged inherited index-pruned-datadir-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected acceptance, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the unchanged inherited index-deep-reorg-fail-closed controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected authority, stale publication, changed count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Trusted Python is not a sandbox;pre/post source checks are not an adversarial atomic filesystem snapshot.",
+    "Journal and working payload budgets can intentionally close a busy index;this is not a production throughput or availability SLO.",
+    "Accepted202 is not a rejected transaction;clients must recover indexed reads and WS state without blind rebroadcast.Notifications are not a durable replay log.",
+    "The synthetic daemon fixture may return only indexed200 and does not force an accepted/pending202 response;separate Rust units cover receipt parsing and pending wait outcomes.No target-server202 coverage is claimed.",
+    "New native assertion counts are strict observed positive summaries repeated three times;inherited prebound assertions and repetitions are unchanged.",
+    "Synthetic historical/regtest evidence is not main-chain operational qualification,independent token validation,independent reproduction or production readiness.",
+    "Rust registry tuples remain locked;native/system packages,CPython and runner images are not fully locked.No reproducible-build claim.",
+    "A fresh exact accepted-GitHub Linux installation,new plugin binding/index qualification,real client/new-block/shutdown checks and preserved rollback are still required before a service switch."
+  ],
+  "counterevidence": [
+    "Historical capture/query and stop/reopen timeouts remain open.No component deadline,assertion,repetition or cleanup is weakened,and no failed report is replaced by a diagnostic.",
+    "PR71 at7b746bcc6db2b9dc8d3b1c73d0c38f2807c9fbc4 compiled standalone but the new deployment gate refused missing case identities because the progress observer was linked only in the archival profile.The identical observer is relocated once to common test/main.cpp;case bodies,marker grammar,assertions,deadlines and repetitions remain unchanged.The failed public run is preserved,not relabeled successful.",
+    "The same candidate changed the unavailable donor fee-rate sentinel from-1to0,contradicting the unchanged native bridge oracle.Restore-1and accept only the exact upstream-derived marker;never treat it as a native fee ceiling.BroadcastTransaction still uses allowhighfees=false and native absolute maxTxFee.The inherited test and166assertion group remain unchanged;fresh current-binary execution is required.",
+    "Earlier source candidates failed logger/build-identity checks;their public failures remain visible.The current full ordered-identity regression includes every new journal/WS/service/native hook and both compile switches.",
+    "Zero-fee synthetic transactions can be rejected during native LoadMempool if mining cleared their artificial priorities.The test restores declared priority before persistence,never refills or changes native policy after reopen.",
+    "Native acceptance can precede indexed availability;200cannot be claimed solely from native submission.Recoverable503/pending202 are not successful empty views.",
+    "No private server observation,operator dataset or binary is incoming public evidence.Upstream dependency alerts remain open.A target-server data-integrity contradiction,unsafe shutdown or service regression blocks operational switching."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}
