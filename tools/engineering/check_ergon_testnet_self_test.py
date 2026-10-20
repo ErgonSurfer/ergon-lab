@@ -64,7 +64,11 @@ class TestnetContract(unittest.TestCase):
         before = gate.git(ROOT, "show", gate.PARENT + ":" + name).decode()
         after = (ROOT / name).read_text()
         marker = "      - name: Build and exercise bounded multi-identifier plugin metadata\n"
-        self.assertEqual(before.split(marker, 1)[1], after.split(marker, 1)[1])
+        old = before.split(marker, 1)[1]
+        old_gate = "python3 -B tools/engineering/check_chronik_continuous_service.py check"
+        new_gate = "python3 -B tools/engineering/check_ergon_testnet.py check"
+        self.assertEqual(old.count(old_gate), 1)
+        self.assertEqual(old.replace(old_gate, new_gate), after.split(marker, 1)[1])
         marker = "      - name: Recheck inherited runner and synthetic oracles on current source\n"
         end = "      - name: Build standalone daemon and native boundary fixtures\n"
         self.assertEqual(before.split(marker, 1)[1].split(end, 1)[0], after.split(marker, 1)[1].split(end, 1)[0])
@@ -72,6 +76,24 @@ class TestnetContract(unittest.TestCase):
         self.assertIn("--run_test=ergon_testnet_tests", after)
         self.assertIn("--run_test=ergon_testnet_chronik_tests", after)
         self.assertIn('--work-parent "$RUNNER_TEMP/ergon-development-smoke" --chronik', after)
+
+    def test_runtime_clients_change_only_exact_source_gate_import(self):
+        prefix = "tests/compatibility/upstream-chronik/"
+        old = "from check_chronik_continuous_service import validate"
+        new = "from check_ergon_testnet import validate"
+        for name in gate.RUNTIME_GATE_CLIENTS:
+            with self.subTest(name=name):
+                before = gate.git(ROOT, "show", gate.PARENT + ":" + prefix + name).decode()
+                after = (ROOT / prefix / name).read_text()
+                self.assertEqual(before.count(old), 1)
+                # Exact text equality preserves every runtime case, assertion,
+                # timeout, report, cleanup and invocation around the import.
+                self.assertEqual(before.replace(old, new), after)
+        name = prefix + "cold_rebuild_service_self_test.py"
+        before = gate.git(ROOT, "show", gate.PARENT + ":" + name).decode()
+        self.assertEqual(before.replace("import check_chronik_continuous_service as boundary",
+                                        "import check_ergon_testnet as boundary"),
+                         (ROOT / name).read_text())
 
     def test_old_source_gates_are_not_rewritten(self):
         for name in ("tools/engineering/check_chronik_continuous_service.py",

@@ -13,6 +13,12 @@ PARENT = "1029eb3295fa9ba986cac0a0020c74f74b9a6914"
 TREE = "e03012dbae6d0fac5095f25d2102e6bb28a65dad"
 MANIFEST = "docs/engineering/testnet/source-v1.json"
 RECORD = "docs/engineering/changes/ergon-change-0067.json"
+RUNTIME_GATE_CLIENTS = (
+    "alp_service.py", "catchup_service.py", "cold_rebuild_service.py",
+    "deployment_service.py", "long_history_service.py", "multi_lokad_component.py",
+    "plugin_alp_service.py", "plugin_restart.py", "plugin_service.py",
+    "regtest_service.py", "startup_metadata.py",
+)
 FILES = frozenset({
     ".github/workflows/chronik-upstream-link.yml", ".github/workflows/chronik-port-core.yml",
     "chronik/UpstreamLink.cmake", "chronik/chronik-cpp/ergon_node_access.h",
@@ -24,6 +30,8 @@ FILES = frozenset({
     "tests/compatibility/upstream-chronik/operator_bundle_binding.py",
     "tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py",
     "tests/compatibility/upstream-chronik/run_repetitions.py",
+    *("tests/compatibility/upstream-chronik/" + name for name in RUNTIME_GATE_CLIENTS),
+    "tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py",
     "docs/engineering/schemas/change-evidence.schema.json", "tools/engineering/check_change.py",
     "tools/engineering/check_ergon_testnet.py", "tools/engineering/check_ergon_testnet_self_test.py",
     "contrib/testnet/ergon-testnet-v1.conf.example", "docs/engineering/testnet/ergon-testnet-v1.json",

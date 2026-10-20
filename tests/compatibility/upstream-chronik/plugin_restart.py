@@ -97,7 +97,7 @@ def main():
         runner.require(not any(work.is_relative_to(p) or p.is_relative_to(work) for p in (source, build)),
                        "separate disposable work parent required")
         sys.path.insert(0, str(source / "tools/engineering"))
-        from check_chronik_continuous_service import validate
+        from check_ergon_testnet import validate
         validate(source)
         manifest = source / "docs/engineering/chronik/upstream-host-adaptation-v1.json"
         binding = runner.bind_build(source, build, "plugins", manifest)

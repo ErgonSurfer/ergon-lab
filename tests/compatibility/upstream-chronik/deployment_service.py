@@ -91,7 +91,7 @@ def main():
                    and not work.is_relative_to(source) and not source.is_relative_to(work)
                    and not work.is_relative_to(build) and not build.is_relative_to(work), "separate work roles required")
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_continuous_service import validate
+    from check_ergon_testnet import validate
     validate(source)
     manifest = source / "docs/engineering/chronik/upstream-host-adaptation-v1.json"
     binding = runner.bind_build(source, build, args.profile, manifest)

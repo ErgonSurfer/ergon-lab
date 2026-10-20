@@ -205,7 +205,7 @@ class Contract(unittest.TestCase):
     def test_cli_rechecks_inputs_and_never_reports_success_after_drift_or_failure(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools/engineering"))
         import check_chronik_cold_rebuild as gate
-        import check_chronik_continuous_service as boundary
+        import check_ergon_testnet as boundary
         for drift in (None, "binary", "source", "build", "gate", "runtime"):
             with self.subTest(drift=drift), tempfile.TemporaryDirectory(prefix="synthetic-cold-cli-") as directory, ExitStack() as stack:
                 root = Path(directory).resolve()

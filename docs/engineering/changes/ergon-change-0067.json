@@ -17,6 +17,7 @@
       "Existing upstream indexer, token engines and plugin loader admitted only with exact native network and genesis; still default-OFF, observe/index-only, loopback service and separate roots.",
       "Bounded exact compact-target reward threshold vectors, moderate native DAA vectors and five actual accepted SHA-256d blocks through isolated two-node P2P, restart and optional Chronik indexing.",
       "New exact successor manifest freezes every other accepted input; immutable predecessor source gates rerun on their accepted public tree; inherited runtime bodies, assertions, repetitions and deadlines remain on the current binary.",
+      "Inherited runtime entrypoints and the final CI source recheck import the current exact testnet successor gate; their execution bodies and oracles remain byte-identical apart from that import. The cold-rebuild synthetic test mocks the same current gate.",
       "Five Linux profiles retain their existing coverage; add independent network and foreign-active-chain identity controls without dependency registry changes."
     ],
     "exclusions": [
@@ -59,7 +60,7 @@
   },
   "provenance_inventory": {
     "inventory_schema": "ergon-authorship-inventory/v1",
-    "inventory_sha256": "063575b416164ce486aa9100bb76f38840f3cc2495d95ec94628e8bb9da5dd5d",
+    "inventory_sha256": "cd2f1566f235b3d213d901bc7a9bfd2af161134929cdf0ecded1a1a072baae50",
     "license": "MIT",
     "standing_policy": "PUBLICATION_POLICY.md",
     "exclusions": [
@@ -115,9 +116,9 @@
       },
       "after": {
         "mode": "100644",
-        "bytes": 22911,
-        "sha256": "48a88497f80290053c5fda2e4881456d9cdfec9420866f6a04565fb309bf07ec",
-        "git_blob": "fbdd7367369ba0c59415dfafd9443baac1d8d2fb"
+        "bytes": 22898,
+        "sha256": "cd8e57dacd8471e976b4cf310623b877d721f0cb18b55d6177cc6b2ffe5d35d8",
+        "git_blob": "486144c0c953adc2712ae88e0f364b02e4e7a71c"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -365,9 +366,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 20131,
-        "sha256": "75e57505fbd9d17e87fee9de78407b4e4ef387ca88c6532e29eb0f107d75133a",
-        "git_blob": "6086e50e4ad0d8d304f754213bb9f1b054f7f5a8"
+        "bytes": 27149,
+        "sha256": "9e9d767fbb3e08e587db6834811ccc8aaedcbda4e60037596b1d1a635e65a119",
+        "git_blob": "0390eb7a1f52f01e2a7a53a3ca840e43506350b6"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -699,6 +700,181 @@
       "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
     },
     {
+      "path": "tests/compatibility/upstream-chronik/alp_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 22410,
+        "sha256": "f4184b7ece6e59f51dcc4885ac3e4684fdcc2aacdd58ddb246cc63a7f628f9d6",
+        "git_blob": "756ae73e8ee6cd21019c5924d8d0da920d0eea15"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22397,
+        "sha256": "801bb44c2debdbf13b04c988de70f3cad6ffd4eec62c7a8f5f8d0d563c56c0f3",
+        "git_blob": "06888f82bcfabd87f7ca9bb40989a3b8723b66d1"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/catchup_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 10174,
+        "sha256": "da2ee6dc45cdbc187ae8fe43d546096502bef040ab37a520c727f8fcd5de3c8b",
+        "git_blob": "1ea9640cf7590bc153effb5298d846ac72a5bf79"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10161,
+        "sha256": "3a3ca04c596da0fa7d710d2501f3cb382488431df36bbf9de56a7e3d0cba145c",
+        "git_blob": "164c07280a2b5d910e3558206d11c47041d786b0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 12947,
+        "sha256": "a7e0d1e124b11fbc41adc5bc1f09a69bcbdb4aff38ed15454c7710c4278c75c9",
+        "git_blob": "d95b53f86948c2f5e7f5fec6c99702ccb42c65ee"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12934,
+        "sha256": "c9b488b14638cffd9e785eaea67ca3ef021a7a982130bcc648ca17de176189c3",
+        "git_blob": "f0129f750a50f3331cbd17efdb175ef847c8f832"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 14993,
+        "sha256": "6b748cf146ffd539cea89bc6f6e8944730dbf2ae984f34fecd7721ebaad591fa",
+        "git_blob": "c1527962388ffa62291c56124f24a34fe42bdccb"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 14980,
+        "sha256": "ac26eaced775ca663485b2e5ea6a60d6724ac8a9d89c48d9e822bee4fc764ce9",
+        "git_blob": "b362fbb7502f30c8392846856c0db22c3c5b3538"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/deployment_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 7932,
+        "sha256": "dd931401f63f48d8546785a8aee66f68ef94f57a6037618187bcedff7815d8dd",
+        "git_blob": "b3ac0b76172b6cd34a54ece3830c625ff93f6325"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 7919,
+        "sha256": "08542073d6059d709b8a5ba671335f60f8bbf9d07f86abf64b6a3412e9e04494",
+        "git_blob": "c195e5258de4b64c8b615da9157b70194369e3ae"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/long_history_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 4474,
+        "sha256": "a240be4e0036ad3a50e4af54f8b413f4ce8debe8ec3a3f9e910feb95d468e36f",
+        "git_blob": "7ad61ddce7e15148187900f454ba62e0d4f65674"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4461,
+        "sha256": "13b0665fe494ebe762cad9506adf17e427e823860eb8645ce1c68ffb287e5e92",
+        "git_blob": "e2a29677ed391e16f876d8fb0366eeb8c90ba406"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/multi_lokad_component.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 3888,
+        "sha256": "174b181c0da0e2857b0d5951f1df455ccd55c83a02804ae53cebe260f9e09e39",
+        "git_blob": "15398e59ba782466a5b995efb6d2d6e45bf437e5"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 3875,
+        "sha256": "c0bb243074a52ed049ce337fa8889dc369f3aae3c060ca9c6194da4e0410a34f",
+        "git_blob": "dceae46aea4de00d77d782ed9520e5a374cec807"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
       "path": "tests/compatibility/upstream-chronik/operator_bundle_binding.py",
       "action": "modify",
       "role": "harness",
@@ -749,6 +925,106 @@
       "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
     },
     {
+      "path": "tests/compatibility/upstream-chronik/plugin_alp_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 12946,
+        "sha256": "7dfc4c93d74e63c85e58ddb96398fdf671a4d2cd1785acd98a99258dc73b7511",
+        "git_blob": "3c2137e9bb5b3ee1376e9e46fedc012a0585c6d4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12933,
+        "sha256": "3a5eee6ca9cca35e4e4b169b72cb8aca2c602fe618493e9bb65d3f48620284fb",
+        "git_blob": "73a2cdb887473e673206a970d3cf67801e5a8e41"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_restart.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 6876,
+        "sha256": "cb4cbdafdb595636511a476da011e059e36987c6dbbc57db3eb4e95b7a811471",
+        "git_blob": "df10e975f377e63864e944c1d0332e9c5997dca9"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 6863,
+        "sha256": "21a94577511fd443fb24a8405ab64cd9d8951953e72699c5e9968fe70567f280",
+        "git_blob": "96cc96d419e8f29b7dcfbb2747a6fa4347d71517"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugin_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 13782,
+        "sha256": "0c7309f72de1cbe13e35f1e69a1096f10d2fe40a54db5f9061a5412fc877b16f",
+        "git_blob": "ecc794acd8d4da4010e577f2cdc3a3d7b152a820"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 13769,
+        "sha256": "2c18a6a0485633ee027737abf2ad96eafd93c5d8a3ca2f85766e484da8b07ba8",
+        "git_blob": "69d7eef653ad926f51dbfe86a66c0e7464334b75"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/regtest_service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 21248,
+        "sha256": "681e8b7e3f6c43d28b7c67ff528d6472a504616fe30b9d675b6847def40dc2a6",
+        "git_blob": "dd5c8ced4477ddea6ea3fa492fcaaa7c82110800"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 21235,
+        "sha256": "d2e729944b89941396e47525d1ecb50a58e3d5b371494e87546f1295d085151e",
+        "git_blob": "e1284c0582d25a752ffc11f6e398465e9db290ab"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
       "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
       "action": "modify",
       "role": "harness",
@@ -763,6 +1039,31 @@
         "bytes": 48415,
         "sha256": "a4f73841399b99777f89eb697c7d1fb6301212c62528405262a1ee1c366359dc",
         "git_blob": "0d82ed8b5e700e7d62184b12a5f28685e7dcb0b4"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/startup_metadata.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 5294,
+        "sha256": "c98bb7aff7e7038c35537ef1b847134305a78ee8383a9edaa69d7087f9a30d9a",
+        "git_blob": "6af1d5e943d698efd68729af07b713fb20cb7c31"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5281,
+        "sha256": "b240bd9dc3b820ce082697f7a108801f77cc93c359ce462dab065b8d7f5e282c",
+        "git_blob": "7ce8499a2f2a563404bac158ada08e2a6c724a71"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -805,9 +1106,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 11564,
-        "sha256": "d7818e17710393b0f092f6707ab5592390cb19803b32f6d2074650b325c3159f",
-        "git_blob": "fb4f7d42d182f1804f6374e35993d6fdb33832ad"
+        "bytes": 12032,
+        "sha256": "8da7d288d1a8223e1b012289c23b5d5a9f2f8f1df6093c371ddbef48196da7ef",
+        "git_blob": "11c0f563bd6da29bf8aa7b41a56451a2c006b29d"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -825,9 +1126,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 4805,
-        "sha256": "ed906f2cc373098dd0db7f3c857d429361ddfc3b991d6e78c13c71d2cfd73692",
-        "git_blob": "2e7f79eac138e71a2fc0101e8f5a878a9eae4440"
+        "bytes": 6211,
+        "sha256": "736bbe8dfadf6f8fb82a4025537cd2b0781593b73c991917ea594c332a600663",
+        "git_blob": "a303cbebbdc2db53fcc2b29c0894862c748b28cc"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -1152,6 +1453,7 @@
     "Existing upstream dependency alerts and historical timeouts remain open; no current success erases them."
   ],
   "counterevidence": [
+    "The initial public CI on 69c151a built and passed the new native testnet suites and real five-block/P2P/restart smoke but later inherited entrypoints and final recheck still called the predecessor source gate, which correctly refused the new source tree. Those red CI results remain counterevidence; the correction selects the exact current gate without removing runtime cases, changing assertions or increasing deadlines.",
     "A preparation-only accelerated monetary profile was superseded by the mainnet-fidelity requirement; its build is not evidence for this profile.",
     "Preparation found a C++ target type mismatch in a new test; compilation failure is not a passing native result.",
     "An initial two-node preparation run stopped during RPC warmup; it is not a passing accepted-block observation. Retry is limited to expected RPC warmup and network-selection refusals must exit normally, not by signal.",

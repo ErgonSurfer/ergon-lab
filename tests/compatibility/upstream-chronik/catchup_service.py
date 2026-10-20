@@ -145,7 +145,7 @@ def main():
                    not any(work.is_relative_to(p) or p.is_relative_to(work) for p in (source, build)),
                    "separate catchup report and disposable parent required")
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_continuous_service import validate
+    from check_ergon_testnet import validate
     from check_chronik_service_catchup import input_binding
     validate(source)
     test_binding = input_binding(source)
