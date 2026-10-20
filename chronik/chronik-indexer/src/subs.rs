@@ -142,7 +142,8 @@ impl Subs {
         token_id_aux: &TokenIdGroupAux,
         plugin_outputs: &BTreeMap<OutPoint, PluginOutput>,
     ) {
-        if self.subs_txid.is_empty()
+        if self.subs_txs.receiver_count() == 0
+            && self.subs_txid.is_empty()
             && self.subs_script.is_empty()
             && self.subs_token_id.is_empty()
             && self.subs_lokad_id.is_empty()

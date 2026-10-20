@@ -300,7 +300,7 @@ def main():
                                for p in (build, work, example)), "separate public build/work/report required")
         runner.require(not work.is_relative_to(build) and not build.is_relative_to(work), "overlapping work/build")
         sys.path.insert(0, str(source / "tools/engineering"))
-        from check_chronik_external_plugins import validate
+        from check_chronik_continuous_service import validate
         validate(source)
         manifest = source / "docs/engineering/chronik/upstream-host-adaptation-v1.json"
         binding = runner.bind_build(source, build, "regtest-plugins", manifest)

@@ -44,7 +44,9 @@ struct PoolRead {
 } // namespace
 void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node) {
     LOCK2(cs_main, node.mempool.cs);
-    if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
+    if (!node.permits_native_network() ||
+        !ChainActive().Genesis() || ChainActive().Genesis()->GetBlockHash()!=
+            node.config.GetChainParams().GetConsensus().hashGenesisBlock ||
         fPruneMode || ShutdownRequested() || node.index_failed.load() ||
         !ChainActive().GetSourceGeneration() ||
         !node.mempool.GetSourceGeneration() || !node.permits_height(ChainActive().Height()) ||
@@ -52,8 +54,16 @@ void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node) {
         !pcoinsTip || !pcoinsdbview) {
         throw std::runtime_error(
             "Archival probe requires a healthy, unpruned, bounded-mempool "
-            "regtest source within its immutable native access scope");
+            "source within its immutable native network/genesis access scope");
     }
+}
+rust::String archival_source_profile(const chronik_bridge::ErgonNodeAccess &node) {
+    archival_fixture_guard(node);
+    return rust::String(node.historical_network());
+}
+bool archival_clients_profile(const chronik_bridge::ErgonNodeAccess &node) {
+    archival_fixture_guard(node);
+    return node.historical_clients();
 }
 void archival_capture_height_guard(const chronik_bridge::ErgonNodeAccess &node,
                                    int32_t height) {
@@ -129,7 +139,9 @@ uint64_t archival_chain_generation(const chronik_bridge::ErgonNodeAccess &) {
 void archival_reconcile_guard(const chronik_bridge::ErgonNodeAccess &node) {
     AssertLockHeld(cs_main);
     AssertLockHeld(node.mempool.cs);
-    if (node.config.GetChainParams().NetworkIDString() != "regtest" ||
+    if (!node.permits_native_network() ||
+        !ChainActive().Genesis() || ChainActive().Genesis()->GetBlockHash()!=
+            node.config.GetChainParams().GetConsensus().hashGenesisBlock ||
         fPruneMode || node.index_failed.load() ||
         !ChainActive().GetSourceGeneration() ||
         !node.mempool.GetSourceGeneration() || !pcoinsTip || !pcoinsdbview ||
@@ -150,6 +162,13 @@ bool reconcile_captured(ArchivalProbe &probe,
                         const std::function<void()> &after_capture,
                         const std::function<void()> &before_disk,
                         CaptureStats *stats) {
+    return reconcile_captured_and_anchor(probe,node,after_capture,before_disk,stats,{});
+}
+bool reconcile_captured_and_anchor(ArchivalProbe &probe,
+                        const chronik_bridge::ErgonNodeAccess &node,
+                        const std::function<void()> &after_capture,
+                        const std::function<void()> &before_disk,
+                        CaptureStats *stats,const std::function<void()> &anchor) {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(node.mempool.cs);
     constexpr int WINDOW = 288;
@@ -497,8 +516,10 @@ bool reconcile_captured(ArchivalProbe &probe,
                 }
                 if (!match)
                     continue;
-                if (probe.publish_capture(*std::get<0>(captured), node))
+                if (probe.publish_capture(*std::get<0>(captured), node)) {
+                    if(anchor) anchor();
                     return true;
+                }
             }
         }
         return false;

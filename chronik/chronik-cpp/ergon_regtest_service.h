@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 class Config;
+namespace chronik_bridge { class HistoricalReadBinding; enum class HistoricalClientAdmission; }
 namespace ergon_regtest {
 struct ServiceStatus {
     bool failed, stopping, joined;
@@ -22,6 +23,15 @@ class OwnedService {
     explicit OwnedService(const Config &config, std::function<void()> before_open = {},
                           bool public_plugin = false,
                           std::string operator_root = {}, std::string operator_binding = {});
+    // Library-level explicit binding; the daemon entry remains separately
+    // compile-gated. Keep this class definition identical in every host TU.
+    OwnedService(const Config &config, chronik_bridge::HistoricalReadBinding binding,
+                 std::function<void()> before_open = {},
+                 std::string operator_root = {}, std::string operator_binding = {});
+    OwnedService(const Config &config, chronik_bridge::HistoricalReadBinding binding,
+                 chronik_bridge::HistoricalClientAdmission admission, uint16_t port,
+                 std::function<void()> before_open = {},
+                 std::string operator_root = {}, std::string operator_binding = {});
     ~OwnedService();
     OwnedService(const OwnedService &) = delete;
     OwnedService &operator=(const OwnedService &) = delete;
@@ -32,4 +42,17 @@ class OwnedService {
 void Start(const Config &config) noexcept;
 void Stop();
 } // namespace ergon_regtest
+#ifdef ENABLE_CHRONIK_UPSTREAM_SERVICE
+namespace ergon_continuous {
+void Start(const Config &config) noexcept;
+void Stop();
+}
+#endif
+#ifdef ENABLE_CHRONIK_UPSTREAM_SHADOW
+namespace ergon_shadow {
+// Uses the same joined backend, but owns a distinct explicit profile and root.
+void Start(const Config &config) noexcept;
+void Stop();
+}
+#endif
 #endif

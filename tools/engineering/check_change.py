@@ -160,6 +160,8 @@ BOUNDARIES = {
     "chronik_enabled_scope": "local-regtest-opt-in-only",
     "mainnet_parameters_modified": False,
 }
+CONTINUOUS_BOUNDARIES = dict(BOUNDARIES,
+    chronik_enabled_scope="explicit-native-network-genesis-bound-main-or-regtest")
 TOP_LEVEL_KEYS = {
     "$comment",
     "$schema",
@@ -572,7 +574,9 @@ def validate(value: Any, source: str = "change") -> dict[str, Any]:
         require(surfaces["consensus"] is False, source + ".surfaces.consensus", "this stage cannot change consensus")
     else:
         require(surfaces["consensus"] is True, source + ".surfaces.consensus", "activation must declare consensus reachability")
-    require(record["boundaries"] == BOUNDARIES, source + ".boundaries", "must match the standalone authority boundary")
+    require(record["boundaries"] == BOUNDARIES or
+            (stage == "optional-indexing" and record["boundaries"] == CONTINUOUS_BOUNDARIES),
+            source + ".boundaries", "must match the unchanged standalone authority boundary and explicit profile")
     validate_verification(record["verification"], source + ".verification", stage)
     validate_evidence(record["evidence"], source + ".evidence", status)
     strings(record["limitations"], source + ".limitations", nonempty=True)
@@ -617,6 +621,8 @@ def check(root: Path) -> None:
     properties = schema["properties"]
     require(properties["schema_version"].get("const") == "1.1", str(SCHEMA_PATH) + ".properties.schema_version", "must match validator version 1.1")
     require(properties["change_id"].get("type") == "string", str(SCHEMA_PATH) + ".properties.change_id", "must type change IDs as strings")
+    require(properties["boundaries"] == {"oneOf": [{"const": BOUNDARIES}, {"const": CONTINUOUS_BOUNDARIES}]},
+            str(SCHEMA_PATH) + ".properties.boundaries", "must preserve exact authority and both explicit profile descriptions")
     require("allOf" not in schema, str(SCHEMA_PATH) + ".allOf", "must not pin a per-change inventory digest")
     definitions = obj(schema.get("$defs"), str(SCHEMA_PATH) + ".$defs")
     require(
