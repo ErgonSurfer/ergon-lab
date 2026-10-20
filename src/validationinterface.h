@@ -21,6 +21,8 @@ class CConnman;
 class CReserveScript;
 class CValidationInterface;
 class CValidationState;
+class CCoinsViewCache;
+class ValidationEventJournal;
 class uint256;
 class CScheduler;
 class CTxMemPool;
@@ -174,7 +176,8 @@ private:
     friend void ::CallFunctionInValidationInterfaceQueue(
         std::function<void()> func);
 
-    void MempoolEntryRemoved(CTransactionRef tx, MemPoolRemovalReason reason);
+    void MempoolEntryRemoved(const CTxMemPool *pool, CTransactionRef tx,
+                             MemPoolRemovalReason reason);
 
 public:
     /**
@@ -205,6 +208,15 @@ public:
                    const CBlockIndex *pindex,
                    const std::shared_ptr<const std::vector<CTransactionRef>> &);
     void BlockDisconnected(const std::shared_ptr<const CBlock> &);
+    void BlockDisconnected(const std::shared_ptr<const CBlock> &,
+                           const CBlockIndex *index);
+    // Optional singleton observer for the native global pool. Attach/detach
+    // require cs_main AND g_mempool.cs; no CValidationInterface ABI change.
+    // Registration is NOT a ready snapshot or startup/replay watermark.
+    bool AttachEventJournal(const std::shared_ptr<ValidationEventJournal> &);
+    bool DetachEventJournal(const std::shared_ptr<ValidationEventJournal> &);
+    void CaptureAddedToMempool(const CTxMemPool &, const CTransactionRef &,
+                              const CCoinsViewCache &, int64_t time) noexcept;
     void ChainStateFlushed(const CBlockLocator &);
     void Broadcast(int64_t nBestBlockTime, CConnman *connman);
     void BlockChecked(const CBlock &, const CValidationState &);

@@ -16,6 +16,7 @@ struct TxView;
 struct RequestGate;
 struct ResponseLatch;
 struct PluginFixture;
+enum class WorkerProfile { Inherited, HistoricalReadOnly, HistoricalPluginsReadOnly, HistoricalClientService };
 // Stable bounded diagnostics only: never expose an exception containing native
 // paths, data, plugin text or an operator identity.
 enum class WorkerFailure {
@@ -38,16 +39,19 @@ struct WorkerStatus {
 // Owned bounded callback reactor over the real upstream indexer. Ordinary
 // profiles have no daemon entry point; the separate regtest owner is opt-in.
 // Optional ephemeral HTTP reuses upstream handlers;
-// websocket notification semantics are not enabled. Notifications are
+// strict fixture notifications are
 // ordered invalidation tickets, NOT historical transaction payloads. The
 // worker captures owned native bytes and applies upstream DB writers outside
 // native locks. The full-chain bounded capture is not production performance.
 // Idle scalar polling notices silent native generation changes; exhausted
 // capture retries remain unavailable and retry after the queued callback fence.
-// The continuous regtest service stores an ordered accepted/completed frontier
-// instead of allocating one ticket per invalidation. No historical payload is
-// discarded: these callbacks contain no payload, and the owned native capture
-// still has to satisfy the unchanged source/generation/epoch publication law.
+// The continuous regtest service anchors its native payload journal atomically
+// at initial snapshot publication, before exposing a listener. Later callbacks
+// are constant-storage wakeups only. The single owned journal consumer applies
+// every later event through upstream writers; coalesced reconciliation cannot
+// run after the cut. Initial import transients precede the public subscription
+// boundary and are represented by the coherent initial snapshot, not a claimed
+// historical notification replay.
 // Strict component fixtures retain their original bounded ticket queue.
 class ArchivalWorker {
     struct Impl;
@@ -63,7 +67,8 @@ class ArchivalWorker {
                    std::function<void()> after_capture = {},
                    std::function<void()> before_disk = {},
                    const PluginFixture *plugins = nullptr,
-                   bool regtest_service = false);
+                   bool regtest_service = false,
+                   WorkerProfile profile = WorkerProfile::Inherited);
     ~ArchivalWorker();
     ArchivalWorker(const ArchivalWorker &) = delete;
     ArchivalWorker &operator=(const ArchivalWorker &) = delete;
@@ -75,6 +80,8 @@ class ArchivalWorker {
     // Service-only: 0 means a concurrent capture owns the data mutex. Read
     // publication remains governed by the original source/epoch request gate.
     uint16_t TryStartRegtestHttp();
+    uint16_t TryStartHistoricalHttp();
+    uint16_t TryStartHistoricalClientsHttp(uint16_t port);
     // Shared metadata-only controls: no data/native/DB lock acquisition. Safe
     // to retrieve while holding native locks or while busy/closed; a handle
     // does not itself grant readiness, retain native access, or reopen Stop.

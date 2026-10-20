@@ -6,10 +6,12 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <rust/cxx.h>
 namespace chronik_bridge {
 class ChronikBridge;
 }
 namespace ergon_archival {
+bool archival_clients_profile(const chronik_bridge::ErgonNodeAccess &node);
 struct ArchivalProbe;
 // Synchronous native test hook only: no daemon/config/HTTP exposure.
 class StartupHook {
@@ -31,6 +33,9 @@ struct CaptureStats {
 // Native fixture or separately opted-in bounded regtest owner must outlive the
 // synchronous Rust box. Not general runtime admission or live-source validation.
 void archival_fixture_guard(const chronik_bridge::ErgonNodeAccess &node);
+// Empty for inherited regtest profiles; an explicit native-validated public
+// network for the separate historical constructor. Runs before root/DB access.
+rust::String archival_source_profile(const chronik_bridge::ErgonNodeAccess &node);
 void archival_capture_height_guard(const chronik_bridge::ErgonNodeAccess &node,
                                    int32_t height);
 // Fixture-only: hold both native locks throughout synchronous reconciliation.
@@ -61,6 +66,14 @@ bool reconcile_captured(ArchivalProbe &probe,
                         const std::function<void()> &after_capture = {},
                         const std::function<void()> &before_disk = {},
                         CaptureStats *stats = nullptr);
+// The optional anchor runs only under the successful final native publication
+// fence. It may attach a metadata-only observer, never wait or perform DB I/O.
+// Keep the original reconciliation symbol for strict component callers.
+bool reconcile_captured_and_anchor(ArchivalProbe &probe,
+    const chronik_bridge::ErgonNodeAccess &node,
+    const std::function<void()> &after_capture,
+    const std::function<void()> &before_disk, CaptureStats *stats,
+    const std::function<void()> &anchor);
 uint64_t archival_mempool_revision(const chronik_bridge::ErgonNodeAccess &node);
 uint64_t archival_chain_generation(const chronik_bridge::ErgonNodeAccess &node);
 } // namespace ergon_archival

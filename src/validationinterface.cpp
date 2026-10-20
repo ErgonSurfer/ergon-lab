@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <validationinterface.h>
+#include <validation_event_journal.h>
 
 #include <scheduler.h>
 #include <txmempool.h>
@@ -65,6 +66,8 @@ struct MainSignalsInstance {
 };
 
 static CMainSignals g_signals;
+// Observer-only; absent by default. Producer references never escape as native borrows.
+static std::shared_ptr<ValidationEventJournal> g_validation_journal;
 
 // This map has to be a separate global instead of a member of
 // MainSignalsInstance, because RegisterWithMempoolSignals is currently called
@@ -99,7 +102,7 @@ void CMainSignals::RegisterWithMempoolSignals(CTxMemPool &pool) {
     g_connNotifyEntryRemoved.emplace(
         std::piecewise_construct, std::forward_as_tuple(&pool),
         std::forward_as_tuple(pool.NotifyEntryRemoved.connect(
-            std::bind(&CMainSignals::MempoolEntryRemoved, this,
+            std::bind(&CMainSignals::MempoolEntryRemoved, this, &pool,
                       std::placeholders::_1, std::placeholders::_2))));
 }
 
@@ -172,10 +175,13 @@ void SyncWithValidationInterfaceQueue() {
     promise.get_future().wait();
 }
 
-void CMainSignals::MempoolEntryRemoved(CTransactionRef ptx,
+void CMainSignals::MempoolEntryRemoved(const CTxMemPool *pool, CTransactionRef ptx,
                                        MemPoolRemovalReason reason) {
     if (reason != MemPoolRemovalReason::BLOCK &&
         reason != MemPoolRemovalReason::CONFLICT) {
+        if (pool == &g_mempool)
+            if (auto journal = std::atomic_load(&g_validation_journal))
+                journal->Removed(ptx);
         m_internals->m_schedulerClient.AddToProcessQueue(
             [ptx, this] { m_internals->TransactionRemovedFromMempool(ptx); });
     }
@@ -203,6 +209,8 @@ void CMainSignals::TransactionAddedToMempool(const CTransactionRef &ptx) {
 void CMainSignals::BlockConnected(
     const std::shared_ptr<const CBlock> &pblock, const CBlockIndex *pindex,
     const std::shared_ptr<const std::vector<CTransactionRef>> &pvtxConflicted) {
+    if (auto journal = std::atomic_load(&g_validation_journal))
+        journal->Block(ValidationEventJournal::Kind::Connected, pindex, *pvtxConflicted);
     m_internals->m_schedulerClient.AddToProcessQueue(
         [pblock, pindex, pvtxConflicted, this] {
             m_internals->BlockConnected(pblock, pindex, *pvtxConflicted);
@@ -211,6 +219,13 @@ void CMainSignals::BlockConnected(
 
 void CMainSignals::BlockDisconnected(
     const std::shared_ptr<const CBlock> &pblock) {
+    BlockDisconnected(pblock, nullptr);
+}
+
+void CMainSignals::BlockDisconnected(
+    const std::shared_ptr<const CBlock> &pblock, const CBlockIndex *index) {
+    if (auto journal = std::atomic_load(&g_validation_journal))
+        journal->Block(ValidationEventJournal::Kind::Disconnected, index);
     m_internals->m_schedulerClient.AddToProcessQueue(
         [pblock, this] { m_internals->BlockDisconnected(pblock); });
 }
@@ -232,4 +247,30 @@ void CMainSignals::BlockChecked(const CBlock &block,
 void CMainSignals::NewPoWValidBlock(
     const CBlockIndex *pindex, const std::shared_ptr<const CBlock> &block) {
     m_internals->NewPoWValidBlock(pindex, block);
+}
+
+bool CMainSignals::AttachEventJournal(const std::shared_ptr<ValidationEventJournal> &journal) {
+    AssertLockHeld(cs_main);
+    AssertLockHeld(g_mempool.cs);
+    if (!journal) return false;
+    const auto status = journal->GetStatus();
+    if (status.closed || status.failure != ValidationEventJournal::Failure::None ||
+        status.accepted || status.retained_events) return false;
+    std::shared_ptr<ValidationEventJournal> empty;
+    return std::atomic_compare_exchange_strong(&g_validation_journal, &empty, journal);
+}
+bool CMainSignals::DetachEventJournal(const std::shared_ptr<ValidationEventJournal> &journal) {
+    AssertLockHeld(cs_main);
+    AssertLockHeld(g_mempool.cs);
+    if (!journal) return false;
+    auto expected = journal;
+    return std::atomic_compare_exchange_strong(&g_validation_journal, &expected,
+                                               std::shared_ptr<ValidationEventJournal>{});
+}
+void CMainSignals::CaptureAddedToMempool(
+    const CTxMemPool &pool, const CTransactionRef &tx,
+    const CCoinsViewCache &view, int64_t time) noexcept {
+    if (&pool != &g_mempool) return;
+    if (auto journal = std::atomic_load(&g_validation_journal))
+        journal->Added(tx, view, time);
 }
