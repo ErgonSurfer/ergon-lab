@@ -43,3 +43,8 @@ pretty_assertions = "1.0"
 
 # Temporary directory that's deleted when dropped
 tempdir = "0.3"
+
+# Public synthetic dispatch witness; never linked into the daemon.
+[[example]]
+name = "ergon-public-multi-lokad"
+path = "../../tests/compatibility/upstream-chronik/multi_lokad_probe.rs"

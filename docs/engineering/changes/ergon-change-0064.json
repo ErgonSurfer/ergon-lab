@@ -1,0 +1,859 @@
+{
+  "$comment": "SPDX-License-Identifier: MIT",
+  "$schema": "../schemas/change-evidence.schema.json",
+  "schema_version": "1.1",
+  "change_id": "ERGON-CHANGE-0064",
+  "stage": "optional-indexing",
+  "status": "under-review",
+  "record_path": "docs/engineering/changes/ergon-change-0064.json",
+  "purpose": {
+    "summary": "Extend the existing upstream plugin metadata loader to bounded multiple identifiers while preserving legacy bytes and once-per-matching-plugin dispatch.",
+    "scope": [
+      "Direct child of the exact signed public main871987b integrated by PR66; no private history or incoming proof.",
+      "Accept one four-byte bytes identifier or a list of1..32unique four-byte bytes identifiers; preserve order and reject invalid width,type,count or duplicates.",
+      "Reuse the existing upstream PluginContext,dispatch,indexer,ALP and plugin-output machinery; no replacement engine.",
+      "Preserve plugin construction,inheritance/version checks and the original MIT notices; the changed loader is an authored adaptation,not an unchanged donor file.",
+      "Bind both metadata-loader files into the optional adapter identity; add a test-only Cargo example without registry/dependency or daemon admission changes.",
+      "Exercise11Rust metadata unit cases and6synthetic transactions through the real upstream context;require combined identifiers to dispatch one instance exactly once.",
+      "Retain every inherited native case,assertion,repetition,deadline,cleanup and daemon scenario;all seven existing CI jobs remain required.",
+      "Finite successor policy binds the exact current postimages while retaining immutable earlier manifests and original public donor preimages."
+    ],
+    "exclusions": [
+      "No operator/private plugin,application,wallet,endpoint,data,report,binary,cache or host metadata.",
+      "No consensus,activation,network identity,native admission,token-validation algorithm,index schema or default-ON behavior.",
+      "No deployment,cutover,release,desktop integration,dependency-alert suppression or automatic proof promotion."
+    ]
+  },
+  "baseline": {
+    "project": "Bitcoin Static",
+    "version": "24.0.5",
+    "commit": "2e8d5f7635c899cc99e71f06dedbe72b3ff7f07b",
+    "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+    "license": "MIT"
+  },
+  "public_lineage": {
+    "public_root": {
+      "commit": "5bcdba149119aa9035830e069d1cae1d9bcddfb4",
+      "tree": "8a74bb952c2137156214b9fe5888c494bd77aeca",
+      "parentless": true
+    },
+    "integration_parent": {
+      "commit": "871987b5ed0f06d2d668e8d55c9422de26ba961a",
+      "tree": "691b60b8054b889f4d860474ba3fe98961b830fd"
+    },
+    "candidate_parent_law": "direct-child",
+    "remote_ref": "refs/remotes/origin/main"
+  },
+  "signature_policy": {
+    "format": "ssh",
+    "key_algorithm": "ED25519",
+    "principal": "153525861+ErgonSurfer@users.noreply.github.com",
+    "fingerprint": "SHA256:kC/Vx9WJW9ufy4Ttg5tKK6Cw8jEuV9ej2mRCLvZyU3Q",
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFN47Qs8VW9ty+v0tf31kv6pMpyOMxWWLXZ0Pv5MWVCI Ergon Lab Git commit signing (ErgonSurfer)",
+    "public_key_bytes": 124,
+    "public_key_sha256": "0ef0d6055bf86ace992821a029055ed3d3e2da2047619627d3f8405c6cad7512",
+    "allowed_signers_bytes": 128,
+    "allowed_signers_sha256": "4df5711122f5777dbaea2480d2d1fdef81ea294a79d835ab0173ae0065dfa738",
+    "candidate_same_key": true
+  },
+  "provenance_inventory": {
+    "inventory_schema": "ergon-authorship-inventory/v1",
+    "inventory_sha256": "e786253a67115edd4eae72fba03a737c54b028de64422c5b9a2aab722fb9c856",
+    "license": "MIT",
+    "standing_policy": "PUBLICATION_POLICY.md",
+    "exclusions": [
+      "No private material."
+    ],
+    "implicit_operational_authorization": false
+  },
+  "prerequisites": [
+    {
+      "change_id": "ERGON-CHANGE-0015",
+      "stage": "legacy-compatibility",
+      "public_commit": "ef989b4fa55098f55e7a78f0682cf2f60319b921",
+      "evidence_sha256": "6b6eafa29b74c1ff0824d77051b8eb47f0078cfe05e2e33f716ac17eb963f647",
+      "delivery_state": "verified",
+      "knowledge_status": "Reproduced"
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/chronik-upstream-link.yml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 18146,
+        "git_blob": "8bab5ac76a11100ad7bcb0c510b7d73d29f321f2",
+        "sha256": "82cde22dad1685ee559fd63fb6a7b3ae05bc61f99c9ee3c624af389f8e795f97"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 19759,
+        "git_blob": "1f511acdc2b23e7fe2c4371f7b2a904ee8bfd3f0",
+        "sha256": "60c388e41f5f7d442b031624875871d8e40f59e5e660c7fdd09c700996042671"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "chronik/UpstreamLink.cmake",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 9995,
+        "git_blob": "7b52e40e4ae22d0c1c2ac43e87fef8f06896cbe7",
+        "sha256": "ec2b4692a7ed85277139be8cfe1e1d22c604a043931dd415d6fc9434249d1759"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10103,
+        "git_blob": "fbe338376ea61eb8ebf40540b0d4009f346f63dc",
+        "sha256": "c7af26d53d3ca6e8fbfdac84b17396d3176a43c2618e452d89b947cd4b4150df"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/Cargo.toml",
+      "action": "modify",
+      "role": "build",
+      "before": {
+        "mode": "100644",
+        "bytes": 1013,
+        "git_blob": "5963eea7fbeb0219282aef97748124f654f3042f",
+        "sha256": "1ede0f11a0379146ef8c2beef096ffa2e2a85267c0ca3177657a0fe976012403"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1200,
+        "git_blob": "84188c9d4fe4d225a9ffae6373f6e639e69ddae7",
+        "sha256": "8daba19cb9d3d883d6d6bb90849a7d763e8fcad0e1ff18c02416aab70e4903e2"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/src/plugin.py",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 924,
+        "git_blob": "fa282fb6a2051c30673b4fd7bf3094beb006bf36",
+        "sha256": "96d2d30825a3fb431a75c775c1ed3286785d292c70324ca9ac0be771ac441b3a"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 1186,
+        "git_blob": "efe5f50116bdda0978cb5e3858eb67b8a889030e",
+        "sha256": "16f640ec2b39fd2c7c4a92cc178949cd2eed2977ddc4158701ccb9421e45dd2e"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream plugin metadata loading only;existing trusted Python engine and node authority unchanged.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "chronik/chronik-plugin-impl/src/plugin.rs",
+      "action": "modify",
+      "role": "production",
+      "before": {
+        "mode": "100644",
+        "bytes": 3418,
+        "git_blob": "7b1b3e4dcb74ecb697015e8341f99bb2bd08c65e",
+        "sha256": "bcc74729d27cd82a0f74d74fbfdddf826791a75ab9da9abe6462665bd0f71aa2"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 8503,
+        "git_blob": "6688e4375f1101f18ccc71ed7f4fa2040776d45b",
+        "sha256": "4b25887a93c5074c4c29e4f02944c2eb81a9d9581db83ef18fe1aad5c10f90e0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional upstream plugin metadata loading only;existing trusted Python engine and node authority unchanged.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-multi-lokad-v1.json",
+      "action": "add",
+      "role": "provenance",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 14505,
+        "git_blob": "7ddfe72298616b6c80b9e4a4d60a5813cccf7d6a",
+        "sha256": "18b1fffa1d9b66516c89db34a450be75fdcaeba3ba0d38e7a0eb32d1d0247846"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "docs/engineering/chronik/upstream-multi-lokad.md",
+      "action": "add",
+      "role": "documentation",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 4352,
+        "git_blob": "19c9c24f5ff20f51b27adfee67e830acb2633591",
+        "sha256": "236c0c3d26c8928e666c1d7e63c6d13e195f353ed3d7579563b4e6bb835e2e0b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/multi_lokad_component.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3881,
+        "git_blob": "26b7e2e05029303f8a2f5158eacf15b4b7613409",
+        "sha256": "966d4763730b6bdc9b737b97372f6384bf0f47bbc60aa014649c6d3e5ceb8b2a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/multi_lokad_component_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2262,
+        "git_blob": "21aa18b16475f1a344a68f8be699c98288baa449",
+        "sha256": "d4042afaa1d0ac70a529df06a2e78cbec56a2382d67ec4f7bc5bbeeac80af21a"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/multi_lokad_probe.rs",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 2682,
+        "git_blob": "381ef6df04d030fe4018ae7cf40f29c660e18dfe",
+        "sha256": "652aada08f5f2b72bdbd187e3e97bdd0829d67ed05feed8913b1b7dc936aaaa0"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugins/multi_lokad.toml",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 155,
+        "git_blob": "aeebdbf2ca933f4372d1d033ea269801565b9105",
+        "sha256": "1b0464edb73057ebb28954aaf25e21fbf6e801456bdebb936459114cd6a7567d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugins/multi_lokad_public.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 572,
+        "git_blob": "68c2ebe5df9a8ce03b571db9191e7acf00847f6f",
+        "sha256": "de42b886ba919bcaea9d8da26e35b5f5d786dee241f37238447382feed169b57"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/plugins/single_lokad_public.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 382,
+        "git_blob": "2bbd6cafc21c13a3f0df18027b4ea9c8ddb2241f",
+        "sha256": "addc464fcb5f65effad195ae094489b3677f43847656a511fa61d9bdf4d5ef12"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tests/compatibility/upstream-chronik/run_repetitions.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 43077,
+        "git_blob": "89dd56ef0e8c7728172a2e1c868fb50e25adc1a1",
+        "sha256": "c83544cd3f465afa0641f39e703d9d709abcfa07e8659f8f3c0f57b8b085b8b7"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 43921,
+        "git_blob": "509e93aa072eeb15a9b7f7f6da3ddf69e029eae7",
+        "sha256": "2285fda9e16a91101c6a602b8405a0e1c28131b3becd5f1c4bc7bd699667e928"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_long_history.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12624,
+        "git_blob": "7987050c1480edc30168500a2578487d07e523f6",
+        "sha256": "7910490f5e50ce91f222816404cc9441300d1c1f5218af3a7d31978025c25363"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12754,
+        "git_blob": "3b0d731894e09428967cb4cb9b5d09157c0261b6",
+        "sha256": "2679304125cbd11ff7ada473f506fb6b509b2d0d3e57156c9ef9ac1969a386da"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_multi_lokad.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 11278,
+        "git_blob": "7ff16b04ac99bad4ef7d8ea9cfda179e652bbc39",
+        "sha256": "560a1f8201dc6a5f26994cd5d49a1396d2582459dd9f6723e1069c04ad9b1058"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_multi_lokad_self_test.py",
+      "action": "add",
+      "role": "test",
+      "before": null,
+      "after": {
+        "mode": "100644",
+        "bytes": 3889,
+        "git_blob": "e4ae9690145529044421fc95d9d8529f6cd4da05",
+        "sha256": "02bae3615eee2467b3e7b4f52d302c283e55d0d7d810da5f5eaf440fa7869e2f"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_native_startup.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11761,
+        "git_blob": "46ffc69e112fe4bfb76878c68129cc623a9bc20c",
+        "sha256": "c87ba3567891549d3c3cdc5393a735c123af6f34e0f27ecf430edc11d0064abf"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11859,
+        "git_blob": "e8bfc756faa70e611f5333031dfdd926835674c8",
+        "sha256": "6b369cb00486f5082b53a7b3f355def600b9b0a9ac0dfc1ad3629a3f1a4ec077"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_owned_skip_links.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 11483,
+        "git_blob": "12341f95d69635f67022889c5c901d50a3445e0b",
+        "sha256": "69a1362d685e7ac01f474cf5fbafd594b3f0c4d7637a96dd01f4e4e2c5dfedc4"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 11589,
+        "git_blob": "fd19cfa7254ceb7526135fed9fc0e1760e300dcc",
+        "sha256": "a3af691a57fd48cff3b721204d6988ecc752be2a84bd3149fc441f6b15877cbb"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_position_catalogue.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12252,
+        "git_blob": "4c92d9df33f5375a3747eb56340a6c564d19598c",
+        "sha256": "9bdada683c12b2ce43d65132bccab87102bb9fe755b0725f0c17eef134c11e2f"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12769,
+        "git_blob": "17791f436998d98024913a9511c326bacdd255f7",
+        "sha256": "72f3bfb69c70f5fe6dcf119585054df5631242599cf0bd823eeddba1945cb022"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_position_catalogue_self_test.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 4122,
+        "git_blob": "794a46e96b03ea231afb5bbd950118628a8616d2",
+        "sha256": "f2cbd6093e92dae9334008ae31a26b54842099a9ced10b2241ac3d64be299bc1"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 4215,
+        "git_blob": "d8594936a9c1ff7e8c04561019f3c401fffc2745",
+        "sha256": "1effac5bcd4325325cf057234a736f17dda2dfb92defcbe2841579fd2104202d"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_batches.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 10670,
+        "git_blob": "7410f656edacc19f735582b142831dc49e3d7716",
+        "sha256": "f8851e2be4a9b2b9b4aef46aa7e79251de4bc843409cfa6f88e8eeac7a10ff03"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 10768,
+        "git_blob": "42aa89afcd59427d974c96699d1cf6dbc82b132e",
+        "sha256": "4ab8c2792592423c5d4b9fea1ff9297b8ec5d980606e6acbae9e31f03818fe82"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_metadata.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 16137,
+        "git_blob": "3116adbf50a91ed5d51b374d907cbac99e0952f1",
+        "sha256": "8d2ce6e88c4f5915c00d5043b8fef774cb1a3cbbe0a0e8fb612cb57c0a1eb2ed"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 16221,
+        "git_blob": "665927ba275ac032c6d161a20bc5ecbbfa6ef63d",
+        "sha256": "a66d5d759f6aec841178c6f1e01f6632005743b3995b998cfe62038a3db92d8b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_startup_release.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 12329,
+        "git_blob": "d6ac1b4e18fa80fcf270cacb20b05a13ee15a2f9",
+        "sha256": "edd7aae9ec80c92183f08b17b6e70f1ebf9e5ff29b380c968998dd4e2036d8c0"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 12435,
+        "git_blob": "078ddcd9540cc52cf26f47a0ed6795b9c1b31d95",
+        "sha256": "164820895faa532762997731763cf0f13c5d50170bdc221f3034e27085582a04"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    },
+    {
+      "path": "tools/engineering/check_chronik_upstream_link.py",
+      "action": "modify",
+      "role": "test",
+      "before": {
+        "mode": "100644",
+        "bytes": 22237,
+        "git_blob": "00226db6606c2690c4eca13b39d52635a7f28387",
+        "sha256": "22fc74aeac2ad00dfa6e1db1a88cb24690cfcbe21eed9a08453a12949985f65d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 22811,
+        "git_blob": "35231190cf5a12ee0cc74322b86ddd7751ceb186",
+        "sha256": "a3015ae1a710f3db88a97d5b691e36e2d3b4f6c4e777b5e938a9c0770b02f251"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Optional build identity/test construction or public tests/policy/docs only;no new daemon admission.",
+      "test_reachability": "Eleven metadata units,six real-upstream synthetic dispatch transactions,and all inherited public CI profiles;no operator or mainnet witness."
+    }
+  ],
+  "surfaces": {
+    "build_release": true,
+    "consensus": false,
+    "data_research": false,
+    "documentation_cockpit": true,
+    "indexing_chronik": true,
+    "p2p": false,
+    "rpc_api": false,
+    "storage_datadir": true,
+    "tests": true,
+    "ui": false,
+    "validation_mempool": false,
+    "wallet": false
+  },
+  "boundaries": {
+    "consensus_authority": "standalone-node",
+    "chronik_role": "observe-and-index-only",
+    "chronik_consensus_authority": false,
+    "chronik_mempool_authority": false,
+    "chronik_activation_authority": false,
+    "chronik_chain_selection_authority": false,
+    "chronik_required_for_correctness": false,
+    "chronik_compile_time_default": "off",
+    "chronik_runtime_default": "off",
+    "chronik_enabled_scope": "local-regtest-opt-in-only",
+    "mainnet_parameters_modified": false
+  },
+  "verification": {
+    "builds": [
+      {
+        "role": "compiled-out",
+        "commands": [
+          "Build the exact public compiled-out profile with unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds without Chronik linkage and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "compiled-in-disabled",
+        "commands": [
+          "Build the exact public compiled-in-disabled profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The standalone node builds with runtime Chronik disabled by default and retains all inherited controls."
+        ]
+      },
+      {
+        "role": "local-regtest-indexing",
+        "commands": [
+          "Build the exact public regtest-plugins profile with existing locked Rust inputs and unchanged native prerequisites."
+        ],
+        "expected_results": [
+          "The daemon and native fixture build; inherited profiles retain their existing boundaries."
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "index-local-regtest-opt-in",
+        "command": "Build the chronik-plugin-impl library unit executable and ergon-public-multi-lokad example offline from the locked workspace,then run multi_lokad_component.py with its Cargo JSON artifact binding in both plugin CI profiles;retain all inherited scenarios.",
+        "expected_results": [
+          "Exactly11declared metadata cases pass with0failed/ignored/measured.",
+          "All6synthetic upstream transactions satisfy exact plugin output/counter checks;legacy bytes behavior is preserved and combined identifiers invoke one plugin once.",
+          "Malformed metadata,missing/duplicate cases,ambiguous artifacts,wrong output,nonzero exit,timeout or cleanup failure cannot produce success.",
+          "Standalone compiled-out and default-disabled controls and all existing ALP/plugin/history/restart scenarios retain their original contracts."
+        ],
+        "failure_conditions": [
+          "Wrong identities,paths,types,counts or case names;changed native/token authority;unreviewed donor change;nonzero exit,skip,timeout,source/build drift,unstable output or incomplete cleanup."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-restart-288",
+        "command": "Run the unchanged inherited index-restart-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-full-reindex-288",
+        "command": "Run the unchanged inherited index-full-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-chainstate-reindex-288",
+        "command": "Run the unchanged inherited index-chainstate-reindex-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any reconstruction, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-pruned-datadir-288",
+        "command": "Run the unchanged inherited index-pruned-datadir-288 controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected acceptance, release, count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      },
+      {
+        "id": "index-deep-reorg-fail-closed",
+        "command": "Run the unchanged inherited index-deep-reorg-fail-closed controls with original scope and deadlines.",
+        "expected_results": [
+          "Existing native, upstream, ALP and public-plugin controls retain their exact contracts."
+        ],
+        "failure_conditions": [
+          "Any unexpected authority, stale publication, changed count, timeout, skip or process failure."
+        ],
+        "fresh_process": true,
+        "isolated_datadir": true
+      }
+    ],
+    "child_environment": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "NO_COLOR": "1",
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "TERM": "dumb",
+      "TZ": "UTC",
+      "TMPDIR": "<runner-created-unique-directory>"
+    },
+    "dependencies": {
+      "locked": false,
+      "platforms": [
+        "ubuntu-24.04"
+      ]
+    },
+    "integration_parent_binding": {
+      "input_method": "explicit-reviewed-cli",
+      "commit_argument": "--expected-integration-parent-commit",
+      "tree_argument": "--expected-integration-parent-tree",
+      "defaults_allowed": false,
+      "environment_fallback_allowed": false,
+      "record_match_required": true
+    },
+    "git_policy": {
+      "system_config": false,
+      "global_config": false,
+      "replace_objects": false,
+      "complete_history_required": true,
+      "verified_commits": [
+        "public-root",
+        "integration-parent",
+        "candidate"
+      ],
+      "required_signature_status": "G",
+      "candidate_direct_child": true,
+      "fresh_origin_main_fetch": true,
+      "candidate_reachable_from_remote_ref": true
+    },
+    "report_policy": {
+      "source": "public-tree-only",
+      "paths": "repository-relative-only",
+      "raw_process_output": false,
+      "parent_environment": false
+    }
+  },
+  "evidence": {
+    "delivery_state": "active",
+    "knowledge_status": "Open Question",
+    "ceiling": "record-review-only",
+    "artifacts": []
+  },
+  "limitations": [
+    "Plugins remain trusted Python code,not a security sandbox;bounded metadata does not constrain arbitrary plugin execution.",
+    "Several identifiers do not prove token validity,token ancestry,supply,balances or a shared ALP/SLP metadata standard.",
+    "This lot changes metadata admission only;no operator plugin is contributed or qualified by the synthetic fixture.",
+    "All new native-free component executions keep the existing60second deadline;compilation is a separate build step.",
+    "The test-only Cargo example and Python3.12 embedding profile add no registry tuple or dependency-lock change;system packages and runner image remain unlocked.",
+    "Prior PR65/66 wording concerning an unconditional historical-timeout integration veto is superseded by the explicit maintainer disposition at PR65comment6277823779,not by a claim to have solved or retired either timeout.",
+    "No CI result,public independent reproduction,reproducible build,mainnet readiness,deployment or cutover is claimed by this record."
+  ],
+  "counterevidence": [
+    "The initial lightweight prebuild was refused by the existing source-projection self-test because it still expected the pre-extension source identities.The correction adds only a finite exact-preimage projection layer;literal parent-relative comparison preserves every inherited runner selection,deadline,environment,failure and cleanup function.",
+    "Two historical local capture-and-query-controls normal-matrix attempts exceeded60seconds at repetition2.The cause remains unknown and no passing complete local normal matrix is claimed.",
+    "The maintainer explicitly retained those failures as an open anomaly while allowing reviewed source integration;tests,deadlines and evidence ceilings remain unchanged.A target-server recurrence,data-integrity contradiction or unsafe shutdown blocks operational readiness.",
+    "Earlier startup/stop-reopen timeouts and upstream dependency alerts remain open.No private observation or incoming report is a public evidence input."
+  ],
+  "decision": {
+    "status": "pending"
+  }
+}

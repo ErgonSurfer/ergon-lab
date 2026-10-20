@@ -179,7 +179,8 @@ def validate(root):
                 "startup metadata source drift")
     changed = {path.decode() for path in git(root, "diff", "--name-only", "-z", PARENT).split(b"\0") if path}
     changed |= {path.decode() for path in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0") if path}
-    require(changed == TECHNICAL | POLICY, "unexpected startup metadata path")
+    from check_chronik_multi_lokad import additional_paths
+    require(changed == TECHNICAL | POLICY | additional_paths(root), "unexpected startup metadata path")
     from check_change import ValidationError, validate as validate_change
     record = load_json(root / RECORD)
     try:

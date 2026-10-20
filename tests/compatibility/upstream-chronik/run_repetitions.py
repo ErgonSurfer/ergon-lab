@@ -420,6 +420,19 @@ def source_projection(source, manifest, read_manifest=None, plugin_manifest=None
                 require(row["before"] == merged[row["path"]]["after"], "position catalogue projection preimage drift")
             merged[row["path"]] = row
         rows = [merged[p] for p in sorted(merged)]
+    multi_lokad_manifest = source / "docs/engineering/chronik/upstream-multi-lokad-v1.json"
+    if multi_lokad_manifest.exists():
+        from check_chronik_multi_lokad import PARENT, TREE, MANIFEST_FILES
+        layer = json.loads(regular(multi_lokad_manifest))
+        require(layer["schema"] == "ergon-upstream-multi-lokad/v1" and
+                layer["public_parent"] == {"commit": PARENT, "tree": TREE} and
+                [r["path"] for r in layer["files"]] == sorted(MANIFEST_FILES), "multi-lokad projection drift")
+        merged = {r["path"]: r for r in rows}
+        for row in layer["files"]:
+            if row["path"] in merged:
+                require(row["before"] == merged[row["path"]]["after"], "multi-lokad projection preimage drift")
+            merged[row["path"]] = row
+        rows = [merged[p] for p in sorted(merged)]
     for row in rows:
         relative = Path(row["path"])
         require(not relative.is_absolute() and ".." not in relative.parts, "escaping source projection")

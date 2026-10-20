@@ -237,6 +237,8 @@ def validate(root: Path) -> HistoricalView:
     from check_chronik_position_catalogue import before_identity as position_parent_identity
     position_layer = (root / POSITION_MANIFEST).exists()
     read_layer = validate_reads(root) if (root / READ_MANIFEST).exists() else frozenset()
+    from check_chronik_multi_lokad import additional_paths
+    read_layer |= additional_paths(root)
     require(git(root, "rev-parse", PARENT + "^{tree}").decode().strip() == PARENT_TREE,
             "public parent tree mismatch or missing history")
     require(git(root, "merge-base", "--is-ancestor", PARENT, "HEAD") == b"",
@@ -330,6 +332,13 @@ def validate(root: Path) -> HistoricalView:
         for path in sorted(PLUGIN_TECHNICAL):
             if path.startswith("chronik/") and path not in view.rows:
                 view.rows[path] = {"before": plugin_parent_identity(root, path)}
+    # Authored metadata adapters have separately checked current postimages.
+    # Preserve original donor bytes and do not relabel the extension as upstream.
+    from check_chronik_multi_lokad import SOURCES as MULTI_SOURCES, before_identity as multi_before
+    if additional_paths(root):
+        for path in sorted(MULTI_SOURCES):
+            if path.startswith("chronik/") and path not in view.rows:
+                view.rows[path] = {"before": multi_before(root, path)}
     return view
 
 def main():

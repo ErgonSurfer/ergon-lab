@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MIT
+# Two synthetic public modules; no operator input.
+[regtest.plugin.multi_lokad_public]
+[regtest.plugin.single_lokad_public]
