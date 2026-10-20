@@ -12,6 +12,8 @@ on:
       - "src/chain.*"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
+      - "src/validation*"
+      - "src/test/validation_tests.cpp"
       - "src/coins.*"
       - "src/dbwrapper.*"
       - "src/txdb.*"
@@ -39,6 +41,7 @@ on:
       - "docs/engineering/changes/ergon-change-0063.json"
       - "docs/engineering/changes/ergon-change-0064.json"
       - "docs/engineering/changes/ergon-change-0065.json"
+      - "docs/engineering/changes/ergon-change-0066.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
       - "tests/community-plugins/**"
@@ -54,6 +57,8 @@ on:
       - "src/chain.*"
       - "src/txmempool.*"
       - "src/util/source_generation.h"
+      - "src/validation*"
+      - "src/test/validation_tests.cpp"
       - "src/coins.*"
       - "src/dbwrapper.*"
       - "src/txdb.*"
@@ -81,6 +86,7 @@ on:
       - "docs/engineering/changes/ergon-change-0063.json"
       - "docs/engineering/changes/ergon-change-0064.json"
       - "docs/engineering/changes/ergon-change-0065.json"
+      - "docs/engineering/changes/ergon-change-0066.json"
       - "tools/engineering/check_chronik_*.py"
       - "tests/compatibility/upstream-chronik/**"
       - "tests/community-plugins/**"
@@ -114,66 +120,31 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Validate exact current adaptations and historical donor preimages
+      - name: Validate current successor and all exact historical source contracts
         run: |
-          python3 -B tools/engineering/check_chronik_upstream_link.py check
-          python3 -B tools/engineering/check_chronik_port_core.py check
-          python3 -B tools/engineering/check_chronik_chainstate_reads.py check
-          python3 -B tools/engineering/check_chronik_chainstate_reads_self_test.py
-          python3 -B tools/engineering/check_chronik_plugin_fixtures.py check
-          python3 -B tools/engineering/check_chronik_plugin_fixtures_self_test.py
-          python3 -B tools/engineering/check_chronik_plugin_restart.py check
-          python3 -B tools/engineering/check_chronik_plugin_restart_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/self_test.py
-          python3 -B tests/compatibility/upstream-chronik/plugins/self_test.py
-          python3 -B tests/compatibility/upstream-chronik/plugin_restart_self_test.py
-          python3 -B tools/engineering/check_chronik_regtest_service.py check
-          python3 -B tools/engineering/check_chronik_regtest_service_self_test.py
-          python3 -B tools/engineering/check_chronik_service_recovery.py check
-          python3 -B tools/engineering/check_chronik_service_recovery_self_test.py
-          python3 -B tools/engineering/check_chronik_service_startup.py check
-          python3 -B tools/engineering/check_chronik_service_startup_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/regtest_service_self_test.py
-          python3 -B tools/engineering/check_chronik_service_alp.py check
-          python3 -B tools/engineering/check_chronik_service_alp_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/alp_service_self_test.py
-          python3 -B tools/engineering/check_chronik_service_plugins.py check
-          python3 -B tools/engineering/check_chronik_service_plugins_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/plugin_service_self_test.py
-          python3 -B tools/engineering/check_chronik_plugin_alp.py check
-          python3 -B tools/engineering/check_chronik_plugin_alp_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/plugin_alp_service_self_test.py
-          python3 -B tools/engineering/check_chronik_service_catchup.py check
-          python3 -B tools/engineering/check_chronik_service_catchup_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/catchup_service_self_test.py
-          python3 -B tools/engineering/check_chronik_cold_rebuild.py check
-          python3 -B tools/engineering/check_chronik_cold_rebuild_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py
-          python3 -B tools/engineering/check_chronik_startup_metadata.py check
-          python3 -B tools/engineering/check_chronik_startup_metadata_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/startup_metadata_self_test.py
-          python3 -B tools/engineering/check_chronik_owned_skip_links.py check
-          python3 -B tools/engineering/check_chronik_owned_skip_links_self_test.py
-          python3 -B tools/engineering/check_chronik_startup_release.py check
-          python3 -B tools/engineering/check_chronik_startup_release_self_test.py
-          python3 -B tools/engineering/check_chronik_startup_batches.py check
-          python3 -B tools/engineering/check_chronik_startup_batches_self_test.py
-          python3 -B tools/engineering/check_chronik_native_startup.py check
-          python3 -B tools/engineering/check_chronik_native_startup_self_test.py
-          python3 -B tools/engineering/check_chronik_long_history.py check
-          python3 -B tools/engineering/check_chronik_long_history_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/long_history_service_self_test.py
-          python3 -B tools/engineering/check_chronik_position_catalogue.py check
-          python3 -B tools/engineering/check_chronik_position_catalogue_self_test.py
-          python3 -B tools/engineering/check_chronik_multi_lokad.py check
-          python3 -B tools/engineering/check_chronik_multi_lokad_self_test.py
-          python3 -B tests/compatibility/upstream-chronik/multi_lokad_component_self_test.py
-          python3 -B tools/engineering/check_chronik_external_plugins.py check
-          python3 -B tools/engineering/check_chronik_external_plugins_self_test.py
+          python3 -B tools/engineering/check_chronik_continuous_service.py historical
+          python3 -B tools/engineering/check_chronik_continuous_service_self_test.py
           python3 -B tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/deployment_service_self_test.py
           python3 -B tests/community-plugins/test_protocols.py --upstream-source .
           python3 -B tests/community-plugins/component_self_test.py --upstream-source .
           python3 -B tests/community-plugins/service_self_test.py
+
+      - name: Recheck inherited runner and synthetic oracles on current source
+        run: |
+          python3 -B tests/compatibility/upstream-chronik/self_test.py
+          python3 -B tests/compatibility/upstream-chronik/plugins/self_test.py
+          python3 -B tests/compatibility/upstream-chronik/plugin_restart_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/regtest_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/alp_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/plugin_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/plugin_alp_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/catchup_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/startup_metadata_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/long_history_service_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/multi_lokad_component_self_test.py
+          python3 -B tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py
 
       - name: Install native prerequisites
         run: |
@@ -212,6 +183,7 @@ jobs:
           plugins=OFF
           regtest=OFF
           regtest_plugins=OFF
+          continuous=OFF
           libclang_path=""
           if [ "$PROFILE" != compiled-out ]; then
             link=ON
@@ -227,11 +199,14 @@ jobs:
             regtest=ON
             regtest_plugins=ON
           fi
+          if [ "$PROFILE" = regtest ] || [ "$PROFILE" = regtest-plugins ]; then continuous=ON; fi
           cmake -S . -B "$RUNNER_TEMP/ergon-upstream-build" -GNinja \
             -DBUILD_CHRONIK_UPSTREAM_LINK="$link" \
             -DBUILD_CHRONIK_UPSTREAM_ARCHIVAL_TESTS="$archival" \
             -DBUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS="$plugins" \
             -DBUILD_CHRONIK_UPSTREAM_REGTEST="$regtest" \
+            -DBUILD_CHRONIK_UPSTREAM_SHADOW="$continuous" \
+            -DBUILD_CHRONIK_UPSTREAM_SERVICE="$continuous" \
             -DBUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS="$regtest_plugins" \
             -DBUILD_CHRONIK_OBSERVER=OFF \
             -DBUILD_CHRONIK_PORT_CORE=OFF -DBUILD_CHRONIK_BUILD_ONLY=OFF \
@@ -399,6 +374,17 @@ jobs:
             --work-parent "$RUNNER_TEMP/ergon-startup-metadata-work" \
             --repetitions 3 --report "$RUNNER_TEMP/ergon-startup-metadata.json"
 
+      - name: Continuous journal, historical clients, rollback-safe identities and ELF stack
+        if: matrix.profile == 'regtest' || matrix.profile == 'regtest-plugins' || matrix.profile == 'compiled-out'
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          mkdir "$RUNNER_TEMP/ergon-continuous-service-work"
+          python3 -B tests/compatibility/upstream-chronik/deployment_service.py \
+            --source-root "$GITHUB_WORKSPACE" --build-root "$RUNNER_TEMP/ergon-upstream-build" \
+            --profile "$PROFILE" --work-parent "$RUNNER_TEMP/ergon-continuous-service-work" \
+            --report "$RUNNER_TEMP/ergon-continuous-service.json"
+
       - name: Mine and stop with Chronik runtime default OFF
         shell: bash
         env:
@@ -419,6 +405,6 @@ jobs:
 
       - name: Recheck sources after all build and execution steps
         run: |
-          python3 -B tools/engineering/check_chronik_upstream_link.py check
+          python3 -B tools/engineering/check_chronik_continuous_service.py check
           git diff --exit-code
           printf '%s\n' 'CI observations remain bounded regtest/component results; no deployment, mainnet activation or proof promotion.'

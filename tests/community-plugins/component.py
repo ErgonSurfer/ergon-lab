@@ -11,6 +11,7 @@ import run_repetitions as runner
 
 UNIT_NAMES = frozenset(
     "ergon_operator_bundle::tests::" + name for name in (
+        "native_network_separates_plugin_binding_without_changing_regtest",
         "path_independent_and_explicit_admission", "changed_source_refused", "changed_config_refused",
         "wrong_and_malformed_binding_refused", "interpreter_identity_bound", "missing_inputs_refused",
         "extra_cache_or_binary_refused", "directory_refused", "non_text_refused",
@@ -31,9 +32,9 @@ TEMPLATES = ("ALP_GENESIS", "ALP_SEND", "SLP_GENESIS", "SLP_SEND")
 def unit_result(streams):
     text = "\n".join(streams)
     names = re.findall(r"^test ([a-zA-Z0-9_:]+) \.\.\. ok$", text, re.M)
-    runner.require(len(names) == len(UNIT_NAMES) == 28 and set(names) == UNIT_NAMES,
+    runner.require(len(names) == len(UNIT_NAMES) == 29 and set(names) == UNIT_NAMES,
                    "missing, duplicate or unexpected operator contract test")
-    summaries = re.findall(r"^test result: ok\. 28 passed; 0 failed; 0 ignored; 0 measured; "
+    summaries = re.findall(r"^test result: ok\. 29 passed; 0 failed; 0 ignored; 0 measured; "
                            r"0 filtered out; finished in [0-9]+\.[0-9]+s$", text, re.M)
     runner.require(len(summaries) == 1 and "... FAILED" not in text, "operator contract result mismatch")
 
@@ -84,7 +85,7 @@ def main():
     runner.require(not any(p == source or p.is_relative_to(source) or source.is_relative_to(p)
                            for p in (target, work)), "generated work overlaps source")
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_external_plugins import validate
+    from check_chronik_continuous_service import validate
     validate(source)
     unit = artifact(runner.regular(args.cargo_artifacts), target)
     example = target / "debug/examples/ergon-community-plugins"
@@ -93,7 +94,7 @@ def main():
     probe_result(runner.execute([str(example), str(source / "plugins"),
         str(source / "tests/community-plugins/plugins.toml")], work, (source, target)))
     templates(runner.execute([str(example), "--templates"], work, (source, target)))
-    print("PASS:28 exact input/query cases;4 real-upstream plugins;ALP+SLP;4 upstream-built templates")
+    print("PASS:29 exact input/query cases;4 real-upstream plugins;ALP+SLP;4 upstream-built templates")
 
 
 if __name__ == "__main__":

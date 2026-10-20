@@ -205,6 +205,7 @@ class Contract(unittest.TestCase):
     def test_cli_rechecks_inputs_and_never_reports_success_after_drift_or_failure(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools/engineering"))
         import check_chronik_cold_rebuild as gate
+        import check_chronik_continuous_service as boundary
         for drift in (None, "binary", "source", "build", "gate", "runtime"):
             with self.subTest(drift=drift), tempfile.TemporaryDirectory(prefix="synthetic-cold-cli-") as directory, ExitStack() as stack:
                 root = Path(directory).resolve()
@@ -214,7 +215,7 @@ class Contract(unittest.TestCase):
                 argv = ["cold_rebuild_service.py", "--source-root", str(source), "--build-root", str(build),
                         "--work-parent", str(work), "--report", str(report), "--repetitions", "3"]
                 stack.enter_context(patch.object(sys, "argv", argv))
-                stack.enter_context(patch.object(gate, "validate", side_effect=[None, client.runner.Rejected("synthetic gate")] if drift == "gate" else None))
+                stack.enter_context(patch.object(boundary, "validate", side_effect=[None, client.runner.Rejected("synthetic gate")] if drift == "gate" else None))
                 stack.enter_context(patch.object(gate, "input_binding", side_effect=["bound", "drift"] if drift == "source" else ["bound", "bound"]))
                 stack.enter_context(patch.object(client.runner, "bind_build", side_effect=["bound", "drift"] if drift == "build" else ["bound", "bound"]))
                 stack.enter_context(patch.object(client.runner, "regular", side_effect=[b"daemon", b"native", b"changed" if drift == "binary" else b"daemon", b"native"]))

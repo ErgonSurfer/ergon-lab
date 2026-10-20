@@ -14,6 +14,9 @@
 #include <consensus/merkle.h>
 #include <feerate.h>
 #include <logging.h>
+#include <node/transaction.h>
+#include <consensus/consensus.h>
+#include <rpc/protocol.h>
 #include <primitives/block.h>
 #include <shutdown.h>
 #include <streams.h>
@@ -383,7 +386,9 @@ void ChronikBridge::capture_native_startup() {
     {
         LOCK2(cs_main, m_node.mempool.cs);
         const auto *tip = ChainActive().Tip();
-        if (m_node.config.GetChainParams().NetworkIDString() != "regtest" ||
+        if (!m_node.permits_native_network() ||
+            !ChainActive().Genesis() || ChainActive().Genesis()->GetBlockHash()!=
+                m_node.config.GetChainParams().GetConsensus().hashGenesisBlock ||
             fPruneMode || ShutdownRequested() || m_node.index_failed.load() ||
             !tip || !m_node.permits_height(tip->nHeight) ||
             !m_node.permits_index_count(mapBlockIndex.size()) || m_node.mempool.size() > 4096 ||
@@ -406,7 +411,9 @@ bool ChronikBridge::finish_native_startup() const {
         LOCK2(cs_main, m_node.mempool.cs);
         if (ShutdownRequested())
             return false;
-        if (!m_native_startup || m_startup || fPruneMode ||
+        if (!m_native_startup || m_startup || fPruneMode || !m_node.permits_native_network() ||
+            !ChainActive().Genesis() || ChainActive().Genesis()->GetBlockHash()!=
+                m_node.config.GetChainParams().GetConsensus().hashGenesisBlock ||
             m_node.index_failed.load() || !ChainActive().Tip() ||
             LookupBlockIndex(m_native_startup->tip->GetBlockHash()) !=
                 m_native_startup->tip)
@@ -462,7 +469,9 @@ bool ChronikBridge::matches_source(std::array<uint8_t, 32> hash, int32_t height,
         return false;
     const auto *tip = ChainActive().Tip();
     return tip && generation && revision && !ShutdownRequested() &&
-           !fPruneMode &&
+           !fPruneMode && m_node.permits_native_network() &&
+           ChainActive().Genesis() && ChainActive().Genesis()->GetBlockHash()==
+               m_node.config.GetChainParams().GetConsensus().hashGenesisBlock &&
            !m_node.index_failed.load(std::memory_order_acquire) &&
            tip->nHeight == height && HashBytes(tip->GetBlockHash()) == hash &&
            ChainActive().GetSourceGeneration() == generation &&
@@ -624,19 +633,65 @@ const CBlockIndex &ChronikBridge::find_fork(const CBlockIndex &index) const {
     return *fork;
 }
 
-void ChronikBridge::lookup_spent_coins(Tx &, rust::Vec<OutPoint> &,
-                                       rust::Vec<OutPoint> &) const {
-    throw std::runtime_error("501: Chronik submission preflight is disabled");
+void ChronikBridge::lookup_spent_coins(Tx &tx, rust::Vec<OutPoint> &not_found,
+                                       rust::Vec<OutPoint> &coins_to_uncache) const {
+    if (!m_node.permits_clients() || ShutdownRequested() ||
+        !m_node.permits_native_network() ||
+        tx.inputs.size() > 4096 || !not_found.empty() || !coins_to_uncache.empty())
+        throw std::runtime_error("501: Native submission preflight unavailable");
+    std::vector<::Coin> coins(tx.inputs.size());
+    {
+        LOCK2(cs_main, m_node.mempool.cs);
+        if (!pcoinsTip || fPruneMode)
+            throw std::runtime_error("503: Native coins unavailable");
+        CCoinsViewMemPool view(pcoinsTip.get(), m_node.mempool);
+        for (size_t i = 0; i < tx.inputs.size(); ++i) {
+            const auto &point = tx.inputs[i].prev_out;
+            const COutPoint native(TxId(NativeHash(point.txid)), point.out_idx);
+            const bool cached = pcoinsTip->HaveCoinInCache(native);
+            view.GetCoin(native, coins[i]);
+            // No delayed cleanup lease crosses the native source fence.
+            if (!cached) pcoinsTip->Uncache(native);
+        }
+    }
+    for (size_t i = 0; i < coins.size(); ++i) {
+        if (coins[i].IsSpent()) not_found.push_back(tx.inputs[i].prev_out);
+        else tx.inputs[i].coin = SpentCoin(coins[i]);
+    }
 }
-void ChronikBridge::uncache_coins(rust::Slice<const OutPoint>) const {
-    throw std::runtime_error("501: Chronik submission preflight is disabled");
+void ChronikBridge::uncache_coins(rust::Slice<const OutPoint> points) const {
+    if (!points.empty())
+        throw std::runtime_error("Unexpected deferred coin cleanup");
 }
-std::array<uint8_t, 32> ChronikBridge::broadcast_tx(rust::Slice<const uint8_t>,
-                                                    int64_t) const {
-    throw std::runtime_error(
-        "501: Chronik broadcast is disabled; use native Ergon submission");
+std::array<uint8_t, 32> ChronikBridge::broadcast_tx(rust::Slice<const uint8_t> raw,
+                                                    int64_t max_fee) const {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_node.mempool.cs);
+    if (!m_node.permits_clients() || ShutdownRequested() ||
+        !m_node.permits_native_network())
+        throw std::runtime_error("501: Native broadcast unavailable");
+    // Zero selects the host absolute maxTxFee, NEVER allowhighfees.
+    if (max_fee != 0 || raw.empty() || raw.size() > MAX_TX_SIZE)
+        throw std::runtime_error("400: Unsupported native broadcast policy or size");
+    try {
+        CDataStream stream(std::vector<uint8_t>(raw.begin(), raw.end()),
+                           SER_NETWORK, PROTOCOL_VERSION);
+        CMutableTransaction tx;
+        stream >> tx;
+        if (!stream.empty() || tx.vin.size() > 4096)
+            throw std::runtime_error("400: Invalid native transaction encoding or input bound");
+        return HashBytes(BroadcastTransaction(m_node.config,
+                            MakeTransactionRef(std::move(tx)), false));
+    } catch (const JSONRPCError &error) {
+        // Legacy JSONRPCError is NOT std::exception. CXX's exception bridge
+        // cannot catch it unless it is converted here.
+        throw std::runtime_error(error.message);
+    } catch (const std::exception &) {
+        throw;
+    } catch (...) {
+        throw std::runtime_error("Native broadcast refused (unknown native error)");
+    }
 }
-
 void ChronikBridge::fatal_error(rust::Str message, rust::Str detail) const {
     m_node.index_failed.store(true, std::memory_order_release);
     LogPrintf("Chronik service failed: %s: %s\n", std::string(message),
@@ -786,9 +841,9 @@ int64_t calc_fee(size_t bytes, int64_t rate) {
     return CFeeRate(rate * FIXOSHI).GetFee(bytes) / FIXOSHI;
 }
 int64_t default_max_raw_tx_fee_rate_per_kb() {
-    // Legacy Ergon supplies an absolute fee ceiling, not the donor rate
-    // default. Submission is disabled: do not fabricate an equivalent policy.
-    return -1;
+    // Adapter sentinel: broadcast_tx preserves native absolute maxTxFee.
+    // This is not an equivalent donor fee-rate policy.
+    return 0;
 }
 bool init_error(rust::Str message) {
     LogPrintf("Chronik setup failed: %s\n", std::string(message));
