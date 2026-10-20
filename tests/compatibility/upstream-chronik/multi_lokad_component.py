@@ -62,7 +62,7 @@ def main():
     runner.require(source != target and not target.is_relative_to(source) and
                    source != work and not work.is_relative_to(source), "generated work inside source")
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_multi_lokad import validate
+    from check_chronik_continuous_service import validate
     validate(source)
     unit = artifact(runner.regular(args.cargo_artifacts), target)
     probe = target / "debug/examples/ergon-public-multi-lokad"

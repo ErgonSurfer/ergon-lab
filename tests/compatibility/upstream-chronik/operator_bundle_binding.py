@@ -28,7 +28,8 @@ def metadata(meta, limit):
     return (meta.st_dev, meta.st_ino, meta.st_size, meta.st_mtime_ns, meta.st_ctime_ns)
 
 
-def inspect(root, python_version, python_id):
+def inspect(root, python_version, python_id, network="regtest"):
+    require(network in ("main", "regtest"))
     root = Path(root)
     require(root.is_absolute() and root.resolve(strict=True) == root)
     require(stat.S_ISDIR(root.lstat().st_mode))
@@ -53,7 +54,7 @@ def inspect(root, python_version, python_id):
         require(total <= MAX_TOTAL)
         files[name] = data
     require("plugins.toml" in files and len(files) >= 2)
-    identity = bytearray(DOMAIN)
+    identity = bytearray(DOMAIN if network == "regtest" else b"ergon-trusted-operator-plugin-bundle/main/v1\n")
 
     def field(data):
         identity.extend(len(data).to_bytes(8, "little"))
@@ -73,11 +74,12 @@ def main():
     parser.add_argument("--bundle", required=True)
     parser.add_argument("--python-version", required=True)
     parser.add_argument("--python-id", required=True)
+    parser.add_argument("--network", choices=("main", "regtest"), default="regtest")
     args = parser.parse_args()
     try:
         require(re.fullmatch(r"3\.12\.[0-9]+", args.python_version) is not None)
         require(re.fullmatch(r"[0-9a-f]{64}", args.python_id) is not None)
-        print(inspect(args.bundle, args.python_version, args.python_id))
+        print(inspect(args.bundle, args.python_version, args.python_id, args.network))
         return 0
     except (OSError, ValueError):
         # No source/config/path/host metadata in portable diagnostic output.

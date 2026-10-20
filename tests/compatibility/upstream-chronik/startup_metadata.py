@@ -63,7 +63,8 @@ def main():
     source, build, work, report = report_paths(
         args.source_root, args.build_root, args.work_parent, args.report)
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_startup_metadata import validate, input_binding
+    from check_chronik_continuous_service import validate
+    from check_chronik_startup_metadata import input_binding
     validate(source)
     test_binding = input_binding(source)
     manifest = source / "docs/engineering/chronik/upstream-host-adaptation-v1.json"
