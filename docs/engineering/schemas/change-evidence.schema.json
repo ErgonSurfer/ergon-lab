@@ -127,19 +127,38 @@
     },
     "surfaces": {"$ref": "#/$defs/surfaces"},
     "boundaries": {
-      "const": {
-        "consensus_authority": "standalone-node",
-        "chronik_role": "observe-and-index-only",
-        "chronik_consensus_authority": false,
-        "chronik_mempool_authority": false,
-        "chronik_activation_authority": false,
-        "chronik_chain_selection_authority": false,
-        "chronik_required_for_correctness": false,
-        "chronik_compile_time_default": "off",
-        "chronik_runtime_default": "off",
-        "chronik_enabled_scope": "local-regtest-opt-in-only",
-        "mainnet_parameters_modified": false
-      }
+      "oneOf": [
+        {
+          "const": {
+            "consensus_authority": "standalone-node",
+            "chronik_role": "observe-and-index-only",
+            "chronik_consensus_authority": false,
+            "chronik_mempool_authority": false,
+            "chronik_activation_authority": false,
+            "chronik_chain_selection_authority": false,
+            "chronik_required_for_correctness": false,
+            "chronik_compile_time_default": "off",
+            "chronik_runtime_default": "off",
+            "chronik_enabled_scope": "local-regtest-opt-in-only",
+            "mainnet_parameters_modified": false
+          }
+        },
+        {
+          "const": {
+            "consensus_authority": "standalone-node",
+            "chronik_role": "observe-and-index-only",
+            "chronik_consensus_authority": false,
+            "chronik_mempool_authority": false,
+            "chronik_activation_authority": false,
+            "chronik_chain_selection_authority": false,
+            "chronik_required_for_correctness": false,
+            "chronik_compile_time_default": "off",
+            "chronik_runtime_default": "off",
+            "chronik_enabled_scope": "explicit-native-network-genesis-bound-main-or-regtest",
+            "mainnet_parameters_modified": false
+          }
+        }
+      ]
     },
     "verification": {"$ref": "#/$defs/verification"},
     "evidence": {"$ref": "#/$defs/evidence"},

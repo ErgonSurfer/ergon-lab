@@ -24,6 +24,12 @@ class Contract(unittest.TestCase):
     def test_stable_without_execution(self):
         self.assertEqual(self.digest(), self.digest())
 
+    def test_network_domain_is_explicit_and_preserves_regtest(self):
+        self.assertEqual(self.digest(), bundle.inspect(self.root, "3.12.3", "0" * 64, "regtest"))
+        self.assertNotEqual(self.digest(), bundle.inspect(self.root, "3.12.3", "0" * 64, "main"))
+        with self.assertRaises(ValueError):
+            bundle.inspect(self.root, "3.12.3", "0" * 64, "test")
+
     def test_sources_config_and_interpreter_bound(self):
         before = self.digest()
         self.source.write_bytes(b"# changed\n")

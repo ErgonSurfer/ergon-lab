@@ -46,6 +46,7 @@
 #include <util/strencodings.h>
 #include <util/system.h>
 #include <validationinterface.h>
+#include <validation_event_journal.h>
 #include <warnings.h>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -763,6 +764,10 @@ AcceptToMemoryPoolWorker(const Config &config, CTxMemPool &pool,
                                  "mempool full");
             }
         }
+        // Optional owned observer context: actual cached input coins and the
+        // acceptance time, after final native admission. Failure is journal-
+        // terminal only and cannot change the native validation result.
+        GetMainSignals().CaptureAddedToMempool(pool, ptx, view, nAcceptTime);
     }
 
     GetMainSignals().TransactionAddedToMempool(ptx);
@@ -2288,7 +2293,7 @@ bool CChainState::DisconnectTip(const CChainParams &params,
     UpdateTip(params, pindexDelete->pprev);
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
-    GetMainSignals().BlockDisconnected(pblock);
+    GetMainSignals().BlockDisconnected(pblock, pindexDelete);
     return true;
 }
 

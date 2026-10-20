@@ -44,7 +44,7 @@ def main():
     source, build, work, report = cold.report_paths(args.source_root, args.build_root,
                                                  args.work_parent, args.report)
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_long_history import validate
+    from check_chronik_continuous_service import validate
     validate(source)
     manifest = source / "docs/engineering/chronik/upstream-host-adaptation-v1.json"
     binding = runner.bind_build(source, build, "regtest-plugins", manifest)
