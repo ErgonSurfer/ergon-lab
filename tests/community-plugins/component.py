@@ -85,7 +85,7 @@ def main():
     runner.require(not any(p == source or p.is_relative_to(source) or source.is_relative_to(p)
                            for p in (target, work)), "generated work overlaps source")
     sys.path.insert(0, str(source / "tools/engineering"))
-    from check_chronik_continuous_service import validate
+    from check_ergon_testnet import validate
     validate(source)
     unit = artifact(runner.regular(args.cargo_artifacts), target)
     example = target / "debug/examples/ergon-community-plugins"

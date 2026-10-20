@@ -17,7 +17,7 @@
       "Existing upstream indexer, token engines and plugin loader admitted only with exact native network and genesis; still default-OFF, observe/index-only, loopback service and separate roots.",
       "Bounded exact compact-target reward threshold vectors, moderate native DAA vectors and five actual accepted SHA-256d blocks through isolated two-node P2P, restart and optional Chronik indexing.",
       "New exact successor manifest freezes every other accepted input; immutable predecessor source gates rerun on their accepted public tree; inherited runtime bodies, assertions, repetitions and deadlines remain on the current binary.",
-      "Inherited runtime entrypoints and the final CI source recheck import the current exact testnet successor gate; their execution bodies and oracles remain byte-identical apart from that import. The cold-rebuild synthetic test mocks the same current gate.",
+      "Inherited runtime and community-plugin entrypoints and the final CI source recheck import the current exact testnet successor gate; their execution bodies and oracles remain byte-identical apart from that import. The cold-rebuild synthetic test mocks the same current gate; a full test-tree AST audit rejects leftover predecessor validator imports.",
       "Five Linux profiles retain their existing coverage; add independent network and foreign-active-chain identity controls without dependency registry changes."
     ],
     "exclusions": [
@@ -60,7 +60,7 @@
   },
   "provenance_inventory": {
     "inventory_schema": "ergon-authorship-inventory/v1",
-    "inventory_sha256": "cd2f1566f235b3d213d901bc7a9bfd2af161134929cdf0ecded1a1a072baae50",
+    "inventory_sha256": "9fd82a209ef4d9de011871656d1a11c909cf7007ae04e115952100313d3ca047",
     "license": "MIT",
     "standing_policy": "PUBLICATION_POLICY.md",
     "exclusions": [
@@ -366,9 +366,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 27149,
-        "sha256": "9e9d767fbb3e08e587db6834811ccc8aaedcbda4e60037596b1d1a635e65a119",
-        "git_blob": "0390eb7a1f52f01e2a7a53a3ca840e43506350b6"
+        "bytes": 28273,
+        "sha256": "e64ad99bf36327a8bcac4d6a9001c8d65468e4b6bd108c94d921d297c9bc3d61",
+        "git_blob": "f3111fa94d67bde0680d7134c56b04a23bc60874"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -697,6 +697,56 @@
       },
       "spdx": "MIT",
       "production_reachability": "Explicit dedicated network or default-OFF network/genesis-bound upstream adapter; mainnet consensus unchanged.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/community-plugins/component.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 5507,
+        "sha256": "28e77abaf41eb76f8fb6977ac91c8d5a0a5d31dd0c219a593e1c84a55262faa4",
+        "git_blob": "e4e3b6bf32eb40cfadc9f3ff981fc2d5cb2c119d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5494,
+        "sha256": "9a5d1ce1e8f7f68cd6fa68a81c7c5b398557a2a88f34929bfdb8f51f198c80a4",
+        "git_blob": "852aa7f23d2c6a29a67e3b3a5c08c0535e6d1873"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
+      "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
+    },
+    {
+      "path": "tests/community-plugins/service.py",
+      "action": "modify",
+      "role": "harness",
+      "before": {
+        "mode": "100644",
+        "bytes": 20059,
+        "sha256": "7a76dbff2b5f26a6c0da116dd211b770a7ba0221c4c39d8dc6a2da01a117a439",
+        "git_blob": "e7dcc480969c09a8582dcbcefe71f65717a71a1b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20046,
+        "sha256": "87e49e36a52b23d47f4092efe31979fbbc65cf00b4cfa1a214823b98b41ead0c",
+        "git_blob": "2e19449ac43340bde6d35f012737c8b0ef60b88b"
+      },
+      "provenance": {
+        "kind": "independent-authorship",
+        "code": "PUBLIC+A1",
+        "license": "MIT"
+      },
+      "spdx": "MIT",
+      "production_reachability": "Build, test, policy or documentation only; no automatic deployment.",
       "test_reachability": "Independent identity, mainnet monetary-rule parity, exact compact subsidy boundary, native DAA and real loopback lifecycle controls; inherited runtime coverage preserved."
     },
     {
@@ -1106,9 +1156,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 12032,
-        "sha256": "8da7d288d1a8223e1b012289c23b5d5a9f2f8f1df6093c371ddbef48196da7ef",
-        "git_blob": "11c0f563bd6da29bf8aa7b41a56451a2c006b29d"
+        "bytes": 12165,
+        "sha256": "32755ebd3839bc31e8e737e4b264531e0409ec793e0efaeed79a0039cb01c3b3",
+        "git_blob": "c6249959f487773fca4faa24b7ec9c7c5b4433d3"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -1126,9 +1176,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 6211,
-        "sha256": "736bbe8dfadf6f8fb82a4025537cd2b0781593b73c991917ea594c332a600663",
-        "git_blob": "a303cbebbdc2db53fcc2b29c0894862c748b28cc"
+        "bytes": 6952,
+        "sha256": "666d217bbdd1c32ebd019c52befd69012bf95dec60233bf0e381203807a7b684",
+        "git_blob": "f9577c35e446c6c0588d2ac99a475fb6f28e6662"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -1453,6 +1503,7 @@
     "Existing upstream dependency alerts and historical timeouts remain open; no current success erases them."
   ],
   "counterevidence": [
+    "The next public CI on 4d6f13f passed cockpit, locked corpus, archival, compiled-out and regtest, but both plugin profiles reached community-plugin entrypoints outside the upstream-chronik folder that still imported the predecessor validator. Both imports are now explicitly inventoried and covered by exact-equality and full test-tree AST checks. No runtime oracle or production code is changed by this correction.",
     "The initial public CI on 69c151a built and passed the new native testnet suites and real five-block/P2P/restart smoke but later inherited entrypoints and final recheck still called the predecessor source gate, which correctly refused the new source tree. Those red CI results remain counterevidence; the correction selects the exact current gate without removing runtime cases, changing assertions or increasing deadlines.",
     "A preparation-only accelerated monetary profile was superseded by the mainnet-fidelity requirement; its build is not evidence for this profile.",
     "Preparation found a C++ target type mismatch in a new test; compilation failure is not a passing native result.",

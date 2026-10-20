@@ -81,10 +81,11 @@ class TestnetContract(unittest.TestCase):
         prefix = "tests/compatibility/upstream-chronik/"
         old = "from check_chronik_continuous_service import validate"
         new = "from check_ergon_testnet import validate"
-        for name in gate.RUNTIME_GATE_CLIENTS:
+        clients = tuple(prefix + name for name in gate.RUNTIME_GATE_CLIENTS) + gate.COMMUNITY_GATE_CLIENTS
+        for name in clients:
             with self.subTest(name=name):
-                before = gate.git(ROOT, "show", gate.PARENT + ":" + prefix + name).decode()
-                after = (ROOT / prefix / name).read_text()
+                before = gate.git(ROOT, "show", gate.PARENT + ":" + name).decode()
+                after = (ROOT / name).read_text()
                 self.assertEqual(before.count(old), 1)
                 # Exact text equality preserves every runtime case, assertion,
                 # timeout, report, cleanup and invocation around the import.
@@ -94,6 +95,16 @@ class TestnetContract(unittest.TestCase):
         self.assertEqual(before.replace("import check_chronik_continuous_service as boundary",
                                         "import check_ergon_testnet as boundary"),
                          (ROOT / name).read_text())
+
+    def test_no_test_entrypoint_still_imports_predecessor_validator(self):
+        for path in (ROOT / "tests").rglob("*.py"):
+            with self.subTest(path=path.relative_to(ROOT)):
+                tree = ast.parse(path.read_text())
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom) and node.module == "check_chronik_continuous_service":
+                        self.assertFalse(any(alias.name in ("validate", "*") for alias in node.names))
+                    if isinstance(node, ast.Import):
+                        self.assertFalse(any(alias.name == "check_chronik_continuous_service" for alias in node.names))
 
     def test_old_source_gates_are_not_rewritten(self):
         for name in ("tools/engineering/check_chronik_continuous_service.py",

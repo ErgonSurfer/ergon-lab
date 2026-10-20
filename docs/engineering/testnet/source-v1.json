@@ -430,6 +430,38 @@
       "provenance": "PUBLIC+A1/MIT"
     },
     {
+      "path": "tests/community-plugins/component.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 5507,
+        "sha256": "28e77abaf41eb76f8fb6977ac91c8d5a0a5d31dd0c219a593e1c84a55262faa4",
+        "git_blob_sha1": "e4e3b6bf32eb40cfadc9f3ff981fc2d5cb2c119d"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 5494,
+        "sha256": "9a5d1ce1e8f7f68cd6fa68a81c7c5b398557a2a88f34929bfdb8f51f198c80a4",
+        "git_blob_sha1": "852aa7f23d2c6a29a67e3b3a5c08c0535e6d1873"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
+      "path": "tests/community-plugins/service.py",
+      "before": {
+        "mode": "100644",
+        "bytes": 20059,
+        "sha256": "7a76dbff2b5f26a6c0da116dd211b770a7ba0221c4c39d8dc6a2da01a117a439",
+        "git_blob_sha1": "e7dcc480969c09a8582dcbcefe71f65717a71a1b"
+      },
+      "after": {
+        "mode": "100644",
+        "bytes": 20046,
+        "sha256": "87e49e36a52b23d47f4092efe31979fbbc65cf00b4cfa1a214823b98b41ead0c",
+        "git_blob_sha1": "2e19449ac43340bde6d35f012737c8b0ef60b88b"
+      },
+      "provenance": "PUBLIC+A1/MIT"
+    },
+    {
       "path": "tests/compatibility/upstream-chronik/alp_service.py",
       "before": {
         "mode": "100644",
@@ -690,9 +722,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 12032,
-        "sha256": "8da7d288d1a8223e1b012289c23b5d5a9f2f8f1df6093c371ddbef48196da7ef",
-        "git_blob_sha1": "11c0f563bd6da29bf8aa7b41a56451a2c006b29d"
+        "bytes": 12165,
+        "sha256": "32755ebd3839bc31e8e737e4b264531e0409ec793e0efaeed79a0039cb01c3b3",
+        "git_blob_sha1": "c6249959f487773fca4faa24b7ec9c7c5b4433d3"
       },
       "provenance": "A1/MIT"
     },
@@ -701,9 +733,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 6211,
-        "sha256": "736bbe8dfadf6f8fb82a4025537cd2b0781593b73c991917ea594c332a600663",
-        "git_blob_sha1": "a303cbebbdc2db53fcc2b29c0894862c748b28cc"
+        "bytes": 6952,
+        "sha256": "666d217bbdd1c32ebd019c52befd69012bf95dec60233bf0e381203807a7b684",
+        "git_blob_sha1": "f9577c35e446c6c0588d2ac99a475fb6f28e6662"
       },
       "provenance": "A1/MIT"
     },

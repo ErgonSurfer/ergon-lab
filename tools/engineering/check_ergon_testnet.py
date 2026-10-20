@@ -19,6 +19,7 @@ RUNTIME_GATE_CLIENTS = (
     "plugin_alp_service.py", "plugin_restart.py", "plugin_service.py",
     "regtest_service.py", "startup_metadata.py",
 )
+COMMUNITY_GATE_CLIENTS = ("tests/community-plugins/component.py", "tests/community-plugins/service.py")
 FILES = frozenset({
     ".github/workflows/chronik-upstream-link.yml", ".github/workflows/chronik-port-core.yml",
     "chronik/UpstreamLink.cmake", "chronik/chronik-cpp/ergon_node_access.h",
@@ -31,6 +32,7 @@ FILES = frozenset({
     "tests/compatibility/upstream-chronik/operator_bundle_binding_self_test.py",
     "tests/compatibility/upstream-chronik/run_repetitions.py",
     *("tests/compatibility/upstream-chronik/" + name for name in RUNTIME_GATE_CLIENTS),
+    *COMMUNITY_GATE_CLIENTS,
     "tests/compatibility/upstream-chronik/cold_rebuild_service_self_test.py",
     "docs/engineering/schemas/change-evidence.schema.json", "tools/engineering/check_change.py",
     "tools/engineering/check_ergon_testnet.py", "tools/engineering/check_ergon_testnet_self_test.py",
