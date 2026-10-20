@@ -7,7 +7,7 @@
 
 use crate::ergon_plugin_fixture::{
     binding_for_mode, http_plugin_group_matches, http_plugin_tx_matches, load_plugin_fixture,
-    make_plugin_fixture, load_operator_plugins, operator_bundle_binding, PluginFixture,
+    make_plugin_fixture, load_operator_plugins, load_historical_operator_plugins, operator_bundle_binding, PluginFixture,
 };
 use crate::ergon_service::{Binding, RequestGate, ResponseLatch};
 use abc_rust_error::{bail, Report, Result};
@@ -36,6 +36,10 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 
 #[cxx::bridge(namespace = "ergon_archival")]
 mod ffi {
+    struct JournalPoolEntry { id: [u8;32], time:i64 }
+    struct JournalTxEvent { kind:u8, id:[u8;32] }
+    struct JournalBlockEvent { kind:u8, hash:[u8;32], height:i32 }
+    struct JournalNotifications { txs:Vec<JournalTxEvent>, blocks:Vec<JournalBlockEvent> }
     // Fixture-owned capture metadata, not an upstream wire-contract change.
     struct CaptureEntry {
         height: i32,
@@ -125,6 +129,8 @@ mod ffi {
         type StartupHook;
         fn run(self: &StartupHook) -> Result<()>;
         fn archival_fixture_guard(node: &ErgonNodeAccess) -> Result<()>;
+        fn archival_source_profile(node: &ErgonNodeAccess) -> Result<String>;
+        fn archival_clients_profile(node: &ErgonNodeAccess) -> Result<bool>;
         fn archival_capture_height_guard(node: &ErgonNodeAccess, height: i32) -> Result<()>;
         fn archival_reconcile_guard(node: &ErgonNodeAccess) -> Result<()>;
         fn archival_mempool_revision(node: &ErgonNodeAccess) -> u64;
@@ -138,6 +144,7 @@ mod ffi {
         fn load_plugin_fixture(root: &str, mode: u8) -> Result<Box<PluginFixture>>;
         fn loaded(self: &PluginFixture) -> u32;
         fn load_operator_plugins(root: &str, expected: &str) -> Result<Box<PluginFixture>>;
+        fn load_historical_operator_plugins(root: &str, expected: &str, network: &str) -> Result<Box<PluginFixture>>;
         fn operator_bundle_binding(root: &str) -> Result<String>;
         fn open_archival_with_plugins(
             root: &str,
@@ -158,6 +165,20 @@ mod ffi {
             atoms: u64,
         ) -> Result<bool>;
         fn http_plugin_group_matches(body: &[u8], kind: u8, points: &[u8]) -> Result<bool>;
+        type JournalWatch;
+        fn drain(self: &mut JournalWatch) -> Result<JournalNotifications>;
+        fn journal_watch(self:&ArchivalProbe,node:&ErgonNodeAccess) -> Result<Box<JournalWatch>>;
+        fn begin_journal(self:&mut ArchivalProbe,node:&ErgonNodeAccess) -> Result<()>;
+        fn journal_sequence(self:&ArchivalProbe) -> u64;
+        fn apply_journal_add(self:&mut ArchivalProbe,sequence:u64,tx:&CTransaction,
+            coins:&CxxVector<CCoin>,time:i64,node:&ErgonNodeAccess) -> Result<()>;
+        fn apply_journal_remove(self:&mut ArchivalProbe,sequence:u64,id:[u8;32],
+            node:&ErgonNodeAccess) -> Result<()>;
+        fn apply_journal_block(self:&mut ArchivalProbe,sequence:u64,connected:bool,
+            block:&CBlock,undo:&CBlockUndo,index:&CBlockIndex,conflicts:&[u8],
+            node:&ErgonNodeAccess) -> Result<()>;
+        fn prepare_journal_publication(self:&mut ArchivalProbe,sequence:u64,source:&CapturedSource,
+            pool:&[JournalPoolEntry],node:&ErgonNodeAccess) -> Result<()>;
         type CapturedSource;
         fn capture_inventory(
             self: &ArchivalProbe,
@@ -227,6 +248,7 @@ mod ffi {
         fn close(self: &RequestGate);
         fn fail(self: &RequestGate);
         fn dispatched(self: &RequestGate) -> u64;
+        fn notification_gap(self: &RequestGate);
         fn arm(self: &ResponseLatch) -> bool;
         fn wait(self: &ResponseLatch, milliseconds: u32) -> bool;
         fn release(self: &ResponseLatch);
@@ -256,6 +278,12 @@ mod ffi {
         fn http_alp_parse_failure_matches(body: &[u8], id: [u8; 32]) -> Result<bool>;
         fn open_archival(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
         fn open_regtest_service(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
+        fn open_historical_readonly(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
+        fn open_historical_with_plugins(root: &str, node: &ErgonNodeAccess,
+                                        plugins: &PluginFixture) -> Result<Box<ArchivalProbe>>;
+        fn open_historical_clients(root: &str, node: &ErgonNodeAccess) -> Result<Box<ArchivalProbe>>;
+        fn open_historical_clients_with_plugins(root: &str, node: &ErgonNodeAccess,
+                                               plugins: &PluginFixture) -> Result<Box<ArchivalProbe>>;
         fn open_regtest_service_with_plugins(root: &str, node: &ErgonNodeAccess,
                                              plugins: &PluginFixture) -> Result<Box<ArchivalProbe>>;
         fn open_regtest_service_with_hook(root: &str, node: &ErgonNodeAccess,
@@ -263,6 +291,9 @@ mod ffi {
         fn seed_service_startup(self: &mut ArchivalProbe, source: &CapturedSource,
                                node: &ErgonNodeAccess) -> Result<()>;
         fn start_regtest_http(self: &mut ArchivalProbe) -> Result<u16>;
+        fn start_regtest_http_clients(self: &mut ArchivalProbe) -> Result<u16>;
+        fn start_historical_http(self: &mut ArchivalProbe) -> Result<u16>;
+        fn start_historical_clients_http(self: &mut ArchivalProbe, port: u16) -> Result<u16>;
         fn open_archival_with_hook(
             root: &str,
             node: &ErgonNodeAccess,
@@ -355,10 +386,14 @@ pub struct ArchivalProbe {
     _lease: Lease,
     bound_height: i32,
     bound_hash: [u8; 32],
+    journal_active: bool,
+    journal_sequence: u64,
     bound_generation: u64,
     bound_revision: u64,
     access_address: usize,
     live_fixture: bool,
+    historical_readonly: bool,
+    historical_clients: bool,
     reconciling: bool,
     // Owned wire data, never native pointers, needed to rewind a captured old
     // branch while the live node has already advanced to another branch.
@@ -563,6 +598,19 @@ fn identity(genesis: [u8; 32]) -> Vec<u8> {
     let hex: String = genesis.iter().map(|b| format!("{b:02x}")).collect();
     format!("{{\"schema\":\"ergon-archival-probe/v1\",\"network\":\"regtest\",\"genesis_le\":\"{hex}\",\"public_parent\":\"8ae2e14af4765b0ffa5c8f4bd89d6ba3850ae84a\",\"donor\":\"784d83de2e19eab726898d77bfe7465410d27a9c\",\"adapter_sha256\":\"{}\",\"token\":true,\"lokad\":true,\"scripthash\":true,\"plugins\":false}}\n", env!("CHRONIK_ERGON_ADAPTER_ID")).into_bytes()
 }
+fn historical_identity(genesis: [u8; 32], network: &str) -> Result<Vec<u8>> {
+    if !matches!(network, "main" | "regtest") {
+        bail!("Unsupported historical native network");
+    }
+    // A distinct authority domain: never adopt a regtest/fixture identity.
+    // The immutable expected binding was checked against native parameters AND
+    // the active genesis before any root, lease or database access.
+    Ok(String::from_utf8(identity(genesis))?
+        .replace("\"schema\":\"ergon-archival-probe/v1\"",
+                 "\"schema\":\"ergon-historical-readonly/v1\",\"read_only\":true")
+        .replace("\"network\":\"regtest\"", &format!("\"network\":\"{network}\""))
+        .into_bytes())
+}
 fn failure(root: &Path, node: &Node) {
     if let Ok(mut file) = OpenOptions::new()
         .write(true)
@@ -639,6 +687,30 @@ pub fn open_archival(root: &str, access: &native::ErgonNodeAccess) -> Result<Box
 pub fn open_regtest_service(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
     open_archival_impl(root, access, None, None, true)
 }
+pub fn open_historical_readonly(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
+    open_source_impl(root, access, None, None, true, true, false, false)
+}
+pub fn open_historical_with_plugins(
+    root: &str, access: &native::ErgonNodeAccess, plugins: &PluginFixture,
+) -> Result<Box<ArchivalProbe>> {
+    plugins.check()?;
+    if !plugins.is_operator() {
+        bail!("Historical plugins require an explicitly bound trusted bundle");
+    }
+    open_source_impl(root, access, None, Some(plugins), true, true, true, false)
+}
+pub fn open_historical_clients(root: &str, access: &native::ErgonNodeAccess) -> Result<Box<ArchivalProbe>> {
+    open_source_impl(root, access, None, None, true, true, false, true)
+}
+pub fn open_historical_clients_with_plugins(
+    root: &str, access: &native::ErgonNodeAccess, plugins: &PluginFixture,
+) -> Result<Box<ArchivalProbe>> {
+    plugins.check()?;
+    if !plugins.is_operator() {
+        bail!("Historical clients require an explicitly bound trusted bundle");
+    }
+    open_source_impl(root, access, None, Some(plugins), true, true, true, true)
+}
 pub fn open_regtest_service_with_plugins(
     root: &str, access: &native::ErgonNodeAccess, plugins: &PluginFixture,
 ) -> Result<Box<ArchivalProbe>> {
@@ -678,7 +750,26 @@ fn open_archival_impl(
     plugins: Option<&PluginFixture>,
     service: bool,
 ) -> Result<Box<ArchivalProbe>> {
-    ffi::archival_fixture_guard(access)?;
+    open_source_impl(root, access, hook, plugins, service, false, false, false)
+}
+fn open_source_impl(
+    root: &str,
+    access: &native::ErgonNodeAccess,
+    hook: Option<&ffi::StartupHook>,
+    plugins: Option<&PluginFixture>,
+    service: bool,
+    historical: bool,
+    historical_plugins: bool,
+    historical_clients: bool,
+) -> Result<Box<ArchivalProbe>> {
+    let network = ffi::archival_source_profile(access)?;
+    if historical != !network.is_empty() || (historical && !service)
+        || historical_clients != ffi::archival_clients_profile(access)?
+        || (historical_clients && !historical)
+        || historical_plugins != (historical && plugins.is_some())
+        || (historical_plugins && !plugins.is_some_and(|p| p.is_operator())) {
+        bail!("Native scope does not match explicit index profile; no root opened");
+    }
     chronik_util::mount_loggers(chronik_util::Loggers {
         log: native::log_print,
         log_chronik: native::log_print_chronik,
@@ -699,9 +790,27 @@ fn open_archival_impl(
         bridge: if service { ffi::make_service_startup_bridge(access)? }
                 else { ffi::make_startup_bridge(access)? },
     });
-    let mut expected = identity(node.bridge.get_genesis_hash().data);
+    let mut expected = if historical {
+        historical_identity(node.bridge.get_genesis_hash().data, &network)?
+    } else { identity(node.bridge.get_genesis_hash().data) };
+    if historical_clients {
+        expected = String::from_utf8(expected)?
+            .replace("ergon-historical-readonly/v1", "ergon-historical-client-service/v1")
+            .replace(r#""read_only":true"#, r#""read_only":false,"clients":true"#)
+            .into_bytes();
+    }
     if let Some(plugins) = plugins {
-        expected = plugin_identity(node.bridge.get_genesis_hash().data, &plugins.binding)?;
+        // Keep main network/genesis and read-only semantics. This namespace
+        // never adopts either the no-plugin shadow or a regtest index.
+        expected = if historical_plugins {
+            String::from_utf8(expected)?
+                .replace("ergon-historical-readonly/v1", "ergon-historical-plugins-readonly/v1")
+                .replace(r#""plugins":false"#, &format!(
+                    r#""plugins":true,"plugin_fixture_sha256":"{}""#, plugins.binding))
+                .into_bytes()
+        } else {
+            plugin_identity(node.bridge.get_genesis_hash().data, &plugins.binding)?
+        };
         if plugins.is_operator() {
             // Separate identity namespace; never adopt a synthetic-fixture DB.
             expected = String::from_utf8(expected)?.replace("plugin_fixture_sha256", "operator_bundle_sha256").into_bytes();
@@ -774,10 +883,14 @@ fn open_archival_impl(
         _lease: lease,
         bound_height: tip.height,
         bound_hash: tip.hash,
+        journal_active: false,
+        journal_sequence: 0,
         bound_generation: generation,
         bound_revision: revision,
         access_address: access as *const native::ErgonNodeAccess as usize,
         live_fixture: false,
+        historical_readonly: historical && !historical_clients,
+        historical_clients,
         reconciling: false,
         captured_chain: Vec::new(),
         captured_pool: Vec::new(),
@@ -818,6 +931,134 @@ fn open_archival_impl(
     Ok(probe)
 }
 impl ArchivalProbe {
+    pub fn begin_journal(&mut self, node: &native::ErgonNodeAccess) -> Result<()> {
+        self.assert_current_capture(node)?;
+        if self.journal_active { bail!("Journal already anchored"); }
+        self.journal_active = true;
+        self.journal_sequence = 0;
+        self.live_fixture = true;
+        self.reconciling = true;
+        self.request_gate.invalidate();
+        Ok(())
+    }
+    pub fn journal_sequence(&self) -> u64 { self.journal_sequence }
+    fn journal_guard(&mut self, sequence: u64, node: &native::ErgonNodeAccess) -> Result<()> {
+        ffi::archival_database_guard(node)?;
+        if !self.journal_active || self.access_address != node as *const _ as usize
+            || self.journal_sequence.checked_add(1) != Some(sequence) {
+            bail!("Journal owner or ordinal mismatch");
+        }
+        self.live_fixture = true;
+        self.reconciling = true;
+        self.applied_capture = None;
+        self.request_gate.invalidate();
+        // Old coalesced snapshots must never be used to replay this stream.
+        // Release their payloads OUTSIDE native locks before writer work.
+        self.captured_chain.clear();
+        self.captured_pool.clear();
+        Ok(())
+    }
+    pub fn apply_journal_add(&mut self, sequence: u64, tx: &native::CTransaction,
+        coins: &cxx::CxxVector<native::CCoin>, time: i64,
+        node: &native::ErgonNodeAccess) -> Result<()> {
+        self.journal_guard(sequence,node)?;
+        let tx=Tx::from(native::bridge_tx(tx,coins)?);
+        if tx.inputs.is_empty() || tx.inputs.iter().any(|i| i.coin.is_none()) {
+            bail!("Missing journal acceptance coins");
+        }
+        let mut indexer=self.indexer.as_ref().ok_or_else(||Report::msg("Closed journal index"))?.blocking_write();
+        if indexer.mempool().txs().contains_key(&tx.txid()) {
+            bail!("Duplicate journal acceptance");
+        }
+        indexer.handle_tx_added_to_mempool(MempoolTx { tx, time_first_seen:time })?;
+        self.journal_sequence=sequence;
+        Ok(())
+    }
+    pub fn apply_journal_remove(&mut self, sequence: u64, id: [u8;32],
+        node: &native::ErgonNodeAccess) -> Result<()> {
+        self.journal_guard(sequence,node)?;
+        let mut indexer=self.indexer.as_ref().ok_or_else(||Report::msg("Closed journal index"))?.blocking_write();
+        let id=TxId::from(id);
+        // Native size trimming can remove a tentatively inserted tx before
+        // its acceptance signal. An absent overlay entry has no delta to emit.
+        if indexer.mempool().txs().contains_key(&id) {
+            indexer.handle_tx_removed_from_mempool(id)?;
+        }
+        self.journal_sequence=sequence;
+        Ok(())
+    }
+    pub fn apply_journal_block(&mut self, sequence:u64, connected:bool,
+        block:&native::CBlock, undo:&native::CBlockUndo, index:&native::CBlockIndex,
+        conflicts:&[u8], node:&native::ErgonNodeAccess) -> Result<()> {
+        self.journal_guard(sequence,node)?;
+        if conflicts.len()%32!=0 || conflicts.len()/32>4096 || (!connected && !conflicts.is_empty()) {
+            bail!("Invalid journal conflicts");
+        }
+        let block=native::bridge_block(block,undo,index)?;
+        let mut indexer=self.indexer.as_ref().ok_or_else(||Report::msg("Closed journal index"))?.blocking_write();
+        let tip=indexer.blocks(&self.node).blockchain_info()?;
+        if connected {
+            if tip.tip_height.checked_add(1)!=Some(block.height) || tip.tip_hash!=block.prev_hash {
+                bail!("Journal connect parent mismatch");
+            }
+        } else if tip.tip_height!=block.height || tip.tip_hash!=block.hash {
+            bail!("Journal disconnect is not indexed tip");
+        }
+        let mut remove:BTreeSet<TxId>=conflicts.chunks_exact(32)
+            .map(|id|TxId::from(<[u8;32]>::try_from(id).unwrap())).collect();
+        if remove.len()!=conflicts.len()/32 { bail!("Duplicate journal conflict"); }
+        let mined:BTreeSet<TxId>=block.txs.iter().map(|tx|TxId::from(tx.tx.txid)).collect();
+        if remove.iter().any(|id|mined.contains(id)) { bail!("Mined journal conflict"); }
+        // Preserve upstream's known first-seen times before overlay removal.
+        let block=indexer.make_chronik_block(block);
+        if connected {
+            if indexer.mempool().txs().iter().any(|(id,tx)|!remove.contains(id)
+                && tx.tx.inputs.iter().any(|i|remove.contains(&i.prev_out.txid))) {
+                bail!("Incomplete native conflict descendants");
+            }
+            remove.retain(|id|indexer.mempool().txs().contains_key(id));
+            while !remove.is_empty() {
+                let txs=indexer.mempool().txs();
+                let leaves:Vec<TxId>=remove.iter().filter(|id|!remove.iter().any(|child|
+                    txs[child].tx.inputs.iter().any(|i|i.prev_out.txid==**id))).copied().collect();
+                if leaves.is_empty() { bail!("Journal conflict cycle"); }
+                for id in leaves { indexer.handle_tx_removed_from_mempool(id)?;remove.remove(&id); }
+            }
+            indexer.handle_block_connected(block)?;
+        } else {
+            indexer.handle_block_disconnected(block)?;
+        }
+        self.journal_sequence=sequence;
+        Ok(())
+    }
+    pub fn prepare_journal_publication(&mut self, sequence:u64, source:&CapturedSource,
+        pool:&[ffi::JournalPoolEntry], node:&native::ErgonNodeAccess) -> Result<()> {
+        ffi::archival_database_guard(node)?;
+        if !self.journal_active || sequence!=self.journal_sequence || pool.len()>4096
+            || source.owner!=self.access_address || source.owner!=node as *const _ as usize {
+            bail!("Journal publication owner/ordinal mismatch");
+        }
+        let indexer=self.indexer.as_ref().ok_or_else(||Report::msg("Closed journal index"))?.blocking_read();
+        let tip=indexer.blocks(&self.node).blockchain_info()?;
+        let expected:BTreeMap<_,_>=pool.iter().map(|e|(TxId::from(e.id),e.time)).collect();
+        let actual:BTreeMap<_,_>=indexer.mempool().txs().iter().map(|(id,tx)|(*id,tx.time_first_seen)).collect();
+        if expected.len()!=pool.len() || actual!=expected
+            || tip.tip_hash!=source.hash || tip.tip_height!=source.height {
+            bail!("Journal/native final projection mismatch");
+        }
+        self.reconciling=true;
+        let epoch=self.request_gate.begin();
+        self.applied_capture=Some((source.hash,source.height,source.generation,source.revision,epoch));
+        Ok(())
+    }
+    pub fn journal_watch(&self,node:&native::ErgonNodeAccess) -> Result<Box<JournalWatch>> {
+        ffi::archival_database_guard(node)?;
+        if self.access_address!=node as *const _ as usize { bail!("Journal watch owner mismatch"); }
+        let indexer=self.indexer.as_ref().ok_or_else(||Report::msg("Closed journal index"))?.blocking_read();
+        let subs=indexer.subs().blocking_read();
+        Ok(Box::new(JournalWatch { txs:subs.sub_to_tx_msgs(),blocks:subs.sub_to_block_msgs() }))
+    }
+
     pub fn seed_service_startup(&mut self, source: &CapturedSource,
                                access: &native::ErgonNodeAccess) -> Result<()> {
         ffi::archival_database_guard(access)?;
@@ -951,7 +1192,41 @@ impl ArchivalProbe {
         }
         self.bind_http()
     }
+    pub fn start_regtest_http_clients(&mut self) -> Result<u16> {
+        if self._lease.service_lock.is_none() || self.captured_chain.is_empty()
+            || ffi::service_startup_cancelled() {
+            bail!("Invalid or cancelled regtest client owner");
+        }
+        self.bind_http_with_clients(true)
+    }
     fn bind_http(&mut self) -> Result<u16> {
+        self.bind_http_with_clients(false)
+    }
+    fn bind_http_with_clients(&mut self, clients: bool) -> Result<u16> {
+        self.bind_http_profile(clients, false, false, 0)
+    }
+    pub fn start_historical_http(&mut self) -> Result<u16> {
+        if !self.historical_readonly || self._lease.service_lock.is_none()
+            || self.captured_chain.is_empty() || !self.journal_active
+            || ffi::service_startup_cancelled() {
+            bail!("Historical HTTP requires its live, anchored read-only owner");
+        }
+        self.bind_http_profile(false, true, false, 0)
+    }
+    pub fn start_historical_clients_http(&mut self, port: u16) -> Result<u16> {
+        if !self.historical_clients || self._lease.service_lock.is_none()
+            || self.captured_chain.is_empty() || !self.journal_active
+            || ffi::service_startup_cancelled() {
+            bail!("Historical clients require their live anchored owner");
+        }
+        self.bind_http_profile(true, false, true, port)
+    }
+    fn bind_http_profile(&mut self, clients: bool, historical: bool,
+                         historical_clients: bool, port: u16) -> Result<u16> {
+        if self.historical_readonly != historical || self.historical_clients != historical_clients
+            || (historical && clients) || (historical_clients && !clients) {
+            bail!("HTTP transport does not match the immutable native profile");
+        }
         if self.service.is_some() {
             bail!("HTTP fixture already active");
         }
@@ -959,7 +1234,8 @@ impl ArchivalProbe {
             server::{ChronikServer, ChronikServerParams, ChronikSettings},
             subscription_limits::SubscriptionLimiter,
         };
-        let address = "127.0.0.1:0".parse()?;
+        // Never bind a wildcard/public interface; publication is external.
+        let address = std::net::SocketAddr::from(([127, 0, 0, 1], port));
         let runtime = crate::ergon_runtime::JoinedRuntime::new(
             tokio::runtime::Builder::new_multi_thread()
                 .worker_threads(2)
@@ -971,6 +1247,9 @@ impl ArchivalProbe {
             .handle()
             .ok_or_else(|| Report::msg("Missing fixture runtime"))?;
         let (_, notify) = chronik_indexer::pause::Pause::new_pair(false);
+        let limiter = SubscriptionLimiter::new_ref(128, 128);
+        let client_access = clients.then(|| crate::ergon_service::ClientAccess::new(
+            self.indexer.as_ref().unwrap().clone(), limiter.clone()));
         let server = {
             let _entered = handle.enter();
             ChronikServer::setup(ChronikServerParams {
@@ -986,7 +1265,7 @@ impl ArchivalProbe {
                     ws_ping_interval: std::time::Duration::from_secs(60),
                     enable_cors: false,
                 },
-                subscription_limiter: SubscriptionLimiter::new_ref(8, 8),
+                subscription_limiter: if clients { limiter } else { SubscriptionLimiter::new_ref(8, 8) },
             })?
         };
         let port = server.single_bound_addr()?.port();
@@ -1002,7 +1281,7 @@ impl ArchivalProbe {
         let task = handle.spawn(async move {
             server
                 .serve_with_router(|router| {
-                    crate::ergon_service::wrap(router, gate, node, latch, plugins)
+                    crate::ergon_service::wrap_clients(router, gate, node, latch, plugins, client_access)
                 })
                 .await
         });
@@ -1027,6 +1306,9 @@ impl ArchivalProbe {
         Ok(())
     }
     pub fn runtime_probe(&mut self) -> Result<ffi::RuntimeObservation> {
+        if self.historical_readonly || self.historical_clients {
+            bail!("Historical startup owner cannot use fixture transports");
+        }
         drop(self.indexer()?);
         if self.service.is_some() {
             bail!("Active gated HTTP fixture");
@@ -1055,6 +1337,7 @@ impl ArchivalProbe {
         node: &native::ErgonNodeAccess,
     ) -> Result<()> {
         ffi::archival_database_guard(node)?;
+        if self.journal_active { bail!("Coalesced replay forbidden after journal anchor"); }
         if source.owner != self.access_address || source.owner != node as *const _ as usize {
             bail!("Captured source owner mismatch");
         }
@@ -1434,6 +1717,7 @@ impl ArchivalProbe {
         Ok(())
     }
     pub fn begin_reconcile(&mut self, node: &native::ErgonNodeAccess) -> Result<()> {
+        if self.journal_active { bail!("Legacy replay forbidden after journal anchor"); }
         self.check_owner(node)?;
         if self.service.is_some() {
             bail!("Lock-fenced comparison cannot run with an HTTP fixture");
@@ -1754,4 +2038,33 @@ fn exercise_runtime(
         bail!("Runtime shutdown ownership contradiction");
     }
     Ok(observation)
+}
+
+pub struct JournalWatch {
+    txs: tokio::sync::broadcast::Receiver<chronik_indexer::subs_group::TxMsg>,
+    blocks: tokio::sync::broadcast::Receiver<chronik_indexer::subs::BlockMsg>,
+}
+impl JournalWatch {
+    pub fn drain(&mut self) -> Result<ffi::JournalNotifications> {
+        use tokio::sync::broadcast::error::TryRecvError;
+        use chronik_indexer::{subs_group::TxMsgType,subs::BlockMsgType};
+        let mut out=ffi::JournalNotifications { txs:Vec::new(),blocks:Vec::new() };
+        loop { match self.txs.try_recv() {
+            Ok(m)=>out.txs.push(ffi::JournalTxEvent { kind:match m.msg_type {
+                TxMsgType::AddedToMempool=>1,TxMsgType::RemovedFromMempool=>2,
+                TxMsgType::Confirmed=>3,_=>bail!("Unexpected journal tx notification") },
+                id:m.txid.to_bytes() }),
+            Err(TryRecvError::Empty)=>break,
+            Err(_)=>bail!("Journal tx subscription lost continuity"),
+        }}
+        loop { match self.blocks.try_recv() {
+            Ok(m)=>out.blocks.push(ffi::JournalBlockEvent { kind:match m.msg_type {
+                BlockMsgType::Connected=>1,BlockMsgType::Disconnected=>2,
+                _=>bail!("Unexpected journal block notification") },
+                hash:m.hash.to_bytes(),height:m.height }),
+            Err(TryRecvError::Empty)=>break,
+            Err(_)=>bail!("Journal block subscription lost continuity"),
+        }}
+        Ok(out)
+    }
 }

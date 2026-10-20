@@ -2,6 +2,7 @@
 // Copyright (c) 2026 The Ergon developers
 #include <chronik-cpp/ergon_archival_probe.h>
 #include <chronik-cpp/ergon_archival_worker.h>
+#include <chronik-cpp/ergon_journal_replay.h>
 #include <chronik_lib/src/ergon_archival.rs.h>
 #include <chrono>
 #include <condition_variable>
@@ -28,7 +29,8 @@ const char *WorkerFailureName(WorkerFailure failure) noexcept {
 }
 struct ArchivalWorker::Impl final : CValidationInterface {
     const chronik_bridge::ErgonNodeAccess &node;
-    const bool service_mode;
+    const bool service_mode, journal_mode;
+    const WorkerProfile profile;
     // No query borrows escape; data_mu serializes every access to the Rust box.
     std::mutex data_mu, stop_mu;
     mutable std::mutex mu;
@@ -43,6 +45,9 @@ struct ArchivalWorker::Impl final : CValidationInterface {
     std::function<void()> before, before_notification, after_capture,
         before_disk;
     std::unique_ptr<rust::Box<ArchivalProbe>> probe;
+    // Created atomically at a current publication fence, before any listener.
+    // After this cut callbacks are wakeups only; never reconcile snapshots.
+    std::unique_ptr<JournalReplay> replay;
     std::unique_ptr<rust::Box<RequestGate>> gate;
     // Immutable control handles share metadata only, never the indexer/node.
     std::unique_ptr<rust::Box<ResponseLatch>> response_latch;
@@ -52,16 +57,33 @@ struct ArchivalWorker::Impl final : CValidationInterface {
          size_t limit, std::function<void()> hook,
          std::function<void()> notification_hook,
          std::function<void()> capture_hook, std::function<void()> disk_hook,
-         const PluginFixture *plugins, bool regtest_service)
-        : node(access), service_mode(regtest_service), capacity(limit), before(std::move(hook)),
+         const PluginFixture *plugins, bool regtest_service, WorkerProfile selected_profile)
+        : node(access), service_mode(regtest_service),
+          journal_mode(selected_profile != WorkerProfile::Inherited),
+          profile(selected_profile), capacity(limit), before(std::move(hook)),
           before_notification(std::move(notification_hook)),
           after_capture(std::move(capture_hook)),
           before_disk(std::move(disk_hook)) {
         if (!capacity || capacity > 128)
             throw std::runtime_error("Invalid fixture callback budget");
+        const bool historical = profile == WorkerProfile::HistoricalReadOnly ||
+                                profile == WorkerProfile::HistoricalPluginsReadOnly;
+        const bool clients = profile == WorkerProfile::HistoricalClientService;
+        if(profile != WorkerProfile::Inherited && !historical && !clients)
+            throw std::runtime_error("Unknown worker profile");
+        if(historical != node.historical_readonly() ||
+           clients != node.historical_clients() ||
+           ((historical || clients) && !service_mode) ||
+           (profile == WorkerProfile::HistoricalReadOnly && plugins) ||
+           (profile == WorkerProfile::HistoricalPluginsReadOnly && !plugins))
+            throw std::runtime_error("Historical worker scope/plugin profile mismatch");
         // Drain old fixture events before subscribing, never under cs_main.
         SyncWithValidationInterfaceQueue();
         probe = std::make_unique<rust::Box<ArchivalProbe>>(
+            clients ? (plugins ? open_historical_clients_with_plugins(root,node,*plugins)
+                               : open_historical_clients(root,node)) :
+            profile==WorkerProfile::HistoricalPluginsReadOnly ? open_historical_with_plugins(root,node,*plugins) :
+            profile==WorkerProfile::HistoricalReadOnly ? open_historical_readonly(root,node) :
             regtest_service ? (plugins ? open_regtest_service_with_plugins(root, node, *plugins)
                                       : open_regtest_service(root, node))
                 : plugins ? open_archival_with_plugins(root, node, *plugins)
@@ -70,7 +92,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             std::make_unique<rust::Box<RequestGate>>((*probe)->request_gate());
         response_latch = std::make_unique<rust::Box<ResponseLatch>>(
             (*probe)->response_latch());
-        const bool published = reconcile_captured(**probe, node);
+        const bool published = journal_mode ? AnchorIfCurrent() : reconcile_captured(**probe, node);
         if (!published && !service_mode)
             throw std::runtime_error("Native source busy at worker startup");
         // Register without a native source mutation gap. The fixture owner
@@ -83,7 +105,7 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                 throw std::runtime_error("Callback startup cancelled");
             if (!service_mode)
                 (*probe)->assert_current_capture(node);
-            ready = published && (*probe)->source_current();
+            ready = !journal_mode && published && (*probe)->source_current();
             if (!ready)
                 (*gate)->invalidate();
             // Queue tickets until thread creation succeeds. On failure, drain
@@ -98,6 +120,15 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             }
             throw;
         }
+    }
+    bool AnchorIfCurrent() {
+        const bool current=reconcile_captured_and_anchor(**probe,node,after_capture,before_disk,nullptr,[&] {
+            if(replay) throw std::runtime_error("Journal already owned by worker");
+            replay=JournalReplay::AnchorUnderNativeFence(**probe,node,capacity);
+        });
+        // Anchoring deliberately invalidates the snapshot gate. The worker
+        // must drain/publish its journal frontier before serving any request.
+        return current;
     }
     // Caller owns mu. Preserve the first cause, including the occupancy before
     // the worker drains/discards pending tickets during destruction.
@@ -145,6 +176,8 @@ struct ArchivalWorker::Impl final : CValidationInterface {
         if (service_mode && (accepted == UINT64_MAX || pending == SIZE_MAX)) {
             Fail(WorkerFailure::SequenceExhausted);
         } else if (service_mode) {
+            // Payload continuity is governed by the native journal, not the
+            // number of asynchronous wakeups awaiting acknowledgement.
             // No queue growth, DB access or native-source wait. A later capture
             // can acknowledge only a monotonic prefix, and publication still
             // refuses native progress, shutdown, storage drift or a stale epoch.
@@ -212,13 +245,17 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                         TRY_LOCK(node.mempool.cs, pool_lock);
                         if (!pool_lock)
                             continue;
-                        if (!retry && (*probe)->source_current())
+                        const auto journal=replay ? replay->Status() : ValidationEventJournal::Status{};
+                        if (!retry && (*probe)->source_current() &&
+                            (!journal_mode || (replay && !journal.closed &&
+                             journal.failure==ValidationEventJournal::Failure::None &&
+                             journal.queued==0)))
                             continue;
                     }
                     // Preserve queued native notification order before a
                     // silent refresh. This fence owns no data/native mutex.
                     // Like Stop's drain, it is not a production latency bound.
-                    SyncWithValidationInterfaceQueue();
+                    if(!journal_mode) SyncWithValidationInterfaceQueue();
                     std::lock_guard<std::mutex> lock(mu);
                     if (stopping || closed || failed)
                         break;
@@ -235,8 +272,14 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                 bool published;
                 {
                     std::lock_guard<std::mutex> data(data_mu);
-                    published = reconcile_captured(**probe, node, after_capture,
-                                                   before_disk);
+                    if(journal_mode) {
+                        if(!replay) AnchorIfCurrent();
+                        if(replay) {
+                            replay->Drain();
+                            published=replay->Publish();
+                        } else published=false;
+                    } else published = reconcile_captured(**probe, node, after_capture,
+                                                         before_disk);
                 }
                 retry = !published; // A quiet healthy source can recover later.
                 {
@@ -252,6 +295,14 @@ struct ArchivalWorker::Impl final : CValidationInterface {
                     cv.notify_all();
                 }
             }
+        } catch (const JournalReplayCancelled &) {
+            // No database/continuity exception is caught here. Replay throws
+            // this distinct type only for native shutdown at a healthy fence.
+            (*gate)->close();
+            std::lock_guard<std::mutex> lock(mu);
+            closed = true;
+            ready = false;
+            cv.notify_all();
         } catch (...) {
             std::lock_guard<std::mutex> lock(mu);
             Fail(WorkerFailure::Reconcile);
@@ -269,6 +320,9 @@ struct ArchivalWorker::Impl final : CValidationInterface {
             if (failed)
                 (*probe)->fail_reconcile();
         }
+        // Detach the journal while native owners still exist, then destroy
+        // its payloads and HTTP/index users outside native validation locks.
+        if(replay) { replay->Stop();replay.reset(); }
         probe.reset();
         cv.notify_all();
     }
@@ -314,11 +368,12 @@ ArchivalWorker::ArchivalWorker(const std::string &root,
                                std::function<void()> before_notification,
                                std::function<void()> after_capture,
                                std::function<void()> before_disk,
-                               const PluginFixture *plugins, bool regtest_service)
+                               const PluginFixture *plugins, bool regtest_service,
+                               WorkerProfile profile)
     : m_impl(std::make_unique<Impl>(
           root, node, max_pending, std::move(before_reconcile),
           std::move(before_notification), std::move(after_capture),
-          std::move(before_disk), plugins, regtest_service)) {}
+          std::move(before_disk), plugins, regtest_service, profile)) {}
 ArchivalWorker::~ArchivalWorker() { Stop(); }
 WorkerStatus ArchivalWorker::Status() const {
     std::lock_guard<std::mutex> lock(m_impl->mu);
@@ -375,7 +430,7 @@ rust::Box<RequestGate> ArchivalWorker::RequestAdmission() {
 uint16_t ArchivalWorker::TryStartRegtestHttp() {
     AssertLockNotHeld(cs_main);
     AssertLockNotHeld(m_impl->node.mempool.cs);
-    if (!m_impl->service_mode)
+    if (!m_impl->service_mode || m_impl->profile!=WorkerProfile::Inherited)
         throw std::runtime_error("Not a regtest service worker");
     std::unique_lock<std::mutex> data(m_impl->data_mu, std::try_to_lock);
     if (!data.owns_lock())
@@ -384,10 +439,44 @@ uint16_t ArchivalWorker::TryStartRegtestHttp() {
         std::lock_guard<std::mutex> lock(m_impl->mu);
         if (m_impl->closed || m_impl->failed || !m_impl->probe)
             throw std::runtime_error("Regtest HTTP owner closed");
+        if(!m_impl->ready) return 0;
     }
-    return (*m_impl->probe)->start_regtest_http();
+    return m_impl->node.permits_clients()
+        ? (*m_impl->probe)->start_regtest_http_clients()
+        : (*m_impl->probe)->start_regtest_http();
+}
+uint16_t ArchivalWorker::TryStartHistoricalHttp() {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_impl->node.mempool.cs);
+    if(!m_impl->service_mode || (m_impl->profile!=WorkerProfile::HistoricalReadOnly &&
+                               m_impl->profile!=WorkerProfile::HistoricalPluginsReadOnly))
+        throw std::runtime_error("Not a historical read-only service worker");
+    std::unique_lock<std::mutex> data(m_impl->data_mu,std::try_to_lock);
+    if(!data.owns_lock()) return 0;
+    {
+        std::lock_guard<std::mutex> lock(m_impl->mu);
+        if(m_impl->closed || m_impl->failed || !m_impl->probe)
+            throw std::runtime_error("Historical HTTP owner closed");
+        if(!m_impl->ready || !m_impl->replay) return 0;
+    }
+    return (*m_impl->probe)->start_historical_http();
 }
 rust::Box<ResponseLatch> ArchivalWorker::ResponseBarrier() {
     return (*m_impl->response_latch)->clone_handle();
+}
+uint16_t ArchivalWorker::TryStartHistoricalClientsHttp(uint16_t port) {
+    AssertLockNotHeld(cs_main);
+    AssertLockNotHeld(m_impl->node.mempool.cs);
+    if(!m_impl->service_mode || m_impl->profile!=WorkerProfile::HistoricalClientService)
+        throw std::runtime_error("Not a historical client service worker");
+    std::unique_lock<std::mutex> data(m_impl->data_mu,std::try_to_lock);
+    if(!data.owns_lock()) return 0;
+    {
+        std::lock_guard<std::mutex> lock(m_impl->mu);
+        if(m_impl->closed || m_impl->failed || !m_impl->probe)
+            throw std::runtime_error("Historical client HTTP owner closed");
+        if(!m_impl->ready || !m_impl->replay) return 0;
+    }
+    return (*m_impl->probe)->start_historical_clients_http(port);
 }
 } // namespace ergon_archival

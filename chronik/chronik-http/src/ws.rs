@@ -27,9 +27,7 @@ use crate::{
     error::report_status_error,
     parse::{parse_lokad_id, parse_script_variant},
     server::{ChronikIndexerRef, ChronikSettings},
-    subscription_limits::{
-        SubscriptionClientKey, SubscriptionGuard, SubscriptionLimiterRef,
-    },
+    subscription_limits::{SubscriptionClientKey, SubscriptionGuard, SubscriptionLimiterRef},
 };
 
 /// Consensus maximum script size in bytes.
@@ -65,6 +63,8 @@ use self::ChronikWsError::*;
 
 enum WsAction {
     Close,
+    // Terminal source/channel discontinuity, never a recoverable sub error.
+    Continuity(&'static str),
     Sub(WsSub),
     Message(ws::Message),
     Nothing,
@@ -141,9 +141,8 @@ impl SubRecv {
         if txids.is_empty() {
             futures::future::pending().await
         } else {
-            let txids_receivers = select_all(
-                txids.values_mut().map(|receiver| Box::pin(receiver.recv())),
-            );
+            let txids_receivers =
+                select_all(txids.values_mut().map(|receiver| Box::pin(receiver.recv())));
             let (tx_msg, _, _) = txids_receivers.await;
             sub_tx_msg_action(tx_msg)
         }
@@ -164,9 +163,7 @@ impl SubRecv {
         }
     }
 
-    async fn recv_token_ids(
-        token_ids: &mut SubRecvTokenId,
-    ) -> Result<WsAction> {
+    async fn recv_token_ids(token_ids: &mut SubRecvTokenId) -> Result<WsAction> {
         if token_ids.is_empty() {
             futures::future::pending().await
         } else {
@@ -180,9 +177,7 @@ impl SubRecv {
         }
     }
 
-    async fn recv_lokad_ids(
-        lokad_ids: &mut SubRecvLokadId,
-    ) -> Result<WsAction> {
+    async fn recv_lokad_ids(lokad_ids: &mut SubRecvLokadId) -> Result<WsAction> {
         if lokad_ids.is_empty() {
             futures::future::pending().await
         } else {
@@ -196,9 +191,7 @@ impl SubRecv {
         }
     }
 
-    async fn recv_plugin(
-        plugin_groups: &mut SubRecvPluginGroups,
-    ) -> Result<WsAction> {
+    async fn recv_plugin(plugin_groups: &mut SubRecvPluginGroups) -> Result<WsAction> {
         if plugin_groups.is_empty() {
             futures::future::pending().await
         } else {
@@ -218,11 +211,7 @@ impl SubRecv {
         Ok(WsAction::Message(ws::Message::Ping(ping_payload)))
     }
 
-    async fn handle_sub(
-        &mut self,
-        sub: WsSub,
-        indexer: &ChronikIndexerRef,
-    ) -> Result<WsAction> {
+    async fn handle_sub(&mut self, sub: WsSub, indexer: &ChronikIndexerRef) -> Result<WsAction> {
         let indexer = indexer.read().await;
         let mut subs = indexer.subs().write().await;
         match sub.sub_type {
@@ -281,8 +270,7 @@ impl SubRecv {
                 } else if !self.scripts.contains_key(&script_variant) {
                     log_chronik!("WS subscribe to {}\n", script_variant);
                     self.acquire_sub()?;
-                    let recv =
-                        subs.subs_script_mut().subscribe_to_member(&&script);
+                    let recv = subs.subs_script_mut().subscribe_to_member(&&script);
                     self.scripts.insert(script_variant, recv);
                 }
             }
@@ -296,36 +284,26 @@ impl SubRecv {
                 } else if !self.token_ids.contains_key(&token_id) {
                     log_chronik!("WS subscribe to token ID {token_id}\n");
                     self.acquire_sub()?;
-                    let recv =
-                        subs.subs_token_id_mut().subscribe_to_member(&token_id);
+                    let recv = subs.subs_token_id_mut().subscribe_to_member(&token_id);
                     self.token_ids.insert(token_id, recv);
                 }
             }
             WsSubType::LokadId(lokad_id) => {
                 if sub.is_unsub {
-                    log_chronik!(
-                        "WS unsubscribe from LOKAD ID {}\n",
-                        hex::encode(lokad_id)
-                    );
+                    log_chronik!("WS unsubscribe from LOKAD ID {}\n", hex::encode(lokad_id));
                     if self.lokad_ids.remove(&lokad_id).is_some() {
                         self.release_one_sub();
                     }
                     subs.subs_lokad_id_mut().unsubscribe_from_member(&lokad_id)
                 } else if !self.lokad_ids.contains_key(&lokad_id) {
-                    log_chronik!(
-                        "WS subscribe to LOKAD ID {}\n",
-                        hex::encode(lokad_id)
-                    );
+                    log_chronik!("WS subscribe to LOKAD ID {}\n", hex::encode(lokad_id));
                     self.acquire_sub()?;
-                    let recv =
-                        subs.subs_lokad_id_mut().subscribe_to_member(&lokad_id);
+                    let recv = subs.subs_lokad_id_mut().subscribe_to_member(&lokad_id);
                     self.lokad_ids.insert(lokad_id, recv);
                 }
             }
             WsSubType::PluginGroup(plugin_name, group) => {
-                let Some(plugin_idx) =
-                    indexer.plugin_name_map().idx_by_name(&plugin_name)
-                else {
+                let Some(plugin_idx) = indexer.plugin_name_map().idx_by_name(&plugin_name) else {
                     return Err(PluginNotLoaded(plugin_name).into());
                 };
                 let plugin_group = PluginGroup { plugin_idx, group };
@@ -349,9 +327,7 @@ impl SubRecv {
                         hex::encode(&plugin_group.group),
                     );
                     self.acquire_sub()?;
-                    let recv = subs
-                        .subs_plugin_mut()
-                        .subscribe_to_member(&member.ser());
+                    let recv = subs.subs_plugin_mut().subscribe_to_member(&member.ser());
                     self.plugin_groups.insert(plugin_group, recv);
                 }
             }
@@ -415,9 +391,7 @@ impl SubRecv {
     }
 }
 
-fn sub_client_msg_action(
-    client_msg: Option<Result<ws::Message, axum::Error>>,
-) -> Result<WsAction> {
+fn sub_client_msg_action(client_msg: Option<Result<ws::Message, axum::Error>>) -> Result<WsAction> {
     let client_msg = match client_msg {
         Some(client_msg) => client_msg,
         None => return Ok(WsAction::Close),
@@ -431,18 +405,14 @@ fn sub_client_msg_action(
                 sub_type: match sub.sub_type {
                     None => return Err(MissingSubType.into()),
                     Some(SubType::Blocks(_)) => WsSubType::Blocks,
-                    Some(SubType::Txid(txid)) => {
-                        WsSubType::TxId(txid.txid.parse::<TxId>()?)
+                    Some(SubType::Txid(txid)) => WsSubType::TxId(txid.txid.parse::<TxId>()?),
+                    Some(SubType::Script(script)) => WsSubType::Script(parse_script_variant(
+                        &script.script_type,
+                        &script.payload,
+                    )?),
+                    Some(SubType::TokenId(token_id)) => {
+                        WsSubType::TokenId(token_id.token_id.parse::<TokenId>()?)
                     }
-                    Some(SubType::Script(script)) => {
-                        WsSubType::Script(parse_script_variant(
-                            &script.script_type,
-                            &script.payload,
-                        )?)
-                    }
-                    Some(SubType::TokenId(token_id)) => WsSubType::TokenId(
-                        token_id.token_id.parse::<TokenId>()?,
-                    ),
                     Some(SubType::LokadId(lokad_id)) => {
                         WsSubType::LokadId(parse_lokad_id(&lokad_id.lokad_id)?)
                     }
@@ -454,11 +424,18 @@ fn sub_client_msg_action(
             }))
         }
         Ok(ws::Message::Text(_)) => Err(UnexpectedMessageType("Text").into()),
-        Ok(ws::Message::Ping(ping)) => {
-            Ok(WsAction::Message(ws::Message::Pong(ping)))
-        }
+        Ok(ws::Message::Ping(ping)) => Ok(WsAction::Message(ws::Message::Pong(ping))),
         Ok(ws::Message::Pong(_pong)) => Ok(WsAction::Nothing),
         Ok(ws::Message::Close(_)) | Err(_) => Ok(WsAction::Close),
+    }
+}
+
+fn channel_discontinuity(error: broadcast::error::RecvError) -> WsAction {
+    match error {
+        broadcast::error::RecvError::Lagged(_) => WsAction::Continuity(
+            "Chronik notification continuity lost; refresh snapshot and resubscribe"),
+        broadcast::error::RecvError::Closed => WsAction::Continuity(
+            "Chronik notification channel closed; refresh snapshot and resubscribe"),
     }
 }
 
@@ -466,8 +443,9 @@ fn sub_block_msg_action(
     block_msg: Result<BlockMsg, broadcast::error::RecvError>,
 ) -> Result<WsAction> {
     use proto::{ws_msg::MsgType, BlockMsgType::*};
-    let Ok(block_msg) = block_msg else {
-        return Ok(WsAction::Nothing);
+    let block_msg = match block_msg {
+        Ok(message) => message,
+        Err(error) => return Ok(channel_discontinuity(error)),
     };
     let block_msg_type = match block_msg.msg_type {
         BlockMsgType::Connected => BlkConnected,
@@ -502,13 +480,11 @@ fn sub_block_msg_action(
     Ok(WsAction::Message(msg))
 }
 
-fn sub_tx_msg_action(
-    tx_msg: Result<TxMsg, broadcast::error::RecvError>,
-) -> Result<WsAction> {
+fn sub_tx_msg_action(tx_msg: Result<TxMsg, broadcast::error::RecvError>) -> Result<WsAction> {
     use proto::{ws_msg::MsgType, TxFinalizationReasonType::*, TxMsgType::*};
     let tx_msg = match tx_msg {
         Ok(tx_msg) => tx_msg,
-        Err(_) => return Ok(WsAction::Nothing),
+        Err(error) => return Ok(channel_discontinuity(error)),
     };
     let (tx_msg_type, finalization_reason) = match tx_msg.msg_type {
         TxMsgType::AddedToMempool => (TxAddedToMempool, None),
@@ -541,12 +517,38 @@ fn sub_tx_msg_action(
 /// Future for a WS connection, which will run indefinitely until the WS will be
 /// closed.
 pub async fn handle_subscribe_socket(
-    mut socket: WebSocket,
+    socket: WebSocket,
     indexer: ChronikIndexerRef,
     settings: ChronikSettings,
     subscription_limiter: SubscriptionLimiterRef,
     peer_ip: IpAddr,
 ) {
+    handle_subscribe_socket_with_lifecycle(
+        socket,
+        indexer,
+        settings,
+        subscription_limiter,
+        peer_ip,
+        std::future::pending::<&'static str>(),
+    )
+    .await;
+}
+
+/// Same upstream subscription loop with an owner-supplied terminal signal.
+/// The ordinary upstream entry point supplies a never-ready signal. A local
+/// owner can end a session when its source continuity is no longer trustworthy.
+/// Error delivery is best effort; subscription guards are always released.
+pub async fn handle_subscribe_socket_with_lifecycle<F>(
+    mut socket: WebSocket,
+    indexer: ChronikIndexerRef,
+    settings: ChronikSettings,
+    subscription_limiter: SubscriptionLimiterRef,
+    peer_ip: IpAddr,
+    lifecycle: F,
+) where
+    F: std::future::Future<Output = &'static str> + Send,
+{
+    tokio::pin!(lifecycle);
     let mut recv = SubRecv {
         blocks: Default::default(),
         txs: Default::default(),
@@ -560,57 +562,104 @@ pub async fn handle_subscribe_socket(
         client_key: SubscriptionClientKey::Ip(peer_ip),
         subscription_limiter,
     };
-    let mut last_msg = None;
+    // Race the entire loop, including blocked socket sends and indexer locks.
+    // Dropping only recv_action would not interrupt handle_sub or socket.send.
+    let reason = {
+        let serve = async {
+            let mut last_msg = None;
 
-    loop {
-        let sub_action = tokio::select! {
-            client_msg = socket.recv() => sub_client_msg_action(client_msg),
-            action = recv.recv_action() => action,
-        };
-
-        // Handle subscription so we can send the error back
-        let sub_action = match sub_action {
-            Ok(WsAction::Sub(sub)) => recv.handle_sub(sub, &indexer).await,
-            sub_action => sub_action,
-        };
-
-        let subscribe_action = match sub_action {
-            // Deduplicate identical consecutive msgs
-            Ok(WsAction::Message(ws::Message::Binary(msg))) => {
-                if last_msg.as_ref() == Some(&msg) {
-                    WsAction::Nothing
-                } else {
-                    last_msg = Some(msg.clone());
-                    WsAction::Message(ws::Message::Binary(msg))
-                }
-            }
-            Ok(subscribe_action) => subscribe_action,
-            // Turn Err into Message and reply
-            Err(report) => {
-                let (_, error_proto) = report_status_error(report);
-                let msg_proto = proto::WsMsg {
-                    msg_type: Some(proto::ws_msg::MsgType::Error(error_proto)),
+            loop {
+                let sub_action = tokio::select! {
+                    client_msg = socket.recv() => sub_client_msg_action(client_msg),
+                    action = recv.recv_action() => action,
                 };
-                WsAction::Message(ws::Message::Binary(
-                    msg_proto.encode_to_vec(),
-                ))
+
+                // Handle subscription so we can send the error back
+                let sub_action = match sub_action {
+                    Ok(WsAction::Sub(sub)) => recv.handle_sub(sub, &indexer).await,
+                    sub_action => sub_action,
+                };
+
+                let subscribe_action = match sub_action {
+                    // Deduplicate identical consecutive msgs
+                    Ok(WsAction::Message(ws::Message::Binary(msg))) => {
+                        if last_msg.as_ref() == Some(&msg) {
+                            WsAction::Nothing
+                        } else {
+                            last_msg = Some(msg.clone());
+                            WsAction::Message(ws::Message::Binary(msg))
+                        }
+                    }
+                    Ok(subscribe_action) => subscribe_action,
+                    // Turn Err into Message and reply
+                    Err(report) => {
+                        let (_, error_proto) = report_status_error(report);
+                        let msg_proto = proto::WsMsg {
+                            msg_type: Some(proto::ws_msg::MsgType::Error(error_proto)),
+                        };
+                        WsAction::Message(ws::Message::Binary(msg_proto.encode_to_vec()))
+                    }
+                };
+
+                match subscribe_action {
+                    WsAction::Close => {
+                        return None;
+                    }
+                    WsAction::Continuity(reason) => return Some(reason),
+                    WsAction::Sub(_) => unreachable!("Handled above"),
+                    WsAction::Message(msg) => match socket.send(msg).await {
+                        Ok(()) => {}
+                        Err(_) => {
+                            return None;
+                        }
+                    },
+                    WsAction::Nothing => {}
+                }
             }
         };
-
-        match subscribe_action {
-            WsAction::Close => {
-                recv.cleanup(&indexer).await;
-                return;
-            }
-            WsAction::Sub(_) => unreachable!("Handled above"),
-            WsAction::Message(msg) => match socket.send(msg).await {
-                Ok(()) => {}
-                Err(_) => {
-                    recv.cleanup(&indexer).await;
-                    return;
-                }
-            },
-            WsAction::Nothing => {}
+        tokio::pin!(serve);
+        tokio::select! {
+            biased;
+            reason = &mut lifecycle => Some(reason),
+            reason = &mut serve => reason,
         }
+    };
+    if let Some(reason) = reason {
+        let message = proto::WsMsg {
+            msg_type: Some(proto::ws_msg::MsgType::Error(proto::Error {
+                msg: reason.to_owned(),
+            })),
+        };
+        let _ = tokio::time::timeout(
+            Duration::from_millis(100),
+            socket.send(ws::Message::Binary(message.encode_to_vec())),
+        )
+        .await;
+        let _ = tokio::time::timeout(Duration::from_millis(100), socket.close()).await;
+    }
+    recv.cleanup(&indexer).await;
+}
+
+#[cfg(test)]
+mod ergon_channel_continuity_tests {
+    use super::*;
+    #[test]
+    fn tx_lag_and_close_are_terminal() {
+        for error in [broadcast::error::RecvError::Lagged(1),broadcast::error::RecvError::Closed] {
+            assert!(matches!(sub_tx_msg_action(Err(error)).unwrap(),WsAction::Continuity(_)));
+        }
+    }
+    #[test]
+    fn block_lag_and_close_are_terminal() {
+        for error in [broadcast::error::RecvError::Lagged(17),broadcast::error::RecvError::Closed] {
+            assert!(matches!(sub_block_msg_action(Err(error)).unwrap(),WsAction::Continuity(_)));
+        }
+    }
+    #[tokio::test]
+    async fn actual_tx_broadcast_overflow_is_terminal() {
+        let (sender,mut receiver)=broadcast::channel(1);
+        let message=TxMsg { msg_type:TxMsgType::AddedToMempool,txid:TxId::from([0;32]) };
+        sender.send(message.clone()).unwrap();sender.send(message).unwrap();
+        assert!(matches!(sub_tx_msg_action(receiver.recv().await).unwrap(),WsAction::Continuity(_)));
     }
 }

@@ -100,6 +100,16 @@ if(BUILD_CHRONIK_UPSTREAM_PLUGIN_TESTS AND NOT BUILD_CHRONIK_UPSTREAM_ARCHIVAL_T
 endif()
 option(BUILD_CHRONIK_UPSTREAM_REGTEST
 	"Enable experimental bounded upstream service in bitcoind regtest only" OFF)
+option(BUILD_CHRONIK_UPSTREAM_SHADOW
+	"Enable separately opted-in historical read-only upstream shadow service" OFF)
+option(BUILD_CHRONIK_UPSTREAM_SERVICE
+	"Enable separately opted-in network-bound continuous upstream client service" OFF)
+if(BUILD_CHRONIK_UPSTREAM_SERVICE AND NOT BUILD_CHRONIK_UPSTREAM_REGTEST)
+	message(FATAL_ERROR "Continuous historical service requires the joined backend; runtime admission remains separately opt-in")
+endif()
+if(BUILD_CHRONIK_UPSTREAM_SHADOW AND NOT BUILD_CHRONIK_UPSTREAM_REGTEST)
+	message(FATAL_ERROR "Historical shadow requires the joined regtest backend; both runtime profiles remain separately opt-in")
+endif()
 option(BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS
 	"Allow only the public synthetic upstream plugin in the regtest service" OFF)
 if(BUILD_CHRONIK_UPSTREAM_REGTEST_PLUGINS AND
