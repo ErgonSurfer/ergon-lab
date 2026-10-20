@@ -1,12 +1,21 @@
 // SPDX-License-Identifier: MIT
 // Public synthetic component witness; no native-node or deployment claim.
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, path::PathBuf, sync::Mutex};
 use bitcoinsuite_core::{net::Net,script::{opcode::{OP_RETURN,OP_RESERVED},ScriptMut},tx::{Tx,TxId,TxMut,TxOutput}};
 use chronik_plugin_impl::context::PluginContext;
 use chronik_plugin_common::{params::PluginParams,data::PluginNameMap};
+// The real upstream standalone logger otherwise writes setup messages to stdout.
+// Capture a bounded, checked setup transcript; never strip arbitrary output.
+static SETUP_LOGS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+fn setup_log(_: &str, _: &str, _: u32, message: &str) {
+    let mut logs=SETUP_LOGS.lock().unwrap();
+    assert!(logs.len()<3 && message.len()<=512,"unexpected upstream setup logging");
+    logs.push(message.to_owned());
+}
 fn main() {
     let args=std::env::args().collect::<Vec<_>>();
     assert_eq!(args.len(),3);
+    chronik_util::mount_loggers(chronik_util::Loggers {log:setup_log,log_chronik:setup_log});
     unsafe {
         pyo3::ffi::Py_DontWriteBytecodeFlag=1;
         pyo3::ffi::Py_IgnoreEnvironmentFlag=1;
@@ -17,6 +26,18 @@ fn main() {
     let ctx=PluginContext::setup(PluginParams {net:Net::Regtest,
         plugins_dir:PathBuf::from(&args[1]),plugins_conf:PathBuf::from(&args[2])}).expect("upstream setup");
     assert_eq!(ctx.plugins().len(),2);
+    {
+        let logs=SETUP_LOGS.lock().unwrap();
+        assert_eq!(logs.len(),3,"missing or extra upstream setup message");
+        let version=logs[0].strip_prefix("Plugin context initialized Python 3.12.")
+            .and_then(|s|s.strip_suffix('\n')).expect("configured CPython setup message");
+        assert!(!version.is_empty() && version.bytes().all(|b|b.is_ascii_digit()));
+        for (message,plugin) in logs[1..].iter().zip(ctx.plugins()) {
+            let ids=plugin.lokad_ids.iter().map(|id|bytes::Bytes::copy_from_slice(id)).collect::<Vec<_>>();
+            assert_eq!(message,&format!("Loaded plugin {}.{} (version {}) with LOKAD IDs {:?}\n",
+                plugin.module_name,plugin.class_name,plugin.version,ids));
+        }
+    }
     let names=PluginNameMap::new(ctx.plugins().iter().enumerate().map(|(i,p)|(i as u32,p.module_name.clone())));
     let multi=names.idx_by_name("multi_lokad_public").unwrap();
     let legacy=names.idx_by_name("single_lokad_public").unwrap();

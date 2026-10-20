@@ -130,9 +130,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 4352,
-        "git_blob_sha1": "19c9c24f5ff20f51b27adfee67e830acb2633591",
-        "sha256": "236c0c3d26c8928e666c1d7e63c6d13e195f353ed3d7579563b4e6bb835e2e0b"
+        "bytes": 5126,
+        "git_blob_sha1": "e3a489e670c51c1205c694055dca8f6865eba1c0",
+        "sha256": "c4b4989ae7fa5f1f0345cd36e0f76df5908298f487a5aa27778c6be7b88c1414"
       },
       "provenance": "A1/MIT",
       "reachability": "test-or-policy-only"
@@ -154,9 +154,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 2262,
-        "git_blob_sha1": "21aa18b16475f1a344a68f8be699c98288baa449",
-        "sha256": "d4042afaa1d0ac70a529df06a2e78cbec56a2382d67ec4f7bc5bbeeac80af21a"
+        "bytes": 2351,
+        "git_blob_sha1": "c3b3640a21c2ff4e19f5bdf0bd436747a7870f0a",
+        "sha256": "a534c07cb1e38ca05ffe797d803b3e5824e8825bd4d3568d0ebdb26adead7d85"
       },
       "provenance": "A1/MIT",
       "reachability": "test-or-policy-only"
@@ -166,9 +166,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 2682,
-        "git_blob_sha1": "381ef6df04d030fe4018ae7cf40f29c660e18dfe",
-        "sha256": "652aada08f5f2b72bdbd187e3e97bdd0829d67ed05feed8913b1b7dc936aaaa0"
+        "bytes": 3989,
+        "git_blob_sha1": "d1c8d0448fd21dd2b5a25ffe6da25d70bfd0b9d8",
+        "sha256": "9aacbe69bfdf70a8cb14436207a35ef902258f9c04929f8239aceec0722e0b87"
       },
       "provenance": "A1/MIT",
       "reachability": "optional-plugin-build-or-synthetic-test"

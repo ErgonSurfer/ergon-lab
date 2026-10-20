@@ -44,6 +44,17 @@ names, an unambiguous passing summary and the exact six-transaction marker.
 Compilation is a separate build step, not included in the process deadline.
 All seven existing CI jobs and all inherited node/ALP/plugin controls remain.
 
+The first Linux CI attempt compiled the library and example, then refused the
+example's output in both plugin profiles. The standalone upstream logger emits
+initialization messages to stdout when no node logger is mounted; the witness
+requires only its final marker. The test-only example now mounts the existing
+logger API before setup and captures exactly three bounded messages. It checks
+the configured Python 3.12 patch version and both complete plugin metadata
+messages against the actual loaded context. Unexpected, missing or additional
+messages still fail. The stdout/stderr oracle is unchanged and explicitly
+rejects leaked setup logging. No daemon logger or production source is changed;
+the failed CI runs remain counter-evidence, not a passing runtime result.
+
 ```sh
 python3 -B tools/engineering/check_chronik_multi_lokad.py check
 python3 -B tools/engineering/check_chronik_multi_lokad_self_test.py

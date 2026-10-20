@@ -25,7 +25,8 @@ class Contract(unittest.TestCase):
     def test_probe_requires_exact_marker_and_no_stderr(self):
         witness.probe_result((witness.MARKER + "\n", ""))
         for bad in (("", ""), (witness.MARKER + "\n" + witness.MARKER, ""),
-                    (witness.MARKER, "warning"), (witness.MARKER.replace("combined_once=1", "combined_once=2"), "")):
+                    (witness.MARKER, "warning"), (witness.MARKER.replace("combined_once=1", "combined_once=2"), ""),
+                    ("Plugin context initialized Python 3.12.3\n" + witness.MARKER, "")):
             with self.assertRaises(ValueError): witness.probe_result(bad)
 
     def test_artifact_identity_and_ambiguity(self):

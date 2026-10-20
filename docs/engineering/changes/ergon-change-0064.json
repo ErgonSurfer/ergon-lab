@@ -15,6 +15,7 @@
       "Preserve plugin construction,inheritance/version checks and the original MIT notices; the changed loader is an authored adaptation,not an unchanged donor file.",
       "Bind both metadata-loader files into the optional adapter identity; add a test-only Cargo example without registry/dependency or daemon admission changes.",
       "Exercise11Rust metadata unit cases and6synthetic transactions through the real upstream context;require combined identifiers to dispatch one instance exactly once.",
+      "Mount the existing logger API only in the standalone synthetic example;capture and verify exactly three bounded setup messages before requiring the unchanged single stdout marker and empty stderr.",
       "Retain every inherited native case,assertion,repetition,deadline,cleanup and daemon scenario;all seven existing CI jobs remain required.",
       "Finite successor policy binds the exact current postimages while retaining immutable earlier manifests and original public donor preimages."
     ],
@@ -58,7 +59,7 @@
   },
   "provenance_inventory": {
     "inventory_schema": "ergon-authorship-inventory/v1",
-    "inventory_sha256": "e786253a67115edd4eae72fba03a737c54b028de64422c5b9a2aab722fb9c856",
+    "inventory_sha256": "21c6ff03190eb2d20e9bba564b5e48595b6d1809693b8e30d74a56e19565ad92",
     "license": "MIT",
     "standing_policy": "PUBLICATION_POLICY.md",
     "exclusions": [
@@ -210,8 +211,8 @@
       "after": {
         "mode": "100644",
         "bytes": 14505,
-        "git_blob": "7ddfe72298616b6c80b9e4a4d60a5813cccf7d6a",
-        "sha256": "18b1fffa1d9b66516c89db34a450be75fdcaeba3ba0d38e7a0eb32d1d0247846"
+        "git_blob": "2067e70d6cbcd5b9396d57fa667b4101ef035e1e",
+        "sha256": "42770b625015515dc0d93fe3a02ea66c95863879f80407cdf31ab9bafe3b9434"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -229,9 +230,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 4352,
-        "git_blob": "19c9c24f5ff20f51b27adfee67e830acb2633591",
-        "sha256": "236c0c3d26c8928e666c1d7e63c6d13e195f353ed3d7579563b4e6bb835e2e0b"
+        "bytes": 5126,
+        "git_blob": "e3a489e670c51c1205c694055dca8f6865eba1c0",
+        "sha256": "c4b4989ae7fa5f1f0345cd36e0f76df5908298f487a5aa27778c6be7b88c1414"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -269,9 +270,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 2262,
-        "git_blob": "21aa18b16475f1a344a68f8be699c98288baa449",
-        "sha256": "d4042afaa1d0ac70a529df06a2e78cbec56a2382d67ec4f7bc5bbeeac80af21a"
+        "bytes": 2351,
+        "git_blob": "c3b3640a21c2ff4e19f5bdf0bd436747a7870f0a",
+        "sha256": "a534c07cb1e38ca05ffe797d803b3e5824e8825bd4d3568d0ebdb26adead7d85"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -289,9 +290,9 @@
       "before": null,
       "after": {
         "mode": "100644",
-        "bytes": 2682,
-        "git_blob": "381ef6df04d030fe4018ae7cf40f29c660e18dfe",
-        "sha256": "652aada08f5f2b72bdbd187e3e97bdd0829d67ed05feed8913b1b7dc936aaaa0"
+        "bytes": 3989,
+        "git_blob": "d1c8d0448fd21dd2b5a25ffe6da25d70bfd0b9d8",
+        "sha256": "9aacbe69bfdf70a8cb14436207a35ef902258f9c04929f8239aceec0722e0b87"
       },
       "provenance": {
         "kind": "independent-authorship",
@@ -849,6 +850,7 @@
   ],
   "counterevidence": [
     "The initial lightweight prebuild was refused by the existing source-projection self-test because it still expected the pre-extension source identities.The correction adds only a finite exact-preimage projection layer;literal parent-relative comparison preserves every inherited runner selection,deadline,environment,failure and cleanup function.",
+    "PR67 pull_request run39381863322 failed both plugin profiles after successful library and example compilation because the exact output oracle refused the standalone example.The upstream unmounted logger emits setup messages to stdout.The test-only correction mounts the existing logger API and checks exactly three bounded metadata messages;it does not discard arbitrary output or relax the stdout/stderr oracle.The failed jobs remain preserved and are not runtime success evidence.",
     "Two historical local capture-and-query-controls normal-matrix attempts exceeded60seconds at repetition2.The cause remains unknown and no passing complete local normal matrix is claimed.",
     "The maintainer explicitly retained those failures as an open anomaly while allowing reviewed source integration;tests,deadlines and evidence ceilings remain unchanged.A target-server recurrence,data-integrity contradiction or unsafe shutdown blocks operational readiness.",
     "Earlier startup/stop-reopen timeouts and upstream dependency alerts remain open.No private observation or incoming report is a public evidence input."
